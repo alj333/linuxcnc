@@ -34,6 +34,22 @@
 // not critical.
 static inline rtapi_s64 xlabs(rtapi_s64 x) { return x < 0 ? -x : x; }
 
+/*
+ * Absolute encoder SSI data on some firmwares arrives with the bit significance
+ * reversed relative to the field order described in the format string. Reverse
+ * only the active field width before applying the existing Gray decode.
+ */
+static inline rtapi_u64 reverse_low_bits(rtapi_u64 value, int bits) {
+    rtapi_u64 reversed = 0;
+    int i;
+
+    for (i = 0; i < bits; i++) {
+        reversed = (reversed << 1) | ((value >> i) & 1ULL);
+    }
+
+    return reversed;
+}
+
 int getbits(hm2_sserial_remote_t *chan, rtapi_u64 *val, int start, int len){
     //load the bits from the registers in to bit 0+ of *val
     int i;
@@ -1168,6 +1184,12 @@ int hm2_sserial_create_pins(hostmot2_t *hm2, hm2_sserial_remote_t *chan){
             chan->pins[i].nowrap = 0;
         }
 
+        if (chan->confs[i].Flags & 0x04){
+            chan->pins[i].reversebits = 1;
+        } else {
+            chan->pins[i].reversebits = 0;
+        }
+
 
         switch (chan->confs[i].DataType){
             case LBP_PAD:
@@ -1955,6 +1977,9 @@ int hm2_sserial_read_pins(hm2_sserial_remote_t *chan){
             case LBP_UNSIGNED:
 
                 if (pin->graycode){
+                    if (pin->reversebits){
+                        buff = reverse_low_bits(buff, conf->DataLength);
+                    }
                     rtapi_u64 mask;
                     for(mask = buff >> 1 ; mask != 0 ; mask = mask >> 1){
                         buff ^= mask;
@@ -2010,6 +2035,9 @@ int hm2_sserial_read_pins(hm2_sserial_remote_t *chan){
 
 
                 if (pin->graycode){
+                    if (pin->reversebits){
+                        buff = reverse_low_bits(buff, bitlength);
+                    }
                     rtapi_u64 mask;
                     for(mask = buff >> 1 ; mask != 0 ; mask = mask >> 1){
                         buff ^= mask;

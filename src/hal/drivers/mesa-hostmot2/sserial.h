@@ -98,7 +98,7 @@ typedef struct {
     short ParmAddr;
     char UnitString[HM2_SSERIAL_MAX_STRING_LENGTH+1];
     char NameString[HM2_SSERIAL_MAX_STRING_LENGTH+1];
-    char Flags; //0x01 = graycode 0x02 = nowrap
+    char Flags; //0x01 = graycode 0x02 = nowrap 0x04 = reverse bit order
 }hm2_sserial_data_t;
 
 typedef struct {
@@ -125,6 +125,7 @@ typedef struct {
     hal_u32_t u32_param;
     hal_bit_t graycode;
     hal_bit_t nowrap;
+    hal_bit_t reversebits;
     rtapi_s64 oldval; // not pins, but this way every pin can have one
     rtapi_s64 accum; // these two are only currently used by encoders
     rtapi_s64 offset;

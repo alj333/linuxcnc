@@ -509,6 +509,10 @@ l: (Split encoder, low-order bits)::
  Low order bits (see "h")
 g: (Gray-code):: This is a modifier that indicates that the following format string is gray-code encoded.
  This is only valid for encoders (e, h l) and unsigned (u) data types.
+r: (Reverse):: This is a modifier that indicates that the bit order in the
+ following field should be reversed before any other decoding is applied.
+ This is intended for absolute encoder formats where the captured field
+ significance is opposite to the datasheet field order.
 m: (Multi-turn)::
  This is a modifier that indicates that the following format string is a multi-turn encoder.
  This is only valid for encoders (e, h l).
