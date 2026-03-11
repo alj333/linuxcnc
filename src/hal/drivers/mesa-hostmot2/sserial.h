@@ -97,7 +97,7 @@ typedef struct {
     short ParmAddr;
     char UnitString[HM2_SSERIAL_MAX_STRING_LENGTH+1];
     char NameString[HM2_SSERIAL_MAX_STRING_LENGTH+1];
-    char Flags; //0x01 = graycode 0x02 = nowrap
+    char Flags; //0x01 = graycode 0x02 = nowrap 0x08 = invert bits
 }hm2_sserial_data_t;
 
 typedef struct {

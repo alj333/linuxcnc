@@ -1,0 +1,36 @@
+# Minimal 7I95T SSI bench config.
+# Scope:
+# - Mesa Ethernet comms
+# - SSI.00 mapped to B encoder
+# - SSI.01 mapped to C encoder
+# - No machine drives or full 5-axis dependencies
+
+loadrt [KINS]KINEMATICS
+loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+
+loadrt hostmot2
+loadrt hm2_eth board_ip="10.10.10.10" config="num_encoders=0 num_pwmgens=6 num_stepgens=0 ssi_chan_0=crc%6unwarn%1bnerr%1babs%20ige ssi_chan_1=crc%6unwarn%1bnerr%1babs%20ige"
+
+setp hm2_7i95.0.watchdog.timeout_ns 5000000
+setp hm2_7i95.0.dpll.01.timer-us -350
+
+# 20-bit single-turn SSI encoders on both channels.
+setp hm2_7i95.0.ssi.00.frequency-khz 200
+setp hm2_7i95.0.ssi.00.timer-number 1
+setp hm2_7i95.0.ssi.00.abs.counts-per-rev 1048576
+setp hm2_7i95.0.ssi.00.abs.scale 2912.711111111111
+
+setp hm2_7i95.0.ssi.01.frequency-khz 200
+setp hm2_7i95.0.ssi.01.timer-number 1
+setp hm2_7i95.0.ssi.01.abs.counts-per-rev 1048576
+setp hm2_7i95.0.ssi.01.abs.scale 2912.711111111111
+
+addf hm2_7i95.0.read        servo-thread
+addf motion-command-handler servo-thread
+addf motion-controller      servo-thread
+addf hm2_7i95.0.write       servo-thread
+
+# Drive the bench DRO directly from the SSI encoder positions.
+net b-encoder-pos hm2_7i95.0.ssi.00.abs.position => joint.0.motor-pos-fb
+net c-encoder-pos hm2_7i95.0.ssi.01.abs.position => joint.1.motor-pos-fb
+net estop-loop iocontrol.0.user-enable-out => iocontrol.0.emc-enable-in
