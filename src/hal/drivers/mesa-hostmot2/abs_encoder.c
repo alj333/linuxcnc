@@ -250,7 +250,7 @@ int hm2_absenc_parse_format(hm2_sserial_remote_t *chan,  hm2_absenc_format_t *de
                 HM2_ERR_NO_LL("Invalid field length specification, you may "
                         "not get the pins you expected\n");
             }
-            else if (strchr("bBuUsSeEfFpPgGhHlLmM", *format)){
+            else if (strchr("bBuUsSeEfFpPgGhHlLmMiI", *format)){
                 hm2_sserial_data_t *conf;
                 chan->num_confs++;
                 chan->confs = (hm2_sserial_data_t *)rtapi_krealloc(chan->confs,
@@ -267,13 +267,17 @@ int hm2_absenc_parse_format(hm2_sserial_remote_t *chan,  hm2_absenc_format_t *de
                 conf->Flags = 0;
                 // Modifier flags
                 // 24/9/23 atp - string literal has a terminating \0 but we want 0 to fail
-                while ( *format && strchr("gGmM", *format)){
+                while ( *format && strchr("gGmMiI", *format)){
                     if (*format=='g' || *format=='G'){
                         conf->Flags |= 0x01;
                         format++;
                     }
                     if (*format=='m' || *format=='M'){
                         conf->Flags |= 0x02;
+                        format++;
+                    }
+                    if (*format=='i' || *format=='I'){
+                        conf->Flags |= 0x08;
                         format++;
                     }
                 }
@@ -327,7 +331,7 @@ int hm2_absenc_parse_format(hm2_sserial_remote_t *chan,  hm2_absenc_format_t *de
                     conf->ParmMin = 0;
                     break;
                 default:
-                    HM2_ERR_NO_LL("The \"g\" and \"m\" format modifiers must be"
+                    HM2_ERR_NO_LL("The \"g\", \"m\" and \"i\" format modifiers must be"
                                   " paired with one of the other data types\n");
                     return -EINVAL;
                 }

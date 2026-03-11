@@ -34,6 +34,13 @@
 // not critical.
 static inline rtapi_s64 xlabs(rtapi_s64 x) { return x < 0 ? -x : x; }
 
+static inline rtapi_u64 invert_low_bits(rtapi_u64 value, int bits) {
+    if (bits >= 64) {
+        return ~value;
+    }
+    return value ^ (~0ull >> (64 - bits));
+}
+
 int getbits(hm2_sserial_remote_t *chan, rtapi_u64 *val, int start, int len){
     //load the bits from the registers in to bit 0+ of *val
     int i;
@@ -1953,6 +1960,9 @@ int hm2_sserial_read_pins(hm2_sserial_remote_t *chan){
                 }
                 break;
             case LBP_UNSIGNED:
+                if (conf->Flags & 0x08){
+                    buff = invert_low_bits(buff, conf->DataLength);
+                }
 
                 if (pin->graycode){
                     rtapi_u64 mask;
@@ -2008,6 +2018,9 @@ int hm2_sserial_read_pins(hm2_sserial_remote_t *chan){
                     buff_store = 0;
                 }
 
+                if (conf->Flags & 0x08){
+                    buff = invert_low_bits(buff, bitlength);
+                }
 
                 if (pin->graycode){
                     rtapi_u64 mask;
