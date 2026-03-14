@@ -10,7 +10,7 @@ addf motion-controller servo-thread
 # Keep the simulation geometry in sync with geometry_baseline.ini.
 setp headheadkins.nominal-c-to-b.x 0.0
 setp headheadkins.nominal-c-to-b.y 0.0
-setp headheadkins.nominal-c-to-b.z 0.0
+setp headheadkins.nominal-c-to-b.z -270.0
 setp headheadkins.nominal-b-to-tool.x 0.0
 setp headheadkins.nominal-b-to-tool.y 25.0
 setp headheadkins.nominal-b-to-tool.z -180.0

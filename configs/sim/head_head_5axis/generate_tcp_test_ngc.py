@@ -31,7 +31,7 @@ def generate():
     # Fixed tool-tip target inside the nominal travel envelope.
     x_tip = 1500.0
     y_tip = 850.0
-    z_tip = -300.0
+    z_tip = -600.0
 
     poses = [
         ("home", 0.0, 0.0),
@@ -52,7 +52,7 @@ def generate():
     content.append(line("(The XYZ tool-tip target is intentionally held constant.)"))
     content.append(line("(If inverse kinematics is correct, the visual tool tip should stay fixed while B/C change.)"))
     content.append(line("G17 G21 G40 G49 G54 G61 G80 G90 G94"))
-    content.append(line("G0 X1500.000 Y850.000 Z-300.000 B0.000 C0.000"))
+    content.append(line("G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000"))
     content.append(pause("Start TCP validation at home orientation"))
     for label, b_deg, c_deg in poses:
         content.append(move(x_tip, y_tip, z_tip, b_deg, c_deg, feed=1200.0, comment=label))

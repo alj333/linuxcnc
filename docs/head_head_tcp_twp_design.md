@@ -198,6 +198,9 @@ Tool length:
 Known current assumption:
 
 - spindle centerline is offset about `+25 mm` in `Y` from the `C` axis center
+- nominal `C` center to `B` center offset for the current visual/kinematic
+  scaffold is `(0, 0, -270) mm`
+- nominal `B` center to tool reference offset is `(0, +25, -180) mm`
 
 Unknowns to be finalized after the head and Z-frame rebuild:
 
@@ -224,6 +227,25 @@ Expected calibration stages:
 
 The kinematics code should read parameters from HAL or INI, not compile-time
 constants.
+
+Current simulation constraint:
+
+- the head-head simulation now uses one shared geometry baseline for both
+  `headheadkins` and the vismach model
+- the visual model must not carry hidden pivot offsets that differ from the
+  kinematics pins
+- axis `Z` remains the user-facing tool-tip travel range
+- internal `JOINT_2` is the `C` pivot-center axis and therefore has a
+  different travel range in the simulation:
+  - `MIN_LIMIT = -630`
+  - `MAX_LIMIT = 450`
+  - `HOME = 450`
+- the visual sim renders moving-table `Y` with inverted table motion so travel
+  direction matches a table-axis machine
+- the visual sim includes table-mounted alignment aids for TCP checking:
+  - cyan post and cross
+  - green centerlines
+  - corner markers
 
 ## TCP Requirements
 

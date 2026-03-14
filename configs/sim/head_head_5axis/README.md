@@ -4,8 +4,8 @@
 
 This directory is the starting point for head-head 5-axis kinematics R&D.
 
-It is intentionally not a runnable simulation yet. The goal of this first step
-is to lock:
+It now contains a runnable math sim and a runnable visual sim. The goal is to
+lock:
 
 - machine conventions
 - nominal travels
@@ -40,7 +40,7 @@ Current limitation:
 - it does not implement production-grade TCP mode semantics beyond tool-tip
   `XYZBC` kinematics
 - it does not implement TWP
-- it does not provide visual machine motion yet
+- it is still a development simulation, not a production machine model
 
 Launch:
 
@@ -88,17 +88,36 @@ Home pose:
 - `B=0`
 - `C=0`
 
+Important distinction:
+
+- axis `Z` is the user-facing tool-tip travel range
+- `JOINT_2` is the internal pivot-center `Z` joint
+- because the head has a long offset below the `C` pivot, `JOINT_2` must have
+  additional positive travel above axis `Z=0`
+- current simulation setting:
+  - `JOINT_2 = -630 .. +450`
+  - `JOINT_2 HOME = 450`
+
 ## Nominal Head Geometry
 
 Current nominal starting model:
 
-- `C` center to `B` center = `(0, 0, 0) mm`
+- `C` center to `B` center = `(0, 0, -270) mm`
 - spindle centerline offset is approximately `+25 mm` in `Y`
 - `B` center to spindle nose reference is approximately `180 mm`
 
 Approximate nominal vector from `B` center to spindle nose at `B=0`, `C=0`:
 
 - `(0, +25, -180) mm`
+
+This is now the shared baseline for both:
+
+- `headheadkins`
+- `head_head_vismach.py`
+
+The visual model no longer adds hidden rotary offsets on top of the HAL pins.
+`C->B` and `B->tool` are driven from the same nominal geometry values used by
+the kinematics math.
 
 ## Current Kinematics Model
 
@@ -239,6 +258,16 @@ Purpose:
 
 The visual model is deliberately approximate. It follows the current kinematic
 chain and nominal geometry, not final machine cosmetics.
+
+Current visual debugging aids:
+
+- moving-table `Y` is visually inverted so table motion matches a table-axis
+  machine
+- cyan alignment post and cross move with the table
+- green table centerlines move with the table
+- corner markers make travel direction easier to read
+
+These aids are there to make TCP and travel-direction errors visible quickly.
 
 Optional local STL overlay:
 

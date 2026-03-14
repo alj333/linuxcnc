@@ -166,9 +166,9 @@
 - Added a temporary runnable math-only scaffold:
   - `configs/sim/head_head_5axis/head_head_math_sim.ini`
   - `configs/sim/head_head_5axis/head_head_math_sim.hal`
-- Current scaffold uses `trivkins` as a placeholder only.
-- It is intended to validate axis ranges and coordinate ordering before custom
-  head-head kinematics, TCP, and TWP are implemented.
+- This was the initial placeholder stage before `headheadkins` was added.
+- It was intended to validate axis ranges and coordinate ordering before custom
+  head-head kinematics, TCP, and TWP were implemented.
 - Installed local CAD tooling for the visual simulation path:
   - `freecad`
   - `freecadcmd`
@@ -198,7 +198,7 @@
   - `B = -100 .. +100`
   - `C = -360 .. +360`
   - home at `X0 Y0 Z0 B0 C0`
-  - nominal `C` to `B` offset = `0,0,0`
+  - initial nominal `C` to `B` offset assumption = `0,0,0`
   - nominal `B` to spindle nose vector = `(0, +25, -180) mm`
   - calibration support is mandatory for real offsets and assembly error
 ## 2026-03-14 - Head-head kinematics scaffold started
@@ -250,3 +250,23 @@
   - `configs/sim/head_head_5axis/twp_test_sequence.ngc`
 - The current TWP scaffold is an offline plane-local to world transform at
   fixed `B/C`, not yet a production LinuxCNC TWP mode.
+# 2026-03-14 - Head-head sim geometry aligned to imported vismach
+
+- Updated the head-head simulation baseline to match the richer vismach model.
+- Shared nominal geometry is now:
+  - `C->B = (0, 0, -270) mm`
+  - `B->tool = (0, +25, -180) mm`
+- `head_head_vismach.py` no longer stacks hidden `C->B` and spindle-tip offsets
+  on top of the HAL geometry pins.
+- `headheadkins`, the math sim HAL, and the vismach HAL now use the same
+  geometry semantics.
+- The visual sim now also includes:
+  - moving-table `Y` rendered with inverted table motion
+  - cyan tool-tip alignment post and cross on the table
+  - green table centerlines and corner markers for travel checking
+- Current simulation `Z` convention:
+  - axis `Z` remains the user-facing tool-tip travel `-900 .. 0`
+  - internal `JOINT_2` is the `C` pivot-center axis and now uses:
+    - `MIN_LIMIT = -630`
+    - `MAX_LIMIT = 450`
+    - `HOME = 450`
