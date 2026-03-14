@@ -239,3 +239,8 @@
   simple TCP validation mode in the visual sim.
 - Updated `head_head_visual_sim.ini` to use the sim directory as
   `PROGRAM_PREFIX` and to open `tcp_test_sequence.ngc` by default.
+- Confirmed in the visual sim that the fixed-tip TCP validation showed no
+  visible drift and the center held position.
+- Added `configs/sim/head_head_5axis/generate_tcp_motion_ngc.py` and
+  `tcp_motion_sequence.ngc` for moving TCP validation with simultaneous
+  `XYZBC` changes.

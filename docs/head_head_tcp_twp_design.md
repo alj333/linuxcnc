@@ -24,7 +24,10 @@ Current branch status:
 - nominal simulation geometry is committed
 - a first `headheadkins` module exists for `XYZBC`
 - that module currently provides parameterized forward/inverse math only
-- TCP and TWP are still future layers on top of the same transform model
+- TCP is currently represented in the narrow kinematic sense because world
+  `XYZ` are treated as tool-tip coordinates in the simulation scaffold
+- production TCP semantics and TWP are still future layers on top of the same
+  transform model
 
 ## Machine Topology
 

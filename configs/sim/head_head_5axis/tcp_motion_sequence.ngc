@@ -1,0 +1,21 @@
+%
+(Head-head moving TCP validation sequence)
+(The tool-tip path and the tool orientation both change.)
+(Use this after the fixed-tip TCP validation passes.)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+G0 X1500.000 Y850.000 Z-300.000 B0.000 C0.000
+M0 (Start moving TCP validation)
+G1 X1500.000 Y850.000 Z-300.000 B0.000 C0.000 F1200.0 (start home)
+M0 (Observe TCP motion for start home)
+G1 X1650.000 Y850.000 Z-300.000 B45.000 C0.000 F1200.0 (linear X with B tilt)
+M0 (Observe TCP motion for linear X with B tilt)
+G1 X1650.000 Y1000.000 Z-300.000 B45.000 C90.000 F1200.0 (linear Y with C swivel)
+M0 (Observe TCP motion for linear Y with C swivel)
+G1 X1500.000 Y1000.000 Z-250.000 B0.000 C90.000 F1200.0 (return X with Z raise)
+M0 (Observe TCP motion for return X with Z raise)
+G1 X1500.000 Y850.000 Z-250.000 B-45.000 C180.000 F1200.0 (combined B/C rotation)
+M0 (Observe TCP motion for combined B/C rotation)
+G1 X1500.000 Y850.000 Z-300.000 B0.000 C0.000 F1200.0 (return home)
+M0 (Observe TCP motion for return home)
+M2
+%

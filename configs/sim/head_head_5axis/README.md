@@ -37,7 +37,8 @@ Purpose of the scaffold:
 Current limitation:
 
 - it uses a nominal geometry-only `headheadkins` module
-- it does not implement TCP
+- it does not implement production-grade TCP mode semantics beyond tool-tip
+  `XYZBC` kinematics
 - it does not implement TWP
 - it does not provide visual machine motion yet
 
@@ -118,6 +119,13 @@ tool_tip_world    = [X, Y, Z] + tool_offset_world
 This is sufficient to expose sign, order, and pivot-offset mistakes early,
 which is the immediate goal of the math simulation.
 
+Current TCP interpretation:
+
+- in this scaffold, world `XYZ` are already tool-tip coordinates
+- that means coordinated `XYZBC` motion already behaves as TCP in the sim
+- what is still missing is production-level operator semantics, mode handling,
+  and later TWP integration
+
 Reference pose calculator:
 
 ```bash
@@ -164,6 +172,23 @@ Test intent:
 - only `B/C` change
 - inverse kinematics must solve the internal pivot-center `XYZ` compensation
 - if the tip wanders, the current transform model or sign convention is wrong
+
+Moving TCP validation program:
+
+```bash
+cd ~/linuxcnc-dev
+python3 configs/sim/head_head_5axis/generate_tcp_motion_ngc.py
+```
+
+Generated program:
+
+- [tcp_motion_sequence.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/tcp_motion_sequence.ngc)
+
+Test intent:
+
+- move the tool tip in `XYZ` while changing `B/C`
+- confirm the tip follows the commanded path while orientation changes
+- use this only after `tcp_test_sequence.ngc` shows no fixed-tip drift
 
 ## Rough Visual Model
 
