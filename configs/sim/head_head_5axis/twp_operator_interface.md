@@ -115,6 +115,16 @@ Current prototype commands:
 - `cmd_cancel`
 - `cmd_reset`
 
+Current prototype M-code binding:
+
+- `M150` set origin from current tool-tip position
+- `M151` set orientation from current `B/C`
+- `M152` set both from current pose
+- `M153` activate
+- `M154` cancel
+- `M155` reset
+- `M156 P...` set plane-normal rotation
+
 Current prototype outputs:
 
 - `twp_origin_{x,y,z}`
@@ -125,6 +135,13 @@ Current prototype outputs:
 - `state_code`
 - `valid`
 - `active`
+
+Current `state_code` values:
+
+- `0` undefined
+- `1` partial
+- `2` defined
+- `3` active
 
 This is intentionally a HAL-driven prototype before any Probe Basic or remap
 binding is added.

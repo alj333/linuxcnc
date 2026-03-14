@@ -1,0 +1,10 @@
+#!/bin/bash
+# Snapshot both TWP origin and orientation from the current pose.
+set -e
+if [ -f /home/cnc5/linuxcnc-dev/scripts/rip-environment ]; then
+    . /home/cnc5/linuxcnc-dev/scripts/rip-environment
+fi
+halcmd setp headheadtwp.cmd_set_from_current 1
+sleep 0.3
+halcmd setp headheadtwp.cmd_set_from_current 0
+exit 0

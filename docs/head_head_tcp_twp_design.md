@@ -314,6 +314,16 @@ Current role:
 - store/cancel/activate explicit TWP state
 - expose plane basis vectors for inspection
 
+Current command binding in the simulation branch:
+
+- `M150` origin from current tool tip
+- `M151` orientation from current `B/C`
+- `M152` set both from current pose
+- `M153` activate
+- `M154` cancel
+- `M155` reset
+- `M156 P...` set plane-normal rotation
+
 This is still not a live LinuxCNC TWP motion mode.
 
 It does not yet provide:

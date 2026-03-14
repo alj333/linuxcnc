@@ -1,0 +1,13 @@
+%
+(Head-head TWP state demo)
+(Uses the prototype TWP M-codes only; this does not yet change motion interpretation.)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M152 (Set TWP origin and orientation from current tool pose)
+M156 P0.0 (Set plane-normal rotation)
+M153 (Activate TWP state)
+M0 (Inspect headheadtwp pins: origin, BC, active)
+M154 (Cancel TWP)
+M155 (Reset TWP definition)
+M2
+%

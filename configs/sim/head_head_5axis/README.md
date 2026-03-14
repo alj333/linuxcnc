@@ -184,6 +184,32 @@ halcmd setp headheadtwp.cmd_cancel 1
 halcmd setp headheadtwp.cmd_cancel 0
 ```
 
+`state_code` meanings:
+
+- `0` undefined
+- `1` partial definition
+- `2` defined
+- `3` active
+
+Prototype TWP M-codes:
+
+- `M150` set TWP origin from current tool tip
+- `M151` set TWP orientation from current `B/C`
+- `M152` set both origin and orientation from current pose
+- `M153` activate stored TWP state
+- `M154` cancel active TWP state
+- `M155` reset TWP state
+- `M156 P...` set plane-normal rotation
+
+Demo program:
+
+- [twp_state_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_state_demo.ngc)
+
+Important limit:
+
+- these M-codes currently control only the stored TWP state
+- they do not yet cause LinuxCNC motion to be interpreted in the tilted plane
+
 Reference pose calculator:
 
 ```bash

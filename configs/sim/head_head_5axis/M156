@@ -1,0 +1,12 @@
+#!/bin/bash
+# Set TWP plane-normal rotation from P then snapshot it.
+set -e
+if [ -f /home/cnc5/linuxcnc-dev/scripts/rip-environment ]; then
+    . /home/cnc5/linuxcnc-dev/scripts/rip-environment
+fi
+rotation="${1:-0}"
+halcmd setp headheadtwp.requested_normal_rotation "$rotation"
+halcmd setp headheadtwp.cmd_set_normal_rotation 1
+sleep 0.3
+halcmd setp headheadtwp.cmd_set_normal_rotation 0
+exit 0

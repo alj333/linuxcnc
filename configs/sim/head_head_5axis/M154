@@ -1,0 +1,10 @@
+#!/bin/bash
+# Cancel the active TWP state.
+set -e
+if [ -f /home/cnc5/linuxcnc-dev/scripts/rip-environment ]; then
+    . /home/cnc5/linuxcnc-dev/scripts/rip-environment
+fi
+halcmd setp headheadtwp.cmd_cancel 1
+sleep 0.3
+halcmd setp headheadtwp.cmd_cancel 0
+exit 0

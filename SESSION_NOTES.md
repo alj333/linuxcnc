@@ -281,3 +281,15 @@
   - snapshot current `B/C` orientation
   - store plane-normal rotation
   - activate/cancel/reset explicit TWP state
+- Added prototype M-code bindings in the sim directory:
+  - `M150` origin from current
+  - `M151` orientation from current
+  - `M152` set both from current
+  - `M153` activate
+  - `M154` cancel
+  - `M155` reset
+  - `M156 P...` plane-normal rotation
+- Validated live behavior with HAL smoke testing:
+  - `M152` stores origin and `B/C` from the current sim pose
+  - `M153` sets `headheadtwp.active = TRUE`
+  - `M154` returns the component to the defined-but-not-active state
