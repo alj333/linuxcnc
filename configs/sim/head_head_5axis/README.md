@@ -204,11 +204,17 @@ Prototype TWP M-codes:
 Demo program:
 
 - [twp_state_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_state_demo.ngc)
+- [twp_live_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_live_demo.ngc)
 
 Important limit:
 
-- these M-codes currently control only the stored TWP state
-- they do not yet cause LinuxCNC motion to be interpreted in the tilted plane
+- the M-codes control the stored TWP state
+- live plane-local motion is now available only through the narrow remap:
+  - `G88.5 P.. Q.. R.. [L..]`
+- `P/Q/R` are plane-local `U/V/W` coordinates relative to the stored TWP origin
+- `G88.5` holds the stored TWP `B/C` orientation fixed and executes a world
+  `G1` move
+- normal `G0/G1` are still world-coordinate moves
 
 Reference pose calculator:
 

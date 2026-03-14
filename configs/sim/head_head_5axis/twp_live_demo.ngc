@@ -1,0 +1,21 @@
+%
+(Head-head live fixed-plane TWP demo)
+(1. Move to a tilted pose)
+(2. Store/activate TWP state)
+(3. Execute plane-local moves with G88.5 P/Q/R)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M152
+M153
+M0 (TWP active; run local plane moves next)
+G88.5 P150.0 Q0.0 R0.0
+M0 (Observe local +U move)
+G88.5 P150.0 Q100.0 R0.0
+M0 (Observe local +U +V move)
+G88.5 P150.0 Q100.0 R50.0
+M0 (Observe local +W move)
+M154
+M155
+M2
+%

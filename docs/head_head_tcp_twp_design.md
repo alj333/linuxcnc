@@ -326,6 +326,19 @@ Current command binding in the simulation branch:
 
 This is still not a live LinuxCNC TWP motion mode.
 
+Current first live-motion slice:
+
+- remapped `G88.5 P.. Q.. R.. [L..]`
+- `P/Q/R` are interpreted as plane-local `U/V/W`
+- the remap reads the stored TWP origin, stored `B/C`, and plane basis from
+  `headheadtwp`
+- it expands the plane-local target into world `XYZBC`
+- it then executes a world `G1`
+
+This is intentionally not a general frame switch. It is the smallest live TWP
+motion path that can be validated in simulation before changing normal motion
+semantics.
+
 It does not yet provide:
 
 - a live LinuxCNC TWP mode

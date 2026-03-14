@@ -146,6 +146,21 @@ Current `state_code` values:
 This is intentionally a HAL-driven prototype before any Probe Basic or remap
 binding is added.
 
+Current first live-motion binding:
+
+- `G88.5 P.. Q.. R.. [L..]`
+
+Current semantics:
+
+- `P/Q/R` are plane-local `U/V/W`
+- coordinates are absolute from the stored TWP origin
+- motion is executed at the stored TWP `B/C` orientation
+- the remap expands the plane-local point into world `XYZBC` and executes a
+  world `G1`
+
+This is deliberately narrow. It proves fixed-plane TWP motion without yet
+changing the meaning of ordinary `G0/G1` blocks.
+
 It should explicitly not try to solve on day one:
 
 - arbitrary 3-point plane fitting

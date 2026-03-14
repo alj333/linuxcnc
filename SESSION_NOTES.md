@@ -293,3 +293,8 @@
   - `M152` stores origin and `B/C` from the current sim pose
   - `M153` sets `headheadtwp.active = TRUE`
   - `M154` returns the component to the defined-but-not-active state
+- Added the first live fixed-plane TWP motion path in simulation:
+  - remapped `G88.5 P.. Q.. R.. [L..]`
+  - reads stored TWP origin, stored `B/C`, and plane basis from `headheadtwp`
+  - expands local `UVW` into world `XYZBC`
+  - executes a world `G1` while holding the stored TWP orientation
