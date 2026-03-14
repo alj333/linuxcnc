@@ -1,0 +1,23 @@
+%
+(Head-head tilted work-plane validation sequence)
+(Plane-local UVW path is transformed offline into world XYZ.)
+(B and C remain fixed while the path follows the tilted plane.)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+G0 X1500.000 Y850.000 Z-300.000 B45.000 C90.000
+M0 (Start TWP validation)
+G1 X1500.000 Y850.000 Z-300.000 B45.000 C90.000 F1200.0 (origin)
+M0 (Observe tilted-plane move for origin)
+G1 X1500.000 Y956.066 Z-406.066 B45.000 C90.000 F1200.0 (u plus)
+M0 (Observe tilted-plane move for u plus)
+G1 X1350.000 Y956.066 Z-406.066 B45.000 C90.000 F1200.0 (u v corner)
+M0 (Observe tilted-plane move for u v corner)
+G1 X1350.000 Y850.000 Z-300.000 B45.000 C90.000 F1200.0 (v plus)
+M0 (Observe tilted-plane move for v plus)
+G1 X1500.000 Y850.000 Z-300.000 B45.000 C90.000 F1200.0 (back origin)
+M0 (Observe tilted-plane move for back origin)
+G1 X1500.000 Y885.355 Z-264.645 B45.000 C90.000 F1200.0 (plane raise)
+M0 (Observe tilted-plane move for plane raise)
+G1 X1500.000 Y850.000 Z-300.000 B45.000 C90.000 F1200.0 (back origin)
+M0 (Observe tilted-plane move for back origin)
+M2
+%

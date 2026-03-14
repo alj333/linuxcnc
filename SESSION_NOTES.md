@@ -244,3 +244,9 @@
 - Added `configs/sim/head_head_5axis/generate_tcp_motion_ngc.py` and
   `tcp_motion_sequence.ngc` for moving TCP validation with simultaneous
   `XYZBC` changes.
+- Added a first TWP math scaffold:
+  - `configs/sim/head_head_5axis/twp_transform.py`
+  - `configs/sim/head_head_5axis/generate_twp_test_ngc.py`
+  - `configs/sim/head_head_5axis/twp_test_sequence.ngc`
+- The current TWP scaffold is an offline plane-local to world transform at
+  fixed `B/C`, not yet a production LinuxCNC TWP mode.

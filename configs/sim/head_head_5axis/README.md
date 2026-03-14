@@ -126,6 +126,14 @@ Current TCP interpretation:
 - what is still missing is production-level operator semantics, mode handling,
   and later TWP integration
 
+Current TWP interpretation:
+
+- for now, TWP is represented as an offline preprocessor
+- plane-local `UVW` points at fixed `B/C` are transformed into world `XYZ`
+- that transformed `XYZBC` path is then executed by the existing TCP-capable
+  kinematics scaffold
+- this is a math-validation step, not yet a production TWP mode inside LinuxCNC
+
 Reference pose calculator:
 
 ```bash
@@ -190,6 +198,31 @@ Test intent:
 - confirm the tip follows the commanded path while orientation changes
 - use this only after `tcp_test_sequence.ngc` shows no fixed-tip drift
 
+TWP transform helper:
+
+```bash
+cd ~/linuxcnc-dev
+python3 configs/sim/head_head_5axis/twp_transform.py --b 45 --c 90 --local-u 150 --local-v 0 --local-w 0
+```
+
+Generated TWP validation program:
+
+- [generate_twp_test_ngc.py](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/generate_twp_test_ngc.py)
+- [twp_test_sequence.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_test_sequence.ngc)
+
+How to use it:
+
+1. Launch the visual sim.
+2. Open `configs/sim/head_head_5axis/twp_test_sequence.ngc`.
+3. Run the program.
+4. Confirm the path stays in the tilted plane while `B/C` remain fixed.
+
+Test intent:
+
+- validate the plane basis for a fixed `B/C` orientation
+- validate plane-local to world `XYZ` transformation
+- establish the math before implementing a production TWP operator mode
+
 ## Rough Visual Model
 
 The visual config adds:
@@ -242,8 +275,8 @@ Known example of real error from the previous assembly:
 
 1. Build a math-only simulation around the values in `geometry_baseline.ini`
 2. Add a parameterized forward/inverse kinematics model
-3. Add TCP behavior on top of the same transform model
-4. Add TWP behavior on top of the same transform model
+3. Add production TCP mode semantics on top of the same transform model
+4. Add production TWP mode semantics on top of the same transform model
 5. Build a visual machine model from Fusion 360 geometry
 
 ## Fusion 360 Inputs Needed Later

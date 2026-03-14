@@ -255,6 +255,28 @@ Expected operator model:
 - work/program in the rotated plane
 - LinuxCNC resolves this to machine `XYZBC`
 
+## Current TWP Scaffold
+
+The simulation branch now has a narrow TWP preprocessor model:
+
+- choose a fixed `B/C` plane orientation
+- define plane-local `UVW` points
+- transform those points offline into world `XYZ`
+- execute the resulting `XYZBC` path through the existing TCP-capable
+  simulation kinematics
+
+This is intentionally limited. It proves:
+
+- plane basis orientation
+- local-plane to world transform math
+- coherence with the current head-head TCP geometry
+
+It does not yet provide:
+
+- a live LinuxCNC TWP mode
+- remap/operator semantics
+- dynamic switching between world and tilted-plane programming
+
 ## Recommended Software Architecture
 
 The current `trivkins` setup was only a bring-up path.
