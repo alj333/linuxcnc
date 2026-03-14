@@ -1,0 +1,21 @@
+# Minimal math-only simulation scaffold for the future head-head kinematics.
+# This uses trivkins as a temporary placeholder so the axis envelope and rotary
+# ranges can be exercised before custom TCP/TWP kinematics exists.
+
+loadrt [KINS]KINEMATICS
+loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+
+addf motion-command-handler servo-thread
+addf motion-controller servo-thread
+
+# Loop commanded positions back as feedback for a pure software simulation.
+net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb
+net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb
+net Zpos joint.2.motor-pos-cmd => joint.2.motor-pos-fb
+net Bpos joint.3.motor-pos-cmd => joint.3.motor-pos-fb
+net Cpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb
+
+# Simple estop and tool-change loopback for simulation.
+net estop-loop iocontrol.0.user-enable-out iocontrol.0.emc-enable-in
+net tool-prep-loop iocontrol.0.tool-prepare iocontrol.0.tool-prepared
+net tool-change-loop iocontrol.0.tool-change iocontrol.0.tool-changed

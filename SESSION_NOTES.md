@@ -163,6 +163,12 @@
 - Added initial simulation baseline files:
   - `configs/sim/head_head_5axis/README.md`
   - `configs/sim/head_head_5axis/geometry_baseline.ini`
+- Added a temporary runnable math-only scaffold:
+  - `configs/sim/head_head_5axis/head_head_math_sim.ini`
+  - `configs/sim/head_head_5axis/head_head_math_sim.hal`
+- Current scaffold uses `trivkins` as a placeholder only.
+- It is intended to validate axis ranges and coordinate ordering before custom
+  head-head kinematics, TCP, and TWP are implemented.
 - Initial nominal simulation assumptions:
   - `X = 0 .. 3310`
   - `Y = 0 .. 1700`

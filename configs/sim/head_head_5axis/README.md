@@ -19,6 +19,36 @@ before building:
 - TWP support
 - a full visual LinuxCNC simulation
 
+## Current Scaffold
+
+This directory now also contains a temporary runnable placeholder:
+
+- `head_head_math_sim.ini`
+- `head_head_math_sim.hal`
+
+Purpose of the placeholder:
+
+- validate the agreed axis envelope
+- validate `XYZBC` coordinate ordering
+- validate nominal home and rotary limit assumptions
+- provide a shell for future custom kinematics work
+
+Current limitation:
+
+- it uses `trivkins`
+- it does not implement real head-head kinematics
+- it does not implement TCP
+- it does not implement TWP
+- it does not provide visual machine motion yet
+
+Launch:
+
+```bash
+cd ~/linuxcnc-dev
+source scripts/rip-environment
+linuxcnc configs/sim/head_head_5axis/head_head_math_sim.ini
+```
+
 ## Locked Production Convention
 
 The future machine math should use standard right-hand industrial convention:
