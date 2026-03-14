@@ -228,6 +228,8 @@ Generated TWP validation program:
 
 - [generate_twp_test_ngc.py](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/generate_twp_test_ngc.py)
 - [twp_test_sequence.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_test_sequence.ngc)
+- [twp_operator_interface.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_operator_interface.md)
+- [visual_acceptance_checklist.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/visual_acceptance_checklist.md)
 
 How to use it:
 

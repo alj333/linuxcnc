@@ -277,6 +277,15 @@ Expected operator model:
 - work/program in the rotated plane
 - LinuxCNC resolves this to machine `XYZBC`
 
+Recommended first operator interface:
+
+- define TWP from current `B/C`
+- define TWP origin from current tool-tip position
+- activate / cancel explicitly
+- keep TWP state visible in the UI at all times
+- keep the first implementation narrow and predictable before adding richer
+  plane-definition workflows
+
 ## Current TWP Scaffold
 
 The simulation branch now has a narrow TWP preprocessor model:
@@ -399,13 +408,22 @@ Minimum acceptance tests for the new kinematics stack:
 
 1. forward/inverse round-trip tests for known poses
 2. tool vector test at `B=0`, `C=0` equals `-Z`
-3. positive `B` tilts toward `+X`
-4. positive `C` rotates clockwise from top view
+3. under the preferred production convention, positive `B` tilts toward `-X`
+4. under the preferred production convention, positive `C` rotates
+   counterclockwise from top view
 5. TCP keeps the tool tip fixed while changing `B/C`
 6. TWP transforms Cartesian motion correctly into machine motion
 7. rotary limits are enforced correctly
 8. simulation visual pose matches expected physical pose
 9. posted Fusion 360 5-axis test programs run correctly in simulation
+
+Current visual acceptance aids:
+
+- cyan alignment post and cross for tool-tip coincidence checks
+- green table centerlines for travel reading
+- corner markers for table motion awareness
+- moving-table `Y` visual inversion so the rendered table motion matches the
+  intended machine behavior
 
 ## Open Geometry Items
 

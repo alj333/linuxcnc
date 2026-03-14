@@ -270,3 +270,6 @@
     - `MIN_LIMIT = -630`
     - `MAX_LIMIT = 450`
     - `HOME = 450`
+- Added next-phase operator/test notes for TWP development:
+  - `configs/sim/head_head_5axis/twp_operator_interface.md`
+  - `configs/sim/head_head_5axis/visual_acceptance_checklist.md`
