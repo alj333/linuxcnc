@@ -63,6 +63,33 @@ These settings were validated on the test bench:
 - SSI clock: `200 kHz`
 - timer number: `1`
 - counts per rev: `1048576`
+- current flashed firmware resource mix:
+  - `5 StepGen`
+  - `1 PWM`
+  - `2 SSI`
+
+## Firmware Validation
+
+On 2026-03-14, the live Mesa card was queried with `mesaflash --readhmid` after flashing a new bitfile.
+
+The confirmed live resource mix was:
+
+- `StepGen = 5`
+- `PWM = 1`
+- `SSI = 2`
+
+The pinout also matched the intended use:
+
+- 5 exposed `Step/Dir` output pairs
+- 1 exposed `PWM/Dir` output pair
+- `SSI.00` and `SSI.01` on the expected encoder pins
+
+After that verification, the bench HAL was updated to match the flashed card:
+
+- `num_stepgens=5`
+- `num_pwmgens=1`
+
+The encoder test was then rerun successfully with the same `abs%20ige` decode.
 
 The bench HAL is in:
 
