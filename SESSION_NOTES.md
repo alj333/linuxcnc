@@ -179,6 +179,18 @@
   - `gmsh` successfully imports the STEP file and exports STL
 - Known working conversion command:
   - `gmsh /home/cnc5/dev/5thAxis/5th_Axis.step -0 -format stl -o /tmp/5th_Axis_from_gmsh.stl`
+- The whole-machine STL export works locally but was not committed on the
+  pushable branch because it exceeds GitHub's normal file size limit.
+- Inspected the STEP assembly structure and recorded the current split strategy:
+  - `configs/sim/head_head_5axis/step_product_inventory.txt`
+  - `configs/sim/head_head_5axis/mesh_split_strategy.md`
+- Current finding:
+  - the uploaded STEP export is sufficient for a whole-machine reference mesh
+  - it is not granular enough to split `B` and `C` rotary stages cleanly for an
+    articulated head-head visual simulation
+- Next CAD requirement for visual sim:
+  - separate exports for base, gantry, X carriage, Z carriage, C body, B body,
+    and spindle
 - Initial nominal simulation assumptions:
   - `X = 0 .. 3310`
   - `Y = 0 .. 1700`

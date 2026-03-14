@@ -1,0 +1,18 @@
+5thAxis_Manufacture
+30mm Bearing
+BK25-48
+Ball Support Y-Axis
+BaseFrame
+CrossBeam
+Head
+PVC\X2\677F\X0\
+Spindle
+Table
+X Axis Frame
+X Axis Rail
+Y Axis Rail
+Y axis Servo Support
+Z-Axis Frame
+Z-Axis Rail
+\X2\9F7F6761\X0\-2510
+\ axis Servo850W\X2\7535673A\X0\

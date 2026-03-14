@@ -154,3 +154,32 @@ Practical implication:
 - local mesh conversion is now possible
 - the next visual-sim step should use `gmsh` or a later simplified CAD export,
   not `freecadcmd`, unless the FreeCAD crash is resolved
+
+Local whole-machine mesh note:
+
+- the `gmsh` export works locally, but the resulting STL is about `113 MB`
+- that is above GitHub's normal file limit, so the mesh is intentionally not
+  committed on this branch
+- regenerate locally when needed with:
+
+```bash
+gmsh /home/cnc5/dev/5thAxis/5th_Axis.step -0 -format stl -o /tmp/5th_Axis_from_gmsh.stl
+```
+
+Current split-planning files:
+
+- [step_product_inventory.txt](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/step_product_inventory.txt)
+- [mesh_split_strategy.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/mesh_split_strategy.md)
+
+Current conclusion:
+
+- the uploaded STEP file is good enough for a full-machine reference mesh
+- it is not granular enough to articulate `B` and `C` separately
+- the next CAD export should provide separate moving groups for:
+  - base/table
+  - Y gantry
+  - X carriage
+  - Z carriage
+  - C body
+  - B body
+  - spindle
