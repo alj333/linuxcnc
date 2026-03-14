@@ -121,3 +121,36 @@ Known example of real error from the previous assembly:
 - pivot dimensions
 - simplified STL exports
 - known test poses for validation
+
+## Local CAD Tooling Status
+
+Installed on this PC:
+
+- `freecad`
+- `freecadcmd`
+- `gmsh`
+
+Current result with the uploaded machine model:
+
+- `freecadcmd` imports the STEP model to 100% and then segfaults on this
+  assembly
+- `gmsh` successfully reads the STEP file and exports STL from the command line
+
+Known working conversion command on this machine:
+
+```bash
+gmsh /home/cnc5/dev/5thAxis/5th_Axis.step -0 -format stl -o /tmp/5th_Axis_from_gmsh.stl
+```
+
+Observed output:
+
+- resulting STL size was about `113 MB`
+- the STEP assembly names were preserved well enough during import to confirm
+  major groups like `BaseFrame`, `CrossBeam`, `Z-Axis Frame`, `Head`, `Table`,
+  and `Spindle`
+
+Practical implication:
+
+- local mesh conversion is now possible
+- the next visual-sim step should use `gmsh` or a later simplified CAD export,
+  not `freecadcmd`, unless the FreeCAD crash is resolved

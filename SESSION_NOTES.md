@@ -169,6 +169,16 @@
 - Current scaffold uses `trivkins` as a placeholder only.
 - It is intended to validate axis ranges and coordinate ordering before custom
   head-head kinematics, TCP, and TWP are implemented.
+- Installed local CAD tooling for the visual simulation path:
+  - `freecad`
+  - `freecadcmd`
+  - `gmsh`
+- Result:
+  - `freecadcmd` segfaults on the uploaded `5th_Axis.step` assembly after
+    import completes
+  - `gmsh` successfully imports the STEP file and exports STL
+- Known working conversion command:
+  - `gmsh /home/cnc5/dev/5thAxis/5th_Axis.step -0 -format stl -o /tmp/5th_Axis_from_gmsh.stl`
 - Initial nominal simulation assumptions:
   - `X = 0 .. 3310`
   - `Y = 0 .. 1700`
