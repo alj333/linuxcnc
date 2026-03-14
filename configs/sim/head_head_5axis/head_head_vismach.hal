@@ -2,11 +2,11 @@
 
 loadusr -Wn headheadvismach ./head_head_vismach.py
 
-net vis-x joint.0.motor-pos-fb => headheadvismach.joint_x
-net vis-y joint.1.motor-pos-fb => headheadvismach.joint_y
-net vis-z joint.2.motor-pos-fb => headheadvismach.joint_z
-net vis-b joint.3.motor-pos-fb => headheadvismach.joint_b
-net vis-c joint.4.motor-pos-fb => headheadvismach.joint_c
+net Xpos => headheadvismach.joint_x
+net Ypos => headheadvismach.joint_y
+net Zpos => headheadvismach.joint_z
+net Bpos => headheadvismach.joint_b
+net Cpos => headheadvismach.joint_c
 
 # Mirror the same nominal geometry used by headheadkins.
 setp headheadvismach.c_to_b_x 0.0

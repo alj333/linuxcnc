@@ -63,6 +63,11 @@ def tool_offset_world(b_deg, c_deg, c_to_b, b_to_tool, b_zero, c_zero):
     return rotate_z(c_deg + c_zero, c_frame)
 
 
+def tool_vector_world(b_deg, c_deg, b_zero, c_zero):
+    tool_axis = (0.0, 0.0, -1.0)
+    return rotate_z(c_deg + c_zero, rotate_y(b_deg + b_zero, tool_axis))
+
+
 def fmt_vec(vec):
     return f"({vec[0]:8.3f}, {vec[1]:8.3f}, {vec[2]:8.3f})"
 
@@ -85,10 +90,11 @@ def main():
     print(f"Zero offsets = (B={b_zero:.3f}, C={c_zero:.3f})")
     print("")
     print("Tool offset from C pivot center for reference poses:")
-    print("  Pose            B(deg)   C(deg)   Offset XYZ (mm)")
+    print("  Pose            B(deg)   C(deg)   Offset XYZ (mm)               Tool Axis")
     for label, b_deg, c_deg in poses:
         offset = tool_offset_world(b_deg, c_deg, c_to_b, b_to_tool, b_zero, c_zero)
-        print(f"  {label:<12} {b_deg:7.1f}  {c_deg:7.1f}   {fmt_vec(offset)}")
+        axis = tool_vector_world(b_deg, c_deg, b_zero, c_zero)
+        print(f"  {label:<12} {b_deg:7.1f}  {c_deg:7.1f}   {fmt_vec(offset)}   {fmt_vec(axis)}")
 
 
 if __name__ == "__main__":

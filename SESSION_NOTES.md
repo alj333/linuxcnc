@@ -226,3 +226,11 @@
 - The visual model is approximate and intended for TCP/sign/order debugging.
 - It can optionally display a local-only static STL overlay through the
   `HEAD_HEAD_FULL_STL` environment variable.
+- Fixed `head_head_vismach.hal` to reuse the existing `Xpos/Ypos/Zpos/Bpos/Cpos`
+  sim signals instead of relinking `joint.*.motor-pos-fb`.
+- Extended `headheadkins` with HAL outputs for:
+  - `tool-offset.{x,y,z}`
+  - `tool-vector.{x,y,z}`
+- Added `configs/sim/head_head_5axis/tcp_compensation.py` to calculate nominal
+  pivot-center `XYZ` compensation for a `B/C` pose change while keeping the
+  tool tip fixed.

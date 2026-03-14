@@ -129,6 +129,16 @@ This prints the nominal tool offset from the `C` pivot center for a small set
 of `B/C` reference poses. It is intended to catch sign and rotary-order errors
 before TCP or visual simulation is layered on.
 
+TCP compensation calculator:
+
+```bash
+cd ~/linuxcnc-dev
+python3 configs/sim/head_head_5axis/tcp_compensation.py --start-b 0 --start-c 0 --end-b 90 --end-c 0
+```
+
+This prints the nominal `XYZ` compensation required to change from one `B/C`
+pose to another while keeping the tool tip fixed.
+
 ## Rough Visual Model
 
 The visual config adds:
