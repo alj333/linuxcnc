@@ -100,6 +100,35 @@ The first production-oriented TWP implementation should support only:
 - activate / cancel
 - plane-local linear motion at fixed `B/C`
 
+Current simulation prototype:
+
+- `head_head_twp_state.py`
+- `head_head_twp_state.hal`
+
+Current prototype commands:
+
+- `cmd_set_origin_from_current`
+- `cmd_set_orientation_from_current`
+- `cmd_set_from_current`
+- `cmd_set_normal_rotation`
+- `cmd_activate`
+- `cmd_cancel`
+- `cmd_reset`
+
+Current prototype outputs:
+
+- `twp_origin_{x,y,z}`
+- `twp_b_angle`
+- `twp_c_angle`
+- `twp_normal_rotation`
+- `plane_x_*`, `plane_y_*`, `plane_z_*`
+- `state_code`
+- `valid`
+- `active`
+
+This is intentionally a HAL-driven prototype before any Probe Basic or remap
+binding is added.
+
 It should explicitly not try to solve on day one:
 
 - arbitrary 3-point plane fitting

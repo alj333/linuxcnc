@@ -273,3 +273,11 @@
 - Added next-phase operator/test notes for TWP development:
   - `configs/sim/head_head_5axis/twp_operator_interface.md`
   - `configs/sim/head_head_5axis/visual_acceptance_checklist.md`
+- Added a first prototype TWP state component for the simulation:
+  - `configs/sim/head_head_5axis/head_head_twp_state.py`
+  - `configs/sim/head_head_5axis/head_head_twp_state.hal`
+- The prototype can now:
+  - snapshot current tool-tip origin from the sim pose
+  - snapshot current `B/C` orientation
+  - store plane-normal rotation
+  - activate/cancel/reset explicit TWP state

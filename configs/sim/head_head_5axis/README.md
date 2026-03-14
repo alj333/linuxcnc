@@ -25,6 +25,8 @@ This directory now also contains a first runnable math scaffold:
 
 - `head_head_math_sim.ini`
 - `head_head_math_sim.hal`
+- `head_head_twp_state.hal`
+- `head_head_twp_state.py`
 
 Purpose of the scaffold:
 
@@ -147,11 +149,40 @@ Current TCP interpretation:
 
 Current TWP interpretation:
 
-- for now, TWP is represented as an offline preprocessor
+- the branch now has a prototype TWP state component plus the earlier offline
+  preprocessor
+- `headheadtwp` can snapshot:
+  - current tool-tip origin
+  - current `B/C` orientation
+  - optional plane-normal rotation
+- for now, live TWP motion is still not implemented
+- the offline transform remains the path-generation test tool
 - plane-local `UVW` points at fixed `B/C` are transformed into world `XYZ`
 - that transformed `XYZBC` path is then executed by the existing TCP-capable
   kinematics scaffold
 - this is a math-validation step, not yet a production TWP mode inside LinuxCNC
+
+Prototype TWP state commands from a terminal:
+
+```bash
+halcmd setp headheadtwp.cmd_set_from_current 1
+halcmd setp headheadtwp.cmd_set_from_current 0
+halcmd getp headheadtwp.state_code
+halcmd getp headheadtwp.twp_origin_x
+halcmd getp headheadtwp.twp_origin_y
+halcmd getp headheadtwp.twp_origin_z
+halcmd getp headheadtwp.twp_b_angle
+halcmd getp headheadtwp.twp_c_angle
+```
+
+Activate / cancel:
+
+```bash
+halcmd setp headheadtwp.cmd_activate 1
+halcmd setp headheadtwp.cmd_activate 0
+halcmd setp headheadtwp.cmd_cancel 1
+halcmd setp headheadtwp.cmd_cancel 0
+```
 
 Reference pose calculator:
 

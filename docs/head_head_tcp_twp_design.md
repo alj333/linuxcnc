@@ -302,6 +302,20 @@ This is intentionally limited. It proves:
 - local-plane to world transform math
 - coherence with the current head-head TCP geometry
 
+The branch now also has a prototype TWP HAL state component:
+
+- `head_head_twp_state.py`
+- `head_head_twp_state.hal`
+
+Current role:
+
+- snapshot current tool-tip origin
+- snapshot current `B/C` orientation
+- store/cancel/activate explicit TWP state
+- expose plane basis vectors for inspection
+
+This is still not a live LinuxCNC TWP motion mode.
+
 It does not yet provide:
 
 - a live LinuxCNC TWP mode
