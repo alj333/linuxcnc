@@ -110,6 +110,17 @@ tool_tip_world    = [X, Y, Z] + tool_offset_world
 This is sufficient to expose sign, order, and pivot-offset mistakes early,
 which is the immediate goal of the math simulation.
 
+Reference pose calculator:
+
+```bash
+cd ~/linuxcnc-dev
+python3 configs/sim/head_head_5axis/reference_poses.py
+```
+
+This prints the nominal tool offset from the `C` pivot center for a small set
+of `B/C` reference poses. It is intended to catch sign and rotary-order errors
+before TCP or visual simulation is layered on.
+
 ## Calibration Requirement
 
 The final machine must support calibrated geometry, not idealized-only

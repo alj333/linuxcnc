@@ -217,3 +217,5 @@
   - tool reference offset is `Rz(C) * (C_to_B + Ry(B) * B_to_tool)`
 - Exposed HAL pins for nominal geometry, calibration geometry, and rotary zero
   offsets so future TCP/TWP work can build on a calibratable model
+- Added `configs/sim/head_head_5axis/reference_poses.py` to print nominal tool
+  offsets for key `B/C` poses using the same baseline geometry used by the sim
