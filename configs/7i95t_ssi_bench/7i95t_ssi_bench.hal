@@ -9,7 +9,7 @@ loadrt [KINS]KINEMATICS
 loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
 
 loadrt hostmot2
-loadrt hm2_eth board_ip="10.10.10.10" config="num_encoders=0 num_pwmgens=6 num_stepgens=0 ssi_chan_0=crc%6unwarn%1bnerr%1babs%20ige ssi_chan_1=crc%6unwarn%1bnerr%1babs%20ige"
+loadrt hm2_eth board_ip="10.10.10.10" config="num_encoders=0 num_pwmgens=1 num_stepgens=5 ssi_chan_0=crc%6unwarn%1bnerr%1babs%20ige ssi_chan_1=crc%6unwarn%1bnerr%1babs%20ige"
 
 setp hm2_7i95.0.watchdog.timeout_ns 5000000
 setp hm2_7i95.0.dpll.01.timer-us -350

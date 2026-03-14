@@ -39,3 +39,24 @@
   - `https://github.com/LinuxCNC/linuxcnc`
 - Current commit at time of note:
   - `49509631f4`
+
+## Update (2026-03-14)
+- A new Mesa 7I95T bitfile was flashed and verified live with `mesaflash --readhmid`.
+- Confirmed live resource mix:
+  - `StepGen = 5`
+  - `PWM = 1`
+  - `SSI = 2`
+- Confirmed exposed output layout:
+  - five `Step/Dir` pairs
+  - one `PWM/Dir` pair
+  - two SSI channels
+- Updated the bench HAL to match the flashed card:
+  - `num_pwmgens=1`
+  - `num_stepgens=5`
+- Re-ran the bench encoder test with the same working decode:
+  - `crc%6unwarn%1bnerr%1babs%20ige`
+- Result:
+  - LinuxCNC bench config starts cleanly
+  - both encoders still read correctly
+  - `data-invalid` remains false
+  - the B/C DROs still follow the encoders correctly
