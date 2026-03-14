@@ -120,3 +120,56 @@
   - LinuxCNC still has `XYZBCW`, but Probe Basic does not ship a stock `XYZBCW`
     DRO template, so `W` is intentionally omitted from the default Probe Basic
     DRO layout in this test copy.
+
+## Update (2026-03-14, head-head 5-axis requirements)
+- Captured the intended long-term machine model for future TCP/TWP work.
+- Head-head topology:
+  - spindle -> B -> C -> Z -> X -> frame -> Y
+- Coordinate conventions:
+  - `+X` left to right
+  - `+Y` back to front toward the operator
+  - `+Z` up away from the table
+- Rotary conventions:
+  - `B` axis parallel to `Y`
+  - `C` axis parallel to `Z`
+  - `B=0`, `C=0` => tool points in `-Z`
+  - `+B` tilts tool toward `+X`
+  - `+C` is clockwise viewed from above
+  - `B` range `-100` to `+100`
+  - `C` range `-360` to `+360`
+- The rebuilt head/Z structure means final offsets are not yet fixed.
+- The future kinematics must support full calibration of axis and spindle
+  offsets rather than assuming ideal intersecting rotary axes.
+- Known current geometric assumption:
+  - spindle centerline is approximately `+25 mm` in `Y` from the `C` axis
+    centerline
+- Future target:
+  - custom head-head kinematics
+  - TCP that holds tool tip position through `B/C` changes
+  - TWP that transforms rotated-plane motion back to machine motion
+  - full LinuxCNC visual simulation for validation
+- Follow-up design decision:
+  - if the rebuild allows it, move the machine to standard industrial
+    right-hand sign conventions rather than preserving the provisional
+    `+Y toward operator`, `+B toward +X`, `+C clockwise from above` mapping
+  - preferred production convention is:
+    - `+X` right
+    - `+Y` away from operator
+    - `+Z` up
+    - `+B` by right-hand rule about `+Y`
+    - `+C` by right-hand rule about `+Z`
+- Began a separate kinematics R&D branch:
+  - `head-head-kinematics-rnd`
+- Added initial simulation baseline files:
+  - `configs/sim/head_head_5axis/README.md`
+  - `configs/sim/head_head_5axis/geometry_baseline.ini`
+- Initial nominal simulation assumptions:
+  - `X = 0 .. 3310`
+  - `Y = 0 .. 1700`
+  - `Z = -900 .. 0`
+  - `B = -100 .. +100`
+  - `C = -360 .. +360`
+  - home at `X0 Y0 Z0 B0 C0`
+  - nominal `C` to `B` offset = `0,0,0`
+  - nominal `B` to spindle nose vector = `(0, +25, -180) mm`
+  - calibration support is mandatory for real offsets and assembly error
