@@ -60,3 +60,36 @@
   - both encoders still read correctly
   - `data-invalid` remains false
   - the B/C DROs still follow the encoders correctly
+
+## Update (2026-03-14, stable 2.9 machine-style copy)
+- Created a machine-style SSI integration copy from the old `5th_axis` config:
+  - `configs/5th_axis _SSI`
+- Important constraint:
+  - only the two SSI encoders were connected to the Mesa card during this phase
+  - no other machine hardware was connected yet
+- Forward-ported the copied config enough to start on the current stable branch.
+- Switched the copied config to `trivkins` because this build does not contain
+  the user's custom `5axiskins`.
+- Disabled old optional or incompatible features in the copied config:
+  - `classicladder`
+  - `twp.hal`
+  - `5axiskins`-specific startup HAL commands
+  - `switchkins` startup logic
+  - `M428/M429/M430/M431/M432`
+  - `M254`
+  - `ToolLengthControl.hal`
+  - `probe_basic` display
+- Added the proven SSI setup to the copied machine HAL:
+  - `ssi_chan_0=crc%6unwarn%1bnerr%1babs%20ige`
+  - `ssi_chan_1=crc%6unwarn%1bnerr%1babs%20ige`
+  - `hm2_7i95.0.dpll.01.timer-us = -350`
+- Integrated feedback in the copied machine HAL:
+  - `SSI.00` -> B -> `joint.3.motor-pos-fb`
+  - `SSI.01` -> C -> `joint.4.motor-pos-fb`
+- Changed B/C index homing assumptions in the copied INI:
+  - `HOME_USE_INDEX = NO`
+- Result:
+  - the copied machine-style config now starts
+  - the encoders work inside that machine-style config
+  - this is an encoder/config integration milestone only, not a full machine
+    commissioning milestone
