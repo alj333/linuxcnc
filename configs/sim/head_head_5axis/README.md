@@ -139,6 +139,32 @@ python3 configs/sim/head_head_5axis/tcp_compensation.py --start-b 0 --start-c 0 
 This prints the nominal `XYZ` compensation required to change from one `B/C`
 pose to another while keeping the tool tip fixed.
 
+TCP validation program:
+
+```bash
+cd ~/linuxcnc-dev
+python3 configs/sim/head_head_5axis/generate_tcp_test_ngc.py
+```
+
+Generated program:
+
+- [tcp_test_sequence.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/tcp_test_sequence.ngc)
+
+How to use it:
+
+1. Launch the visual sim.
+2. Open `configs/sim/head_head_5axis/tcp_test_sequence.ngc`.
+3. Run the program.
+4. At each `M0`, check whether the visual tool tip stays on the same target
+   point while `B/C` change.
+
+Test intent:
+
+- `XYZ` stays constant in the G-code
+- only `B/C` change
+- inverse kinematics must solve the internal pivot-center `XYZ` compensation
+- if the tip wanders, the current transform model or sign convention is wrong
+
 ## Rough Visual Model
 
 The visual config adds:

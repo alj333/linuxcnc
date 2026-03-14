@@ -234,3 +234,8 @@
 - Added `configs/sim/head_head_5axis/tcp_compensation.py` to calculate nominal
   pivot-center `XYZ` compensation for a `B/C` pose change while keeping the
   tool tip fixed.
+- Added `configs/sim/head_head_5axis/generate_tcp_test_ngc.py` and a generated
+  `tcp_test_sequence.ngc` to exercise the current inverse kinematics as a
+  simple TCP validation mode in the visual sim.
+- Updated `head_head_visual_sim.ini` to use the sim directory as
+  `PROGRAM_PREFIX` and to open `tcp_test_sequence.ngc` by default.
