@@ -219,3 +219,10 @@
   offsets so future TCP/TWP work can build on a calibratable model
 - Added `configs/sim/head_head_5axis/reference_poses.py` to print nominal tool
   offsets for key `B/C` poses using the same baseline geometry used by the sim
+- Added a separate rough visual simulation path:
+  - `configs/sim/head_head_5axis/head_head_visual_sim.ini`
+  - `configs/sim/head_head_5axis/head_head_vismach.hal`
+  - `configs/sim/head_head_5axis/head_head_vismach.py`
+- The visual model is approximate and intended for TCP/sign/order debugging.
+- It can optionally display a local-only static STL overlay through the
+  `HEAD_HEAD_FULL_STL` environment variable.

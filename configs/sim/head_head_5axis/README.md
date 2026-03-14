@@ -49,6 +49,14 @@ source scripts/rip-environment
 linuxcnc configs/sim/head_head_5axis/head_head_math_sim.ini
 ```
 
+Visual launch:
+
+```bash
+cd ~/linuxcnc-dev
+source scripts/rip-environment
+linuxcnc configs/sim/head_head_5axis/head_head_visual_sim.ini
+```
+
 ## Locked Production Convention
 
 The future machine math should use standard right-hand industrial convention:
@@ -120,6 +128,38 @@ python3 configs/sim/head_head_5axis/reference_poses.py
 This prints the nominal tool offset from the `C` pivot center for a small set
 of `B/C` reference poses. It is intended to catch sign and rotary-order errors
 before TCP or visual simulation is layered on.
+
+## Rough Visual Model
+
+The visual config adds:
+
+- [head_head_visual_sim.ini](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/head_head_visual_sim.ini)
+- [head_head_vismach.hal](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/head_head_vismach.hal)
+- [head_head_vismach.py](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/head_head_vismach.py)
+
+Purpose:
+
+- provide a rough articulated model for sign/order checking
+- help expose TCP compensation mistakes early
+- remain independent of the final CAD split work
+
+The visual model is deliberately approximate. It follows the current kinematic
+chain and nominal geometry, not final machine cosmetics.
+
+Optional local STL overlay:
+
+- set `HEAD_HEAD_FULL_STL` to a local ASCII STL path before launch
+- the STL is used only as a static visual reference and is not required
+- this branch intentionally does not commit the large mesh file
+
+Example:
+
+```bash
+cd ~/linuxcnc-dev
+source scripts/rip-environment
+HEAD_HEAD_FULL_STL=/tmp/5th_Axis_from_gmsh.stl \
+linuxcnc configs/sim/head_head_5axis/head_head_visual_sim.ini
+```
 
 ## Calibration Requirement
 
