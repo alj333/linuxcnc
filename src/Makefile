@@ -1110,6 +1110,10 @@ obj-m += trivkins.o
 trivkins-objs := emc/kinematics/trivkins.o
 trivkins-objs += emc/kinematics/kins_util.o
 
+obj-m += headheadkins.o
+headheadkins-objs := emc/kinematics/headheadkins.o
+headheadkins-objs += emc/kinematics/kins_util.o
+
 obj-m += maxkins.o
 maxkins-objs := emc/kinematics/maxkins.o
 
@@ -1246,6 +1250,7 @@ RTOBJS := $(sort $(foreach mod,$(obj-m),$(call TORTOBJS,$(mod))))
 RTDEPS := $(sort $(RTOBJS:.o=.d))
 
 modules: $(patsubst %.o,../rtlib/%.so,$(obj-m))
+../rtlib/headheadkins.so: $(call TORTOBJS,headheadkins.o)
 ../rtlib/%.so:
 	$(ECHO) Linking $@
 	$(Q)ld -d -r -o objects/$*.tmp $^

@@ -19,6 +19,13 @@ implementing:
 - TWP behavior
 - a LinuxCNC simulation model
 
+Current branch status:
+
+- nominal simulation geometry is committed
+- a first `headheadkins` module exists for `XYZBC`
+- that module currently provides parameterized forward/inverse math only
+- TCP and TWP are still future layers on top of the same transform model
+
 ## Machine Topology
 
 Physical stack, tool to base:

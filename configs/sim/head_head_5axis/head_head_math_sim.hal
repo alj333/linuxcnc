@@ -1,12 +1,27 @@
-# Minimal math-only simulation scaffold for the future head-head kinematics.
-# This uses trivkins as a temporary placeholder so the axis envelope and rotary
-# ranges can be exercised before custom TCP/TWP kinematics exists.
+# Minimal head-head simulation scaffold.
+# This now runs the custom headheadkins module with nominal geometry only.
 
 loadrt [KINS]KINEMATICS
 loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
 
 addf motion-command-handler servo-thread
 addf motion-controller servo-thread
+
+# Keep the simulation geometry in sync with geometry_baseline.ini.
+setp headheadkins.nominal-c-to-b.x 0.0
+setp headheadkins.nominal-c-to-b.y 0.0
+setp headheadkins.nominal-c-to-b.z 0.0
+setp headheadkins.nominal-b-to-tool.x 0.0
+setp headheadkins.nominal-b-to-tool.y 25.0
+setp headheadkins.nominal-b-to-tool.z -180.0
+setp headheadkins.cal-c-to-b.x 0.0
+setp headheadkins.cal-c-to-b.y 0.0
+setp headheadkins.cal-c-to-b.z 0.0
+setp headheadkins.cal-b-to-tool.x 0.0
+setp headheadkins.cal-b-to-tool.y 0.0
+setp headheadkins.cal-b-to-tool.z 0.0
+setp headheadkins.b-zero-offset 0.0
+setp headheadkins.c-zero-offset 0.0
 
 # Loop commanded positions back as feedback for a pure software simulation.
 net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb

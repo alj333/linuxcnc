@@ -1,6 +1,7 @@
 # Catch-all for now, may eliminate this soon
 kinematics_srcs = files([
 '5axiskins.c',
+'headheadkins.c',
 'genserkins.c',
 'pumakins.c',
 'scarakins.c',
@@ -16,6 +17,8 @@ kinematics_inc = include_directories('.')
 
 # Individual kinematics sources (each object built separately since the )
 trivkins_srcs = files('trivkins.c')
+
+headheadkins_srcs = files('headheadkins.c')
 
 fiveaxiskins_srcs  = files('5axiskins.c')
 

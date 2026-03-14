@@ -201,3 +201,19 @@
   - nominal `C` to `B` offset = `0,0,0`
   - nominal `B` to spindle nose vector = `(0, +25, -180) mm`
   - calibration support is mandatory for real offsets and assembly error
+## 2026-03-14 - Head-head kinematics scaffold started
+
+- Branch: `head-head-kinematics-rnd`
+- Added `src/emc/kinematics/headheadkins.c`
+- Added build hooks in `src/Makefile` and `src/emc/kinematics/meson.build`
+- Updated `configs/sim/head_head_5axis/head_head_math_sim.ini` to use
+  `KINEMATICS = headheadkins coordinates=XYZBC kinstype=B`
+- Updated `configs/sim/head_head_5axis/head_head_math_sim.hal` to set the
+  nominal geometry pins directly
+- Implemented first parameterized head-head forward/inverse model:
+  - `X/Y/Z` locate the `C` pivot center
+  - `C` rotates about `+Z`
+  - `B` rotates about `+Y` in the `C` frame
+  - tool reference offset is `Rz(C) * (C_to_B + Ry(B) * B_to_tool)`
+- Exposed HAL pins for nominal geometry, calibration geometry, and rotary zero
+  offsets so future TCP/TWP work can build on a calibratable model

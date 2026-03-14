@@ -21,22 +21,22 @@ before building:
 
 ## Current Scaffold
 
-This directory now also contains a temporary runnable placeholder:
+This directory now also contains a first runnable math scaffold:
 
 - `head_head_math_sim.ini`
 - `head_head_math_sim.hal`
 
-Purpose of the placeholder:
+Purpose of the scaffold:
 
 - validate the agreed axis envelope
 - validate `XYZBC` coordinate ordering
 - validate nominal home and rotary limit assumptions
-- provide a shell for future custom kinematics work
+- validate the first `C then B` head-head forward/inverse model
+- provide the starting point for TCP/TWP work
 
 Current limitation:
 
-- it uses `trivkins`
-- it does not implement real head-head kinematics
+- it uses a nominal geometry-only `headheadkins` module
 - it does not implement TCP
 - it does not implement TWP
 - it does not provide visual machine motion yet
@@ -90,6 +90,25 @@ Current nominal starting model:
 Approximate nominal vector from `B` center to spindle nose at `B=0`, `C=0`:
 
 - `(0, +25, -180) mm`
+
+## Current Kinematics Model
+
+The current `headheadkins` scaffold assumes:
+
+- `X/Y/Z` joints locate the `C` pivot center in world space
+- `C` rotates about `+Z`
+- `B` rotates about `+Y` in the `C`-rotated frame
+- world `XYZ` represent the tool reference point
+
+Current compensation model:
+
+```text
+tool_offset_world = Rz(C + c_zero) * (c_to_b + Ry(B + b_zero) * b_to_tool)
+tool_tip_world    = [X, Y, Z] + tool_offset_world
+```
+
+This is sufficient to expose sign, order, and pivot-offset mistakes early,
+which is the immediate goal of the math simulation.
 
 ## Calibration Requirement
 
