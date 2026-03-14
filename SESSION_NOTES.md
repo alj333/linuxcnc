@@ -93,3 +93,30 @@
   - the encoders work inside that machine-style config
   - this is an encoder/config integration milestone only, not a full machine
     commissioning milestone
+
+## Update (2026-03-14, Probe Basic test copy)
+- Installed the Probe Basic development stack locally under:
+  - `/home/cnc5/dev/qtpyvcp`
+  - `/home/cnc5/dev/probe_basic`
+  - `/home/cnc5/dev/venv`
+- Installed the Debian Bookworm QtPyVCP / Probe Basic dependency set.
+- Patched the local Probe Basic launchers to source the RIP environment when
+  `/home/cnc5/linuxcnc-dev/scripts/rip-environment` exists.
+- Created a separate Probe Basic UI test copy of the SSI machine config:
+  - `configs/5th_axis_SSI_probe_basic`
+- Added Probe Basic-specific files to that copy:
+  - `custom_config.yml`
+  - `pbsplash.png`
+  - `user_buttons/`
+  - `user_dro_display/`
+  - `user_tabs/`
+  - `probe_basic_postgui.hal`
+  - `launch_probe_basic.sh`
+- Probe Basic test copy uses:
+  - `DISPLAY = probe_basic`
+  - `POSTGUI_HALFILE = probe_basic_postgui.hal`
+  - `DRO_DISPLAY = XYZBC`
+- Important limitation:
+  - LinuxCNC still has `XYZBCW`, but Probe Basic does not ship a stock `XYZBCW`
+    DRO template, so `W` is intentionally omitted from the default Probe Basic
+    DRO layout in this test copy.

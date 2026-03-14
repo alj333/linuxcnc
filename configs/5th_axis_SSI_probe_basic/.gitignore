@@ -1,0 +1,10 @@
+.vcp_persistent_data.pickle
+autosave.halscope
+halshow.preferences
+*~
+*.bak
+*.varold
+position9.txt
+probe-rec.txt
+backups/
+python/__pycache__/
