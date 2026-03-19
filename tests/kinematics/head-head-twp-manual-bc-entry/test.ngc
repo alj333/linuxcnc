@@ -1,0 +1,28 @@
+%
+(Head-head TWP entry from manual B/C positioning with TCPC on)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Reached home-orientation world pose)
+G43.4
+M0 (TCPC enabled; TWP still off)
+G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M0 (Manual B/C move with TCPC on and TWP off)
+G68.2
+M0 (TWP entered from current B/C with omitted BC words)
+G1 X150.0 Y0.0 Z0.0
+M0 (Check +U move from manual B/C orientation)
+G69
+M0 (TWP cancelled; manual B/C motion allowed again)
+G0 X1500.000 Y850.000 Z-600.000 B30.000 C45.000
+M0 (Second manual B/C move after G69 with TCPC on)
+G68.2
+M0 (TWP re-entered from the new current B/C)
+G1 X100.0 Y0.0 Z0.0
+M0 (Check +U move from second manual B/C orientation)
+G69
+M0 (Second TWP cancelled; world coordinates restored)
+G49.1
+M0 (TCPC disabled)
+M2
+%

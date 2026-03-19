@@ -37,11 +37,32 @@
 #include "interp_parameter_def.hh"
 #include <rtapi_string.h>
 
+#include "hal.h"
 #include "units.h"
 #define TOOL_INSIDE_ARC(side, turn) (((side)==LEFT&&(turn)>0)||((side)==RIGHT&&(turn)<0))
 #define DEBUG_EMC
 
 using namespace interp_param_global;
+
+static bool hal_bit_pin_is_true(const char *name)
+{
+    hal_type_t type;
+    hal_data_u *data = NULL;
+    bool connected = false;
+
+    if (hal_get_pin_value_by_name(name, &type, &data, &connected) != 0) {
+        return false;
+    }
+    if (type != HAL_BIT || data == NULL) {
+        return false;
+    }
+    return data->b;
+}
+
+static bool headhead_twp_is_active()
+{
+    return hal_bit_pin_is_true("headheadtwp.active");
+}
 
 // These four functions help make the rest of cutter comp
 // plane-agnostic in much the same way the ARC_FEED canon call is.
@@ -3389,6 +3410,8 @@ int Interp::convert_m(block_pointer block,       //!< pointer to a block of RS27
 	      toolno = round_to_int(block->q_number);
 	      // now also accept M61 Q0 - unload tool
 	      CHKS((toolno < 0), (_("Need non-negative Q-word to specify tool number with M61")));
+	      CHKS((headhead_twp_is_active()),
+		   (_("Cannot change current tool number while TWP is active")));
 
 	      int idx;
 
@@ -5534,6 +5557,8 @@ int Interp::convert_tool_change(setup_pointer settings)  //!< pointer to machine
 
   CHKS((settings->cutter_comp_side),
        (_("Cannot change tools with cutter radius compensation on")));
+  CHKS((headhead_twp_is_active()),
+       (_("Cannot change tools while TWP is active")));
 
   START_CHANGE(); // indicate start of change operation
   if (!settings->tool_change_with_spindle_on) {
@@ -5658,6 +5683,8 @@ int Interp::convert_tool_length_offset(int g_code,       //!< g_code being execu
 
   CHKS((settings->cutter_comp_side),
        (_("Cannot change tool offset with cutter radius compensation on")));
+  CHKS((headhead_twp_is_active()),
+       (_("Cannot change tool length compensation while TWP is active")));
   if (g_code == G_49) {
     idx = 0;
   } else if (g_code == G_43) {

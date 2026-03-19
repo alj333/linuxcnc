@@ -11,9 +11,9 @@ addf motion-controller servo-thread
 setp headheadkins.nominal-c-to-b.x 0.0
 setp headheadkins.nominal-c-to-b.y 0.0
 setp headheadkins.nominal-c-to-b.z -270.0
-setp headheadkins.nominal-b-to-tool.x 0.0
-setp headheadkins.nominal-b-to-tool.y 25.0
-setp headheadkins.nominal-b-to-tool.z -180.0
+setp headheadkins.nominal-b-to-tool.x 2.0
+setp headheadkins.nominal-b-to-tool.y -22.0
+setp headheadkins.nominal-b-to-tool.z -305.517
 setp headheadkins.cal-c-to-b.x 0.0
 setp headheadkins.cal-c-to-b.y 0.0
 setp headheadkins.cal-c-to-b.z 0.0

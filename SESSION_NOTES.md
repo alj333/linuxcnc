@@ -298,3 +298,1088 @@
   - reads stored TWP origin, stored `B/C`, and plane basis from `headheadtwp`
   - expands local `UVW` into world `XYZBC`
   - executes a world `G1` while holding the stored TWP orientation
+
+# 2026-03-14 - TWP pause point and next debug step
+
+- The head-head visual simulation is currently running cleanly with:
+  - corrected moving-table `Y` visualization
+  - cyan alignment post/cross
+  - green centerlines and corner markers
+  - shared geometry baseline:
+    - `C->B = (0, 0, -270) mm`
+    - `B->tool = (0, +25, -180) mm`
+- User validated:
+  - fixed-tip TCP check: no visible drift
+  - moving TCP check: looks correct
+  - updated vismach geometry: looks correct
+- The current open issue is in the prototype TWP state demo flow around the
+  boundary between the positioning move and the first TWP state commands.
+- The demo program was reduced to the minimum baseline path:
+  - `G0 X1500 Y850 Z-600 B45 C90`
+  - `G4 P0.2`
+  - `M152`
+  - `M153`
+  - `M0`
+  - `M154`
+  - `M155`
+- `M156 P0.0` was removed from the baseline demo because:
+  - normal rotation already defaults to `0.0`
+  - it added another possible failure point without helping the first test
+- The most likely remaining issue is not kinematics geometry. It is the runtime
+  behavior of the prototype external M-code path, specifically separating:
+  - `M152` pose snapshot
+  - `M153` activation
+- Next resume step:
+  1. In MDI, run:
+     - `G0 X1500 Y850 Z-600 B45 C90`
+     - `G4 P0.2`
+     - `M152`
+  2. Check:
+     - `halcmd getp headheadtwp.state_code`
+     - `halcmd getp headheadtwp.valid`
+     - `halcmd getp headheadtwp.twp_origin_x`
+     - `halcmd getp headheadtwp.twp_origin_y`
+     - `halcmd getp headheadtwp.twp_origin_z`
+     - `halcmd getp headheadtwp.twp_b_angle`
+     - `halcmd getp headheadtwp.twp_c_angle`
+  3. Then run `M153`
+  4. Check:
+     - `halcmd getp headheadtwp.active`
+     - `halcmd getp headheadtwp.state_code`
+- Expected values:
+  - after `M152`:
+    - `state_code = 2`
+    - `valid = TRUE`
+  - after `M153`:
+    - `active = TRUE`
+    - `state_code = 3`
+- Important environment note:
+  - previous HAL smoke testing used `halrun -U`, which resets the active
+    realtime session
+  - avoid that while preserving the current desktop sim session
+- Local machine backup trees remain intentionally untouched and untracked:
+  - `configs/5th_axis/`
+  - `configs/5th_axis _SSI/`
+
+# 2026-03-16 - Post-power-loss TWP recheck
+
+- Resumed the saved head-head visual simulation work after the machine power
+  failure and re-ran the recorded TWP debug sequence on
+  `head-head-kinematics-rnd-pushable`.
+- LinuxCNC visual sim still starts, but the vismach window continues to emit
+  the previously seen OpenGL redraw warning:
+  - `GLError 1285` (`out of memory`) in the Tk/OpenGL HUD path
+- That OpenGL issue did not block the TWP HAL/component checks.
+- Verified manual MDI sequence:
+  - `G0 X1500 Y850 Z-600 B45 C90`
+  - `G4 P0.2`
+  - `M152`
+  - check pins
+  - `M153`
+- Verified results after `M152`:
+  - `headheadtwp.state_code = 2`
+  - `headheadtwp.valid = TRUE`
+  - `headheadtwp.twp_origin = (1500, 850, -600)`
+  - `headheadtwp.twp_b_angle = 45`
+  - `headheadtwp.twp_c_angle = 90`
+- Verified results after `M153`:
+  - `headheadtwp.active = TRUE`
+  - `headheadtwp.state_code = 3`
+- Also re-ran the reduced demo program:
+  - `configs/sim/head_head_5axis/twp_state_demo.ngc`
+- Current observed behavior of the demo program:
+  - runs to the programmed `M0`
+  - holds the expected active TWP state at the pause
+  - resumes cleanly
+  - `M154` and `M155` clear the state back to:
+    - `active = FALSE`
+    - `valid = FALSE`
+    - `state_code = 0`
+- Current conclusion:
+  - the March 14 suspected boundary issue between the positioning move and the
+    first TWP state commands does not reproduce in the current tree
+  - no code change was required for this recheck
+  - the next meaningful development step is beyond state capture/activation and
+    should focus on the actual live TWP motion/remap path
+
+# 2026-03-16 - Live TWP remap ordering fix
+
+- Continued from the post-power-loss recheck and exercised the live TWP remap
+  path with:
+  - `configs/sim/head_head_5axis/twp_live_demo.ngc`
+- Initial finding before the fix:
+  - running the demo in `AUTO` failed immediately with:
+    - `TWP move requested with no valid TWP definition`
+- Root cause:
+  - `G88.5` was reading `headheadtwp.*` HAL state during interpreter read-ahead
+  - earlier `M152` / `M153` side effects were not yet synchronized into the
+    interpreter-visible runtime state
+  - this was an execution-order / queue-buster problem, not a geometry problem
+- Fix applied:
+  - updated `configs/sim/head_head_5axis/python/remap.py`
+  - changed `twp_move()` into a Python generator remap
+  - added an initial `yield INTERP_EXECUTE_FINISH` before reading any
+    `headheadtwp.*` pins
+  - this forces a task/interpreter sync so prior `M152` / `M153` effects are
+    visible before the remap validates and expands the stored plane move
+- Verified after restart:
+  - `twp_live_demo.ngc` now runs in `AUTO` to each programmed `M0`
+  - stored TWP state remains active through the plane moves
+  - the transformed world positions match the helper math from
+    `twp_transform.py`
+- Verified demo positions:
+  - `G88.5 P150 Q0 R0` -> `XYZ = (1500.000, 956.066, -706.066)`
+  - `G88.5 P150 Q100 R0` -> `XYZ = (1400.000, 956.066, -706.066)`
+  - `G88.5 P150 Q100 R50` -> `XYZ = (1400.000, 991.421, -670.711)`
+- End-of-demo state remains correct:
+  - `M154` / `M155` clear the prototype TWP state back to:
+    - `active = FALSE`
+    - `valid = FALSE`
+    - `state_code = 0`
+- Current next step:
+  - extend the prototype from fixed stored-plane linear moves toward broader
+    TWP behavior and operator workflow, now that the remap ordering issue is
+    resolved
+  - keep the new regression passing:
+    - `tests/remap/head-head-twp-queuebuster`
+    - covers runtime `M152` / `M153` plus `G88.5` ordering without GUI vismach
+
+# 2026-03-17 - Runtime regression extended with M156 coverage
+
+- Continued from the queue-buster regression and explored whether the next
+  prototype step could remap ordinary `G0` / `G1` into stored-plane TWP
+  motion.
+- Important LinuxCNC constraint confirmed from local remap documentation:
+  - existing builtin remaps are supported for `T`, `M`, `S`, and `F`
+  - ordinary `G0` / `G1` are not supported as redefined builtins in this
+    remap path
+  - result:
+    - a `G0` / `G1` modal-TWP implementation cannot be carried by the current
+      Python remap mechanism alone
+- Action taken:
+  - dropped the attempted `G0` / `G1` remap path before keeping any of it
+  - kept the working explicit `G88.5` remap as the supported live-motion path
+  - extended the headless runtime regression instead
+- Regression updates:
+  - test directory:
+    - `tests/remap/head-head-twp-queuebuster`
+  - added local `M156`
+  - extended `test.ngc` and `test-ui.py` to cover both:
+    - baseline `G88.5` queue-buster behavior after `M152` / `M153`
+    - `M156 P90.0` plane-normal rotation before the same `G88.5` sequence
+- Verified headless run:
+  - command:
+    - `scripts/rip-environment linuxcnc -r test.ini`
+  - result:
+    - `pause 1 ok`
+    - `pause 2 ok`
+    - `pause 3 ok`
+    - `pause 4 ok`
+    - `pause 5 ok`
+    - `pause 6 ok`
+    - `pause 7 ok`
+    - `pause 8 ok`
+    - `program complete`
+- Verified rotated-plane positions for `M156 P90.0`:
+  - `G88.5 P150 Q0 R0` -> `XYZ = (1325.000, 722.721, -997.279)`
+  - `G88.5 P150 Q100 R0` -> `XYZ = (1325.000, 652.010, -926.569)`
+  - `G88.5 P150 Q100 R50` -> `XYZ = (1325.000, 687.365, -891.213)`
+- Verified state semantics:
+  - active stored TWP state remains `state_code = 3` through the rotated moves
+  - `twp_normal_rotation = 90.0` during the rotated sequence
+  - final `M154` / `M155` returns:
+    - `active = FALSE`
+    - `valid = FALSE`
+    - `state_code = 0`
+    - `twp_normal_rotation = 0.0`
+- Recommended next development step:
+  - if operator workflow must become more natural than explicit `G88.5`, the
+    next implementation path likely needs either:
+    - a wider helper-code family built on unallocated G-codes, or
+    - interpreter/core work beyond the current Python remap mechanism
+
+# 2026-03-17 - Fanuc-like controller contract written down
+
+- Direction clarified for the real machine:
+  - target operator behavior is Fanuc-like
+  - exact Fanuc syntax is not mandatory if it makes LinuxCNC integration worse
+  - the important requirement is standard-looking posted code and normal
+    `G0/G1` behavior while TWP is active
+- Added controller/post behavior spec:
+  - `configs/sim/head_head_5axis/fanuc_like_twp_tcpc_contract.md`
+- Key decision captured there:
+  - TCPC and TWP are controller modes
+  - active TWP must reinterpret ordinary `G0/G1`
+  - explicit `G88.5` remains only a prototype/math-validation path
+  - Fusion post work should target the controller contract, not the current
+    prototype remap syntax
+- Cross-linked the new contract from:
+  - `configs/sim/head_head_5axis/twp_operator_interface.md`
+  - `configs/sim/head_head_5axis/README.md`
+- Recommended implementation path from here:
+  - extend `headheadkins` with explicit TCPC/TWP mode inputs
+  - prove ordinary `G0/G1` behavior in sim/runtime tests
+  - only then freeze the final posted syntax
+
+# 2026-03-17 - First headheadkins TWP-mode attempt is exploratory only
+
+- Started the first kinematics-level implementation attempt for the Fanuc-like
+  target:
+  - added exploratory TWP-mode inputs to `src/emc/kinematics/headheadkins.c`
+  - added exploratory `motion_enabled` state to
+    `configs/sim/head_head_5axis/head_head_twp_state.py`
+  - added exploratory `G68.2` / `G69` remap hooks for mode toggle
+  - added a new headless regression scaffold:
+    - `tests/kinematics/head-head-twp-g0g1`
+- Important current status:
+  - this work is **not validated yet**
+  - the new kinematics-level path currently fails before the first programmed
+    pause in the headless test
+  - symptom:
+    - the initial world-mode move to `G0 X1500 Y850 Z-600 B45 C90` does not
+      settle to the expected pose in the new `headheadkins` test harness
+  - conclusion:
+    - there is still a reciprocity / transition issue in the exploratory
+      `headheadkins` TWP-mode implementation
+    - it is not ready to treat as the new controller path yet
+- Safety check performed:
+  - reran the existing explicit prototype regression:
+    - `tests/remap/head-head-twp-queuebuster`
+  - result:
+    - still passes through `pause 8 ok` and `program complete`
+  - meaning:
+    - the existing `G88.5` + `M156` prototype path still works
+    - the new failure is isolated to the exploratory kinematics-level path
+- Recommended next debug step:
+  - isolate the `headheadkins` world-mode mismatch first
+  - do **not** assume the new `tests/kinematics/head-head-twp-g0g1` path is
+    authoritative until the initial non-TWP move is correct
+
+# 2026-03-17 - Sample-data `G0/G1` TWP path now passes in headheadkins
+
+- Continued the kinematics-level sample-data path in:
+  - `src/emc/kinematics/headheadkins.c`
+  - `configs/sim/head_head_5axis/python/remap.py`
+  - `configs/sim/head_head_5axis/head_head_twp_state.py`
+  - `tests/kinematics/head-head-twp-g0g1`
+- Current status:
+  - the new `headheadkins`-based sample-data regression now passes
+  - active TWP mode drives ordinary `G0/G1` moves in the stored tilted plane
+  - `G69` now returns control to normal world-coordinate motion without moving
+    the tool tip
+- Important implementation detail:
+  - `G68.2` and `G69` currently use Python remap hooks only as mode toggles
+  - the actual local-to-world / world-to-local interpretation is in
+    `headheadkins`
+  - this keeps the motion behavior on the kinematics side while still letting
+    the sim exercise Fanuc-like mode changes with sample data
+- Cleaned up the remap transition logic:
+  - refactored the temporary motion-origin math into a shared helper in
+    `configs/sim/head_head_5axis/python/remap.py`
+  - removed the temporary `G68.2 enable ...` / `G69 disable ...` debug prints
+  - documented why the enable/disable remaps adjust
+    `headheadkins.twp-motion-origin.*` during the transition
+- Strengthened the headless regression:
+  - `tests/kinematics/head-head-twp-g0g1/test.ngc` now pauses immediately after
+    each `G69`
+  - `tests/kinematics/head-head-twp-g0g1/test-ui.py` now proves:
+    - after `G69`, `motion_enabled = FALSE`
+    - `active = TRUE`, `valid = TRUE`, `state_code = 3` still remain until
+      `M154` / `M155`
+    - the world tool-tip position is unchanged at the instant TWP motion is
+      disabled
+    - the subsequent non-TWP `G0` world move still lands at the expected
+      sample-data pose
+- Verified with:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - `/home/cnc5/linuxcnc-dev/scripts/rip-environment linuxcnc -r test.ini`
+    - result:
+      - `pause 1 ok` through `pause 14 ok`
+      - `program complete`
+  - `tests/remap/head-head-twp-queuebuster`
+    - reran after the remap cleanup to confirm no regression to the explicit
+      prototype path
+    - result:
+      - `pause 1 ok` through `pause 8 ok`
+      - `program complete`
+- Practical conclusion:
+  - with sample data, the branch now has a working proof that ordinary
+    `G0/G1` can run in active TWP mode for the head-head machine model
+  - the next step should stay focused on controller semantics and operator/post
+    contract details, not Fusion integration yet
+
+# 2026-03-17 - Visual sim launch error traced to vismach HUD
+
+- The LinuxCNC visual sim launch error dialogs were not caused by the new TWP
+  remap or `headheadkins` path.
+- Captured traceback from `/tmp/linuxcnc.debug.*`:
+  - `OpenGL.error.GLError`
+  - `err = 1285`
+  - `description = b'out of memory'`
+  - raised in `lib/python/vismach.py` from `Hud.draw()` at `glOrtho(...)`
+- Local fix applied in:
+  - `configs/sim/head_head_5axis/head_head_vismach.py`
+- Behavior change:
+  - the vismach HUD overlay is now disabled by default
+  - it can still be enabled explicitly with:
+    - `HEAD_HEAD_ENABLE_HUD=1`
+- Verification:
+  - relaunched `configs/sim/head_head_5axis/head_head_visual_sim.ini`
+  - startup reached normal Axis notes with no Python/OpenGL traceback in the
+    terminal
+- Conclusion:
+  - current launch issue was a vismach/OpenGL frontend problem
+  - it is separate from the TWP `G0/G1` sample-data path
+
+# 2026-03-17 - Explicit TCPC mode added to the sample-data controller path
+
+- Added explicit TCPC controller state to:
+  - `configs/sim/head_head_5axis/head_head_twp_state.py`
+- New state semantics:
+  - `headheadtwp.tcpc_enabled` is now an explicit output pin
+  - new command pins:
+    - `cmd_enable_tcpc`
+    - `cmd_disable_tcpc`
+  - disabling TCPC forces `motion_enabled = FALSE`
+- Updated TWP mode enable behavior:
+  - `configs/sim/head_head_5axis/python/remap.py`
+  - `G68.2` now rejects TWP motion enable unless TCPC mode is already enabled
+  - current interpreter error text:
+    - `TWP mode enable requested while TCPC mode is not enabled`
+- Added temporary sample-data TCPC wrappers:
+  - `configs/sim/head_head_5axis/M170`
+  - `configs/sim/head_head_5axis/M171`
+- Important syntax note:
+  - first attempt used `M430` / `M431`
+  - LinuxCNC rejected those with:
+    - `M-code greater than 199`
+  - switched the sample-data wrapper pair to valid user M-codes:
+    - `M170` = TCPC on
+    - `M171` = TCPC off
+  - this still matches the Fanuc-like behavior goal even though the final
+    machine syntax may change later
+- Updated positive sample-data regression:
+  - `tests/kinematics/head-head-twp-g0g1`
+  - program now runs:
+    - world pose
+    - `M170`
+    - define/activate TWP
+    - ordinary `G0/G1`
+    - `G69`
+    - `M154` / `M155`
+    - `M171`
+  - assertions now also verify `tcpc_enabled`
+- Added negative regression:
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+  - proves that `G68.2` fails if TCPC has not been enabled first
+- Verified with:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - result:
+      - `pause 1 ok` through `pause 16 ok`
+      - `program complete`
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - expected interpreter error observed:
+        - `TWP mode enable requested while TCPC mode is not enabled`
+  - `tests/remap/head-head-twp-queuebuster`
+    - rerun to confirm the older explicit `G88.5` prototype still works
+    - result:
+      - `pause 1 ok` through `pause 8 ok`
+      - `program complete`
+- Practical conclusion:
+  - the sample-data controller path now has explicit mode sequencing:
+    - TCPC on
+    - TWP define / activate
+    - ordinary `G0/G1`
+    - TWP off
+    - TCPC off
+  - that is much closer to the intended Fanuc-like operator model
+
+# 2026-03-17 - Startup default switched to TCPC-on
+
+- Direction agreed:
+  - for this head-head machine, operator startup should default to TCPC on
+  - posted/sample programs should still use explicit TCPC on/off commands
+  - this keeps the safer local shop behavior while preserving Fanuc-like file
+    semantics
+- Implemented in:
+  - `configs/sim/head_head_5axis/head_head_twp_state.py`
+- Behavior change:
+  - `headheadtwp.tcpc_enabled` now starts `TRUE` when the state component loads
+  - explicit sample-data wrappers remain:
+    - `M170` = TCPC on
+    - `M171` = TCPC off
+- Regression updates:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - now expects TCPC already on at startup
+    - still keeps the explicit `M170` / `M171` posted-workflow pattern
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+    - now explicitly runs `M171` first
+    - then proves `G68.2` is rejected with TCPC off
+- Verified with:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - result:
+      - `pause 1 ok` through `pause 16 ok`
+      - `program complete`
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - expected interpreter error observed:
+        - `TWP mode enable requested while TCPC mode is not enabled`
+  - `tests/remap/head-head-twp-queuebuster`
+    - rerun after the startup-default change
+    - result:
+      - `pause 1 ok` through `pause 8 ok`
+      - `program complete`
+
+# 2026-03-17 - TCPC post target switched to `G43.4` / `G49.1`
+
+- Chosen machine-facing TCPC syntax for the post target:
+  - `G43.4` = TCPC on
+  - `G49.1` = TCPC off
+- Reasoning:
+  - `G43.4` is close to Fanuc intent and available as an unallocated remapped
+    G-code in this LinuxCNC tree
+  - built-in `G49` cannot be repurposed because LinuxCNC already uses it for
+    tool-length cancellation
+  - `G49.1` keeps the cancel intent recognizable while avoiding the `G49`
+    conflict
+- Implemented remap entry points in:
+  - `configs/sim/head_head_5axis/python/remap.py`
+  - `configs/sim/head_head_5axis/head_head_visual_sim.ini`
+  - `configs/sim/head_head_5axis/head_head_math_sim.ini`
+  - `tests/kinematics/head-head-twp-g0g1/test.ini`
+  - `tests/kinematics/head-head-twp-requires-tcpc/test.ini`
+- Updated sample-data programs:
+  - positive runtime path now uses `G43.4` / `G49.1`
+  - negative runtime path now uses `G49.1` to force TCPC off before proving the
+    `G68.2` rejection
+- Important LinuxCNC quirk discovered:
+  - although the remap docs discuss modal groups broadly, this branch only
+    accepts `modalgroup=1` for remapped G-codes
+  - initial attempt to place `G43.4` / `G49.1` in modal group 8 failed during
+    interpreter initialization
+  - switched both remaps to `modalgroup=1`
+- Verified with:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - result:
+      - `pause 1 ok` through `pause 16 ok`
+      - `program complete`
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - expected interpreter error observed:
+        - `TWP mode enable requested while TCPC mode is not enabled`
+  - `tests/remap/head-head-twp-queuebuster`
+    - result:
+      - `pause 1 ok` through `pause 8 ok`
+      - `program complete`
+
+2026-03-18 Probe Basic 5-axis calibration workflow:
+
+- Expanded the head-head Probe Basic calibration tab into a shop-facing wizard:
+  - added `Probe Qual` step for the OMP40-style probe and 50 mm ring
+  - setup/notes now reference the 20 mm sphere on the tall 45 degree stand and
+    the granite square
+  - summary now includes measurement metadata as well as calibration values
+  - draft save/reload now persists the metadata fields too
+- Added a first written machine procedure at:
+  - `configs/sim/head_head_5axis/five_axis_calibration_procedure.md`
+- Added runnable calibration sample programs:
+  - `configs/sim/head_head_5axis/calibration_sphere_capture_sequence.ngc`
+  - `configs/sim/head_head_5axis/calibration_bc_alignment_check.ngc`
+  - `configs/sim/head_head_5axis/calibration_tcpc_fixed_tip_check.ngc`
+  - `configs/sim/head_head_5axis/calibration_tcpc_motion_check.ngc`
+- Updated the Probe Basic wizard verify page to load those programs directly.
+- Relaunched Probe Basic and verified the updated wizard renders with the new
+  `Probe Qual` step and revised verification controls.
+- Observed one recurring QtPyVCP shutdown-only traceback during restart:
+  - `RuntimeError: Invalid operation on closed HAL component`
+  - this appears during restart/exit cleanup, not during normal wizard use.
+
+2026-03-18 calibration drift-map workflow:
+
+- Added `Sphere Map` to the Probe Basic 5-axis calibration wizard.
+- Operators can now:
+  - run `calibration_sphere_capture_sequence.ngc`
+  - probe the 20 mm sphere center at standard B/C poses
+  - capture current XYZBC into the wizard for each pose
+  - see a first-pass drift map before changing offsets
+- The written procedure now uses this order:
+  - probe qualification
+  - basic B/C alignment
+  - sphere-center drift map
+  - rotary zero cleanup
+  - fixed-tip TCPC check
+  - moving 5-axis TCP check
+- The drift map is currently a guided operator aid, not an automatic solver:
+  - opposite-sign paired drift suggests rotary-zero cleanup first
+  - common residual drift suggests geometry correction next
+
+2026-03-18 Probe Basic layout and vismach STL intake:
+
+- Fixed the head-head Probe Basic calibration tab so it no longer distorts the
+  base Probe Basic layout:
+  - the `5 AXIS CALIBRATION` tab now uses its own scroll area
+  - the step pages are now hosted in a `QStackedWidget`
+  - full-screen startup was restored after the tab stopped forcing the main
+    layout taller than the stock Probe Basic Mill ATC Metric screen
+- Patched the local QtPyVCP HAL wrapper shutdown path:
+  - `dev/qtpyvcp/src/qtpyvcp/hal/hal_qlib.py`
+  - suppresses the noisy restart-time traceback:
+    - `RuntimeError: Invalid operation on closed HAL component`
+  - this was a shutdown/restart cleanup race, not a calibration-wizard bug
+- New reduced STL files were dropped in:
+  - `/home/cnc5/Vismach/reduced`
+  - files:
+    - `Frame_reduced.stl`
+    - `Y_Axis_Table_reduced.stl`
+    - `X_Axis_Frame_reduced.stl`
+    - `Z_Axis_Frame_reduced.stl`
+    - `C_Axis_Body_reduced.stl`
+    - `B_Axis_Body_reduced.stl`
+    - `Spindle_reduced.stl`
+- STL assessment:
+  - all seven files are structurally valid binary STL files
+  - the file split matches the current moving vismach groups well
+  - triangle counts are reasonable for vismach prototyping:
+    - frame: `15988`
+    - table: `12306`
+    - X frame: `4104`
+    - Z frame: `1474`
+    - C body: `2915`
+    - B body: `130`
+    - spindle: `488`
+  - current blocker:
+    - `head_head_vismach.py` uses `AsciiSTL(...)`
+    - LinuxCNC `vismach.py` in this tree exposes `AsciiSTL`, not a binary STL
+      loader
+  - conclusion:
+    - the meshes look usable for vismach after conversion to ASCII STL or after
+      adding a binary STL loader path
+    - they are not directly drop-in with the current `head_head_vismach.py`
+      implementation as-is
+- Bounding-box spot check suggests the exports share a common assembly-space
+  origin and plausible machine-scale dimensions, so the next integration risk is
+  transform/pivot alignment rather than gross export corruption.
+
+# 2026-03-18 - TWP now blocks tool length and tool changes
+
+- Added interpreter-level TWP-active guards in:
+  - `src/emc/rs274ngc/interp_convert.cc`
+- Current behavior while `headheadtwp.active` is true:
+  - reject tool length compensation changes:
+    - `G43`
+    - `G43.1`
+    - `G43.2`
+    - `G49`
+  - reject tool-state changes:
+    - `M6`
+    - `M61`
+- This keeps the tool tip and stored TWP frame from changing underneath an
+  active tilted plane, which matches the intended Fanuc-like safety model for
+  the head-head machine.
+- Added runtime regressions:
+  - `tests/kinematics/head-head-twp-reject-tool-length`
+    - proves `G43.1 Z...` is rejected during active TWP
+  - `tests/kinematics/head-head-twp-reject-tool-change`
+    - proves `T1 M6` is rejected during active TWP
+- Verified with:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - result:
+      - `pause 1 ok` through `pause 14 ok`
+      - `program complete`
+  - `tests/remap/head-head-twp-queuebuster`
+    - result:
+      - `pause 1 ok` through `pause 8 ok`
+      - `program complete`
+
+# 2026-03-18 - Reduced STL vismach model accepted as new baseline
+
+- Backed up the pre-STL vismach script at:
+  - `configs/sim/head_head_5axis/head_head_vismach.py.pre_stl_backup`
+- Switched the head-head visual sim to use the reduced STL part set in:
+  - `/home/cnc5/Vismach/reduced`
+- Added a local binary STL loader to:
+  - `configs/sim/head_head_5axis/head_head_vismach.py`
+- Current reduced STL parts in the live motion chain are:
+  - `Frame_reduced.stl`
+  - `Y_Axis_Table_reduced.stl`
+  - `X_Axis_Frame_reduced.stl`
+  - `Z_Axis_Frame_reduced.stl`
+  - `C_Axis_Body_reduced.stl`
+  - `B_Axis_Body_reduced.stl`
+  - `Spindle_reduced.stl`
+- The user confirmed the reduced STL exports are already aligned in correct home
+  position for the machine, so the vismach model now treats those meshes as the
+  true home assembly rather than as a loose overlay.
+- Measured the spindle mesh tip directly from the binary STL and used it as the
+  first-pass nominal `B->tool` reference relative to the B pivot:
+  - STL-derived spindle tip:
+    - approximately `(2.26, -99.72, -305.46)` mm from the B pivot
+  - current nominal geometry now set to:
+    - `B_TO_SPINDLE_X = 2.0`
+    - `B_TO_SPINDLE_Y = -99.565`
+    - `B_TO_SPINDLE_Z = -305.517`
+- Applied that same first-pass nominal `B->tool` vector in:
+  - `configs/sim/head_head_5axis/geometry_baseline.ini`
+  - `configs/sim/head_head_5axis/head_head_math_sim.hal`
+  - `configs/sim/head_head_5axis/head_head_vismach.hal`
+- Adjusted the vismach tooltip marker so the pink trace is anchored at the
+  bottom of the yellow TT marker instead of the top edge.
+- Compensated the reduced STL Z assembly for the current joint-home offset so
+  the visual Z no longer lifts unrealistically high during LinuxCNC homing.
+- User review of the reduced STL model:
+  - overall alignment is now close enough to use as the machine-side reference
+  - current visual state is good enough to move onto the real machine
+- Important follow-up:
+  - the live head-head sim now uses STL-derived nominal geometry
+  - the existing headless TCPC/TWP regression harnesses still use the older
+    nominal `B->tool = (0.0, 25.0, -180.0)` baseline in their local
+    `core_sim.hal` files
+  - those harnesses should be updated deliberately in a separate pass once the
+    real machine calibration direction is confirmed
+
+# 2026-03-18 - Head-head machine-side baseline moved back toward real Y offset
+
+- User confirmed the reduced STL vismach is a good representation of the real
+  machine overall, but the spindle placement inside that STL assembly should not
+  drive the machine-side `B->tool.y` nominal toward `-99` mm.
+- Updated the current machine-side nominal geometry to keep the B-to-tool Y
+  offset near the real machine direction:
+  - `B_TO_SPINDLE_X = 2.0`
+  - `B_TO_SPINDLE_Y = -22.0`
+  - `B_TO_SPINDLE_Z = -305.517`
+- Synced that baseline through the live sim and TWP state files:
+  - `configs/sim/head_head_5axis/geometry_baseline.ini`
+  - `configs/sim/head_head_5axis/head_head_math_sim.hal`
+  - `configs/sim/head_head_5axis/head_head_vismach.hal`
+  - `configs/sim/head_head_5axis/head_head_twp_state.hal`
+- Kept the STL spindle correction as a visual-only vismach adjustment in:
+  - `configs/sim/head_head_5axis/head_head_vismach.py`
+- Synced the headless head-head test harnesses to the same baseline by updating:
+  - all `tests/kinematics/head-head-*/core_sim.hal`
+  - `tests/remap/head-head-twp-queuebuster/core_sim.hal`
+- Updated the remap queuebuster expected world positions in:
+  - `tests/remap/head-head-twp-queuebuster/test-ui.py`
+- Verified against the `B->tool.y = -22.0` baseline:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - result:
+      - `pause 1 ok` through `pause 14 ok`
+      - `program complete`
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - expected error observed:
+        - `TWP mode enable requested while TCPC mode is not enabled`
+  - `tests/remap/head-head-twp-queuebuster`
+    - result:
+      - `pause 1 ok` through `pause 8 ok`
+      - `program complete`
+    - updated queuebuster world positions now reflect the current baseline:
+      - `UVW=(150,0,0)` -> `XYZ=(1522.000, 741.447, -1193.513)`
+      - `UVW=(150,100,0)` -> `XYZ=(1422.000, 741.447, -1193.513)`
+      - `UVW=(150,100,50)` -> `XYZ=(1422.000, 776.802, -1158.158)`
+
+# 2026-03-18 - Live AXIS/vismach sample programs checked against STL model
+
+- Relaunched the head-head visual sim with the reduced STL model and current
+  `B->tool.y = -22.0` baseline.
+- Used the live AXIS instance to run the fresh manual demo programs without
+  forcing a complete home cycle, since:
+  - `NO_FORCE_HOMING = 1` is already set in the visual sim INI
+  - JOINT_2 / Z currently does not report homed cleanly through the live AXIS
+    API path even though there is no error reported
+- Fresh TCPC sample program checked in the live visual sim:
+  - `configs/sim/head_head_5axis/tcp_tcpc_fresh_demo.ngc`
+  - observed pause positions:
+    - pause 1: `(1500.0, 850.0, -600.0, 0.0, 0.0)`
+    - pause 2: `(1500.0, 850.0, -600.0, 0.0, 0.0)` (`G43.4` enabled)
+    - pause 3: `(1500.0, 850.0, -600.0, 45.0, 0.0)`
+    - pause 4: `(1500.0, 850.0, -600.0, 45.0, 90.0)`
+    - pause 5: `(1500.0, 850.0, -600.0, -30.0, 180.0)`
+    - pause 6: `(1600.0, 850.0, -600.0, -30.0, 180.0)`
+    - pause 7: `(1600.0, 950.0, -560.0, 20.0, 180.0)`
+    - pause 8: `(1500.0, 850.0, -600.0, 0.0, 0.0)`
+    - pause 9: `(1500.0, 850.0, -600.0, 0.0, 0.0)` (`G49.1` cancelled)
+  - program completed cleanly at:
+    - `(1500.0, 850.0, -600.0, 0.0, 0.0)`
+- Fresh TWP sample program checked in the live visual sim:
+  - `configs/sim/head_head_5axis/twp_g68_2_fresh_demo.ngc`
+  - observed pause positions:
+    - pause 1: `(1500.0, 850.0, -600.0, 45.0, 90.0)`
+    - pause 2: `(1500.0, 850.0, -600.0, 45.0, 90.0)` (`G43.4` enabled)
+    - pause 3: `(1500.0, 850.0, -600.0, 45.0, 90.0)` (`G68.2` active)
+    - pause 4: `(1600.0, 850.0, -600.0, 45.0, 90.0)` (local +U)
+    - pause 5: `(1600.0, 970.0, -600.0, 45.0, 90.0)` (local +V)
+    - pause 6: `(1600.0, 970.0, -560.0, 45.0, 90.0)` (local +W)
+    - pause 7: `(1500.0, 850.0, -600.0, 45.0, 90.0)` (return local origin)
+  - program completed cleanly at:
+    - `(1500.0, 850.0, -600.0, 45.0, 90.0)`
+- Current conclusion:
+  - the reduced STL vismach is now good enough to use as the visual reference
+    while checking TCP and TWP behavior
+  - the live manual sample programs are behaving coherently on the current
+    machine-side baseline
+
+# 2026-03-18 - Added first practical machine TCP/TWP verification package
+
+- Added an operator-facing machine verification package built around the actual
+  shop tooling:
+  - qualified OMP40-style wireless probe
+  - 20 mm sphere on the tall 45 degree stand
+  - granite square
+- New machine-side programs:
+  - `configs/sim/head_head_5axis/machine_tcp_fixed_tip_probe_check.ngc`
+  - `configs/sim/head_head_5axis/machine_tcp_motion_probe_check.ngc`
+  - `configs/sim/head_head_5axis/machine_twp_granite_square_check.ngc`
+- New operator reference:
+  - `configs/sim/head_head_5axis/machine_tcp_twp_verification_sequence.md`
+- Updated the broader calibration references to include that package:
+  - `configs/sim/head_head_5axis/five_axis_calibration_procedure.md`
+  - `configs/sim/head_head_5axis/README.md`
+- Updated the Probe Basic `5 AXIS CALIBRATION` verify page so operators can load
+  the new machine-side TCP/TWP check programs directly from the wizard.
+- Extended the Probe Basic verify page with explicit machine verification log
+  fields for:
+  - fixed-tip TCP result / first drift pose / likely cause
+  - moving TCP result / first drift pose / likely cause
+  - TWP granite-square result / first drift pose / likely cause
+- Those fields are saved in the wizard draft and included in the generated
+  summary output.
+- Verified the updated wizard Python loads cleanly with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic successfully after the update.
+- Current intent:
+  - use the reduced STL model and the live sim as the visual reference
+  - use the new machine-side programs as the first structured on-machine TCP/TWP
+    proof sequence before solving final calibration numbers
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - expected interpreter error observed:
+        - `TWP mode enable requested while TCPC mode is not enabled`
+  - `tests/kinematics/head-head-twp-reject-rotary`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - expected runtime error observed:
+        - `Linear move on line 11 fails kinematicsInverse`
+  - `tests/kinematics/head-head-twp-reject-tool-length`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - expected interpreter error observed:
+        - `Cannot change tool length compensation while TWP is active`
+  - `tests/kinematics/head-head-twp-reject-tool-change`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - expected interpreter error observed:
+        - `Cannot change tools while TWP is active`
+
+# 2026-03-18 - Added remaining tool-state safety coverage
+
+- Added runtime regression:
+  - `tests/kinematics/head-head-twp-reject-tool-number`
+    - proves `M61 Q1` is rejected while TWP is active
+- Added positive recovery regression:
+  - `tests/kinematics/head-head-twp-tooling-after-g69`
+    - proves `G69` returns the controller to normal tooling behavior
+    - verified sequence:
+      - `G69`
+      - `M61 Q1`
+      - `G43 H1`
+      - `G49`
+- This confirms the intended operator rule:
+  - while TWP is active, tooling state changes are blocked
+  - after `G69`, tooling state changes are allowed again
+- Verified with:
+  - `tests/kinematics/head-head-twp-reject-tool-number`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - expected interpreter error observed:
+        - `Cannot change current tool number while TWP is active`
+  - `tests/kinematics/head-head-twp-tooling-after-g69`
+    - result:
+      - `pause 1 ok` through `pause 7 ok`
+      - `program complete`
+
+# 2026-03-18 - Added TWP limit reject and recovery coverage
+
+- Added realistic-limit regression:
+  - `tests/kinematics/head-head-twp-limit-reject`
+    - uses the head-head style travel limits from the sim config instead of the
+      wide-open math-test limits
+    - proves a TWP local move is rejected with:
+      - `Linear move on line 11 would exceed joint 1's positive limit`
+- Added recovery regression:
+  - `tests/kinematics/head-head-twp-limit-recovery`
+    - proves the controller can recover from that reject with:
+      - `G69`
+      - `G49.1`
+      - safe world reposition
+      - `G43.4`
+      - `G68.2 B45 C90`
+      - a smaller safe TWP move
+- Observed behavior:
+  - the rejected TWP move does not partially move the tool
+  - TWP state remains active after the reject until explicit cancel
+  - the validated recovery sequence successfully re-enters TWP and resumes motion
+- Verified with:
+  - `tests/kinematics/head-head-twp-limit-reject`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - expected limit error observed:
+        - `Linear move on line 11 would exceed joint 1's positive limit`
+  - `tests/kinematics/head-head-twp-limit-recovery`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - expected limit error observed
+      - `recovery step 1 ok` through `recovery step 6 ok`
+
+# 2026-03-18 - Added abort/reset semantics and manual demo programs
+
+- Updated the TWP state component to watch:
+  - machine enabled state via `iocontrol.0.user-enable-out`
+  - homed state via `joint.N.homed`
+- Current controller behavior is now:
+  - program abort leaves TWP/TCPC state unchanged until explicit cancel
+  - estop / machine-off clears TWP and restores default TCPC-on
+  - unhome/home or re-home clears TWP and preserves the current TCPC mode
+- Verified with:
+  - `tests/kinematics/head-head-twp-abort-state`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - `abort state ok`
+      - `abort recovery ok`
+  - `tests/kinematics/head-head-twp-estop-reset`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - `estop clear ok`
+      - `reset clear ok`
+      - `re-enter after estop ok`
+      - `post-estop recovery cancel ok`
+- Added manual sample programs in `configs/sim/head_head_5axis`:
+  - `twp_abort_state_demo.ngc`
+  - `twp_estop_reset_demo.ngc`
+  - `twp_rehome_reset_demo.ngc`
+  - `twp_limit_recovery_demo.ngc`
+- Note:
+  - `tests/kinematics/head-head-twp-rehome-reset` was drafted for the same
+    policy, but I did not get a clean automated verification run for it in this
+    session because the harness DISPLAY process did not start reliably under the
+    current exec-session churn.
+
+# 2026-03-18 - Manual B/C workflow clarified
+
+- Locked the operator rule:
+  - manual `B/C` motion is allowed when TCPC is on and TWP is off
+  - `B/C` motion remains blocked while TWP is active
+  - after `G69`, operators may move `B/C` first and then enter `G68.2`
+- Clarified `G68.2` semantics:
+  - `G68.2` may omit `B/C`
+  - if omitted, current `B/C` are captured as the TWP orientation
+- Added runtime regression:
+  - `tests/kinematics/head-head-twp-manual-bc-entry`
+    - proves:
+      - TCPC-on / TWP-off manual `B/C` motion
+      - `G68.2` entry from current `B/C`
+      - `G69` followed by another manual `B/C` move and re-entry
+- Added manual sample program:
+  - `configs/sim/head_head_5axis/twp_manual_bc_entry_demo.ngc`
+- Verified with:
+  - `tests/kinematics/head-head-twp-manual-bc-entry`
+    - result:
+      - `pause 1 ok` through `pause 11 ok`
+      - `program complete`
+
+# 2026-03-18 - Re-home regression verified
+
+- Closed the remaining automation gap in:
+  - `tests/kinematics/head-head-twp-rehome-reset`
+- Root cause:
+  - the harness was asserting immediately after `status.homed` dropped to 4 on
+    `unhome(0)`
+  - `headheadtwp` clears from a separate userspace polling loop, so the test had
+    a race between LinuxCNC status and HAL state propagation
+- Fix:
+  - added a `wait_for_twp_state(...)` helper in
+    `tests/kinematics/head-head-twp-rehome-reset/test-ui.py`
+  - changed the `unhome` and `home` phases to wait for the cleared TWP state
+    instead of asserting it in the same cycle
+  - restored the test HAL component name back to `test-ui`
+- Verified with:
+  - `tests/kinematics/head-head-twp-rehome-reset`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - `abort before rehome ok`
+      - `unhome clear ok`
+      - `rehome clear ok`
+      - `re-enter after rehome ok`
+      - `post-rehome recovery cancel ok`
+
+# 2026-03-18 - Added fresh manual demo programs for current TCPC/TWP flow
+
+- Added a new TCPC-focused sample program:
+  - `configs/sim/head_head_5axis/tcp_tcpc_fresh_demo.ngc`
+  - uses the current controller contract:
+    - `G43.4`
+    - fixed-tip `B/C` reorientation checks
+    - short world-coordinate TCP motion with TCPC left active
+    - `G49.1`
+- Added a new TWP-focused sample program:
+  - `configs/sim/head_head_5axis/twp_g68_2_fresh_demo.ngc`
+  - uses the current controller contract:
+    - `G43.4`
+    - `G68.2 B45 C90`
+    - ordinary `G0/G1 X/Y/Z` in the tilted local frame
+    - `G69`
+    - `G49.1`
+- Updated the head-head README demo list to include both files.
+
+# 2026-03-18 - Added initial head-head Probe Basic sim config
+
+- Added a dedicated Probe Basic entry point for the current head-head sim:
+  - `configs/sim/head_head_5axis/head_head_probe_basic.ini`
+  - `configs/sim/head_head_5axis/custom_config.yml`
+  - `configs/sim/head_head_5axis/probe_basic_postgui.hal`
+  - `configs/sim/head_head_5axis/launch_probe_basic.sh`
+- Current approach is intentionally minimal:
+  - reuse the existing head-head HAL, remaps, vismach, and kinematics
+  - swap `DISPLAY = probe_basic`
+  - use the stock Probe Basic `XYZBC` DRO assets from the local dev checkout
+  - avoid pulling over the older SSI machine-specific Probe Basic customizations
+- Next verification step is to launch `launch_probe_basic.sh` and fix any first-run
+  Probe Basic integration issues from the real UI path.
+
+# 2026-03-18 - Enabled Probe Basic ATC tab as a placeholder UI
+
+- Switched the head-head Probe Basic sim to show the Probe Basic ATC tab:
+  - `ATC_TAB_DISPLAY = 1`
+  - `USER_ATC_BUTTONS_PATH` now points at the Probe Basic `atc_sim` asset set
+- Added a minimal `[ATC]` section with placeholder values for:
+  - `POCKETS = 12`
+  - `Z_TOOL_CHANGE_HEIGHT = -100.0`
+  - `Z_TOOL_CLEARANCE_HEIGHT = 0.0`
+- Added safe placeholder ATC actions in the head-head sim directory so the ATC UI
+  can be present before real ATC hardware/logic exists:
+  - `M11`
+  - `M12`
+  - `M13`
+  - `retractatc.ngc`
+  - `extendatc.ngc`
+  - `clamptool.ngc`
+  - `unclamptool.ngc`
+  - `orientspindle.ngc`
+  - `move_head_above_carousel.ngc`
+  - `move_tool_to_carousel_height.ngc`
+- Current intent:
+  - keep the ATC panel visible in Probe Basic now
+  - allow the Z-position helper buttons to operate safely in sim
+  - leave carousel/clamp/orient actions as placeholders until real ATC work starts
+
+# 2026-03-18 - Added 5-axis calibration wizard tab for Probe Basic
+
+- Added a dedicated Probe Basic user tab path in:
+  - `configs/sim/head_head_5axis/head_head_probe_basic.ini`
+- Added a new main-tab calibration wizard at:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Current wizard content:
+  - setup/safety page with common mode-reset and pose buttons
+  - rotary zero-offset page
+  - `C->B` correction page
+  - `B->tool` correction page
+  - verification page with quick-load buttons for the fresh TCP/TWP demos
+  - summary page that generates the matching `setp` block for both:
+    - `headheadkins`
+    - `headheadtwp`
+- The wizard saves and reloads a local draft file:
+  - `configs/sim/head_head_5axis/five_axis_calibration_draft.json`
+- The summary is staging-only for now:
+  - it does not yet write values back into HAL automatically
+  - it is meant to guide the operator and produce the values to carry into the
+    config/model cleanly
+
+# 2026-03-18 - `G68.2` now defines and activates TWP directly
+
+- Shifted the sample-data posted TWP path away from helper M-codes:
+  - `G68.2` now defines and activates TWP directly
+  - `G69` now cancels and resets TWP directly
+- Current sample-data machine-facing path is now:
+  - `G43.4`
+  - `G68.2 B.. C.. [R..]`
+  - ordinary `G0/G1`
+  - `G69`
+  - `G49.1`
+- Implemented in:
+  - `configs/sim/head_head_5axis/head_head_twp_state.py`
+  - `configs/sim/head_head_5axis/python/remap.py`
+  - `src/emc/kinematics/headheadkins.c`
+- New `G68.2` semantics:
+  - origin is taken from the current tool-tip position
+  - `B/C` come from the block, or default to the current `B/C` if omitted
+  - optional `R` sets plane-normal rotation
+  - the remap captures that definition, activates TWP, enables TWP motion, and
+    zeros local `XYZ` with `G92`
+- New `G69` semantics:
+  - preserve the current world tool-tip position
+  - exit TWP motion mode
+  - cancel and reset the stored TWP definition
+- Added kinematics-level guard:
+  - active TWP now rejects rotary changes away from the stored `B/C`
+  - current observed runtime error text is:
+    - `Linear move on line 11 fails kinematicsInverse`
+- Updated runtime tests:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - now uses `G68.2 B45 C90` and `G68.2 B45 C90 R90`
+    - no longer depends on `M152` / `M153` / `M156` / `M154` / `M155`
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+    - now proves `G68.2 B45 C90` is rejected if `G49.1` turned TCPC off first
+  - added `tests/kinematics/head-head-twp-reject-rotary`
+    - proves a linear block with a changed `B` word is rejected while TWP is active
+- Important LinuxCNC detail:
+  - `G68.2` needed `argspec=bcr` in the remap lines before `B/C/R` words were
+    visible to the Python handler
+- Verified with:
+  - `tests/kinematics/head-head-twp-g0g1`
+    - result:
+      - `pause 1 ok` through `pause 14 ok`
+      - `program complete`
+  - `tests/kinematics/head-head-twp-requires-tcpc`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - expected interpreter error observed:
+        - `TWP mode enable requested while TCPC mode is not enabled`
+  - `tests/kinematics/head-head-twp-reject-rotary`
+    - result:
+      - `pause 1 ok`
+      - `pause 2 ok`
+      - `pause 3 ok`
+      - expected runtime error observed:
+        - `Linear move on line 11 fails kinematicsInverse`
+  - `tests/remap/head-head-twp-queuebuster`
+    - result:
+      - `pause 1 ok` through `pause 8 ok`
+      - `program complete`

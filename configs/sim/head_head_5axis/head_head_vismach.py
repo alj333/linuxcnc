@@ -3,6 +3,7 @@
 """Improved articulated vismach model for the head-head XYZBC simulation."""
 
 import os
+import struct
 from vismach import *
 import hal
 
@@ -10,6 +11,8 @@ import hal
 TRAVEL_X = 3310.0
 TRAVEL_Y = 1700.0
 TRAVEL_Z = 900.0
+DEFAULT_REDUCED_STL_DIR = "/home/cnc5/Vismach/reduced"
+JOINT_Z_HOME = 450.0
 
 
 def optional_stl_overlay():
@@ -21,6 +24,93 @@ def optional_stl_overlay():
     except Exception as exc:
         print(f"head_head_vismach: unable to load STL overlay {path}: {exc}")
         return None
+
+
+class BinarySTL:
+    def __init__(self, filename):
+        self.filename = filename
+        self.list = None
+        self.d = []
+
+        with open(filename, "rb") as handle:
+            handle.read(80)
+            tri_count = struct.unpack("<I", handle.read(4))[0]
+            for _ in range(tri_count):
+                data = handle.read(50)
+                if len(data) < 50:
+                    break
+                vals = struct.unpack("<12fH", data)
+                normal = vals[0:3]
+                verts = [vals[3:6], vals[6:9], vals[9:12]]
+                self.d.append((normal, verts))
+
+    def draw(self):
+        if self.list is None:
+            self.list = glGenLists(1)
+            glNewList(self.list, GL_COMPILE)
+            glBegin(GL_TRIANGLES)
+            for n, t in self.d:
+                glNormal3f(*n)
+                glVertex3f(*t[0])
+                glVertex3f(*t[1])
+                glVertex3f(*t[2])
+            glEnd()
+            glEndList()
+            del self.d
+        glCallList(self.list)
+
+
+def _binary_stl_part(path, color):
+    try:
+        return Color(color, [BinarySTL(path)])
+    except Exception as exc:
+        print(f"head_head_vismach: unable to load binary STL {path}: {exc}")
+        return None
+
+
+def optional_reduced_stl_overlay():
+    stl_dir = os.environ.get("HEAD_HEAD_REDUCED_STL_DIR", DEFAULT_REDUCED_STL_DIR)
+    if not stl_dir or not os.path.isdir(stl_dir):
+        return None
+
+    entries = [
+        ("Frame_reduced.stl", [0.55, 0.55, 0.62, 0.35]),
+        ("Y_Axis_Table_reduced.stl", [0.35, 0.40, 0.70, 0.40]),
+        ("X_Axis_Frame_reduced.stl", [0.35, 0.40, 0.70, 0.40]),
+        ("Z_Axis_Frame_reduced.stl", [0.30, 0.35, 0.65, 0.45]),
+        ("C_Axis_Body_reduced.stl", [0.35, 0.35, 0.55, 0.45]),
+        ("B_Axis_Body_reduced.stl", [0.70, 0.30, 0.25, 0.55]),
+        ("Spindle_reduced.stl", [0.75, 0.75, 0.75, 0.65]),
+    ]
+
+    parts = []
+    for filename, color in entries:
+        path = os.path.join(stl_dir, filename)
+        if not os.path.isfile(path):
+            print(f"head_head_vismach: missing reduced STL {path}")
+            continue
+        part = _binary_stl_part(path, color)
+        if part is not None:
+            parts.append(part)
+
+    if not parts:
+        return None
+    return Collection(parts)
+
+
+def reduced_stl_dir():
+    stl_dir = os.environ.get("HEAD_HEAD_REDUCED_STL_DIR", DEFAULT_REDUCED_STL_DIR)
+    if stl_dir and os.path.isdir(stl_dir):
+        return stl_dir
+    return None
+
+
+def reduced_stl_part(stl_dir, filename, color):
+    path = os.path.join(stl_dir, filename)
+    if not os.path.isfile(path):
+        print(f"head_head_vismach: missing reduced STL {path}")
+        return None
+    return _binary_stl_part(path, color)
 
 
 c = hal.component("headheadvismach")
@@ -66,6 +156,7 @@ TABLE_LENGTH = TRAVEL_X - 200.0
 TABLE_WIDTH = TRAVEL_Y - 400.0
 TABLE_THICK = 100.0
 TABLE_Z = 500.0
+TABLE_HOME_Y_OFFSET = 500.0
 
 XCAR_WIDTH = 500.0
 XCAR_HEIGHT = 350.0
@@ -86,6 +177,20 @@ SPINDLE_LENGTH = 200.0
 NOSE_LENGTH = 60.0
 TOOLTIP_FROM_SPINDLE_ORIGIN_Z = -SPINDLE_LENGTH * 0.4 - NOSE_LENGTH
 
+# Reduced STL exports are already placed in correct home position. These pivot
+# values are taken from the exported home assembly and keep the live B/C motion
+# centered on the real mesh geometry.
+STL_B_PIVOT_X = -1690.0
+STL_B_PIVOT_Y = 559.0
+STL_B_PIVOT_Z = 1889.5
+STL_C_PIVOT_X = -1690.0
+STL_C_PIVOT_Y = 559.0
+STL_C_PIVOT_Z = 2159.5
+STL_TABLE_TOP_Z = 896.8854370117188
+STL_TABLE_HOME_Y = 1354.7443542480469
+TOOL_MARKER_BOTTOM_Z = -25.0
+STL_SPINDLE_MESH_Y_CORRECTION = 77.565
+
 DARK_BLUE = [0.12, 0.12, 0.30, 1.0]
 MED_BLUE = [0.18, 0.18, 0.40, 1.0]
 LIGHT_GRAY = [0.70, 0.70, 0.70, 1.0]
@@ -101,7 +206,11 @@ BEAM_BOTTOM = GANTRY_HEIGHT - BEAM_HEIGHT
 XCAR_TOP = BEAM_BOTTOM
 XCAR_BOTTOM = BEAM_BOTTOM - XCAR_HEIGHT
 C_BOTTOM = -30.0 - C_HEIGHT - 20.0
-Z_HOME = XCAR_BOTTOM - ZCOL_LENGTH + TRAVEL_Z / 2.0
+Z_HOME_RAISE = 250.0
+HEAD_FRONT_CLEARANCE = 20.0
+X_HEAD_VISUAL_RISE = 420.0
+HEAD_ASSEMBLY_Y = -BEAM_DEPTH / 2.0 - (ZCOL_DEPTH / 2.0 + 80.0) - HEAD_FRONT_CLEARANCE
+Z_HOME = XCAR_BOTTOM - ZCOL_LENGTH + TRAVEL_Z / 2.0 + Z_HOME_RAISE
 
 tooltip = Capture()
 work = Capture()
@@ -226,7 +335,8 @@ table_assembly = Collection([
     corner_markers,
     Translate([work], 0, 0, TABLE_Z + TABLE_THICK),
 ])
-table_y = HalTranslate([table_assembly], c, "joint_y", 0, -1, 0)
+table_home = Translate([table_assembly], 0, TABLE_HOME_Y_OFFSET, 0)
+table_y = HalTranslate([table_home], c, "joint_y", 0, -1, 0)
 
 
 # X carriage
@@ -334,23 +444,90 @@ z_translate = HalTranslate([z_positioned], c, "joint_z", 0, 0, 1)
 
 x_assembly = Collection([x_carriage, z_translate])
 x_start = -TRAVEL_X / 2.0
-x_positioned = Translate([x_assembly], x_start, 0, 0)
+x_positioned = Translate([x_assembly], x_start, HEAD_ASSEMBLY_Y, X_HEAD_VISUAL_RISE)
 x_translate = HalTranslate([x_positioned], c, "joint_x", 1, 0, 0)
 
-overlay = optional_stl_overlay()
-parts = [frame, table_y, x_translate]
-if overlay is not None:
-    parts.insert(0, overlay)
+def placeholder_model():
+    overlay = optional_stl_overlay()
+    reduced_overlay = optional_reduced_stl_overlay()
+    parts = [frame, table_y, x_translate]
+    if reduced_overlay is not None:
+        parts.insert(0, reduced_overlay)
+    if overlay is not None:
+        parts.insert(0, overlay)
+    return Collection(parts)
 
-model = Collection(parts)
 
-hud = Hud()
-hud.show("Head-Head XYZBC Visual Sim")
-hud.show("Imported gantry/head model from alj333/5thAxis")
-hud.show("Table Y is visually inverted to match a moving-table axis")
-hud.show("Cyan post/cross and green centerlines move with the table")
-if os.environ.get("HEAD_HEAD_FULL_STL"):
-    hud.show("STL overlay requested via HEAD_HEAD_FULL_STL")
+def stl_motion_model(stl_dir):
+    frame_stl = reduced_stl_part(stl_dir, "Frame_reduced.stl", [0.18, 0.18, 0.36, 1.0])
+    table_stl = reduced_stl_part(stl_dir, "Y_Axis_Table_reduced.stl", [0.20, 0.20, 0.42, 1.0])
+    x_stl = reduced_stl_part(stl_dir, "X_Axis_Frame_reduced.stl", [0.18, 0.18, 0.36, 1.0])
+    z_stl = reduced_stl_part(stl_dir, "Z_Axis_Frame_reduced.stl", [0.18, 0.18, 0.36, 1.0])
+    c_stl = reduced_stl_part(stl_dir, "C_Axis_Body_reduced.stl", [0.18, 0.18, 0.36, 1.0])
+    b_stl = reduced_stl_part(stl_dir, "B_Axis_Body_reduced.stl", [0.55, 0.12, 0.10, 1.0])
+    spindle_stl = reduced_stl_part(stl_dir, "Spindle_reduced.stl", [0.70, 0.70, 0.70, 1.0])
+
+    required = [frame_stl, table_stl, x_stl, z_stl, c_stl, b_stl, spindle_stl]
+    if any(part is None for part in required):
+        print("head_head_vismach: falling back to placeholder model because one or more STL parts failed to load")
+        return placeholder_model()
+
+    table_live = HalTranslate([table_stl], c, "joint_y", 0, -1, 0)
+    table_live = Collection([
+        table_live,
+        Translate([work], 0, STL_TABLE_HOME_Y, STL_TABLE_TOP_Z),
+    ])
+
+    tool_local = Collection([
+        Translate([tooltip], 0, 0, TOOL_MARKER_BOTTOM_Z),
+        Color(YELLOW, [HalToolCylinder()]),
+    ])
+    tool_local = HalTranslate([tool_local], c, "b_to_tool_x", 1, 0, 0)
+    tool_local = HalTranslate([tool_local], c, "b_to_tool_y", 0, 1, 0)
+    tool_local = HalTranslate([tool_local], c, "b_to_tool_z", 0, 0, 1)
+
+    b_mesh_local = Translate([b_stl], -STL_B_PIVOT_X, -STL_B_PIVOT_Y, -STL_B_PIVOT_Z)
+    spindle_mesh_local = Translate(
+        [spindle_stl],
+        -STL_B_PIVOT_X,
+        -STL_B_PIVOT_Y + STL_SPINDLE_MESH_Y_CORRECTION,
+        -STL_B_PIVOT_Z,
+    )
+    b_local = Collection([b_mesh_local, spindle_mesh_local, tool_local])
+    b_rotate = HalRotate([b_local], c, "b_zero_offset", 1, 0, 1, 0)
+    b_rotate = HalRotate([b_rotate], c, "joint_b", 1, 0, 1, 0)
+    b_world = Translate([b_rotate], STL_B_PIVOT_X, STL_B_PIVOT_Y, STL_B_PIVOT_Z)
+    b_rel_to_c = Translate([b_world], -STL_C_PIVOT_X, -STL_C_PIVOT_Y, -STL_C_PIVOT_Z)
+
+    c_mesh_local = Translate([c_stl], -STL_C_PIVOT_X, -STL_C_PIVOT_Y, -STL_C_PIVOT_Z)
+    c_local = Collection([c_mesh_local, b_rel_to_c])
+    c_rotate = HalRotate([c_local], c, "c_zero_offset", 1, 0, 0, 1)
+    c_rotate = HalRotate([c_rotate], c, "joint_c", 1, 0, 0, 1)
+    c_world = Translate([c_rotate], STL_C_PIVOT_X, STL_C_PIVOT_Y, STL_C_PIVOT_Z)
+
+    z_world = Collection([z_stl, c_world])
+    z_world = Translate([z_world], 0, 0, -JOINT_Z_HOME)
+    z_live = HalTranslate([z_world], c, "joint_z", 0, 0, 1)
+
+    x_world = Collection([x_stl, z_live])
+    x_live = HalTranslate([x_world], c, "joint_x", 1, 0, 0)
+
+    return Collection([frame_stl, table_live, x_live])
+
+
+model = stl_motion_model(reduced_stl_dir()) if reduced_stl_dir() else placeholder_model()
+
+hud = None
+if os.environ.get("HEAD_HEAD_ENABLE_HUD"):
+    hud = Hud()
+    hud.show("Head-Head XYZBC Visual Sim")
+    hud.show("Imported gantry/head model from alj333/5thAxis")
+    hud.show("Table Y is visually inverted to match a moving-table axis")
+    hud.show("Cyan post/cross and green centerlines move with the table")
+    if os.environ.get("HEAD_HEAD_REDUCED_STL_DIR"):
+        hud.show("Reduced binary STL overlay requested via HEAD_HEAD_REDUCED_STL_DIR")
+    if os.environ.get("HEAD_HEAD_FULL_STL"):
+        hud.show("STL overlay requested via HEAD_HEAD_FULL_STL")
 
 if __name__ == "__main__":
     main(model, tooltip, work, size=GANTRY_SPAN, hud=hud, lat=-75, lon=30)

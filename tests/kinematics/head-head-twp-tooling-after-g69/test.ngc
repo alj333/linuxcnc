@@ -1,0 +1,20 @@
+%
+(Head-head tooling operations recover cleanly after G69)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M0 (Reached starting world pose)
+G43.4
+M0 (TCPC enabled)
+G68.2 B45.0 C90.0
+M0 (TWP active before G69 recovery test)
+G69
+M0 (TWP cancelled before tooling operations)
+M61 Q1
+M0 (Current tool number changed after G69)
+G43 H1
+M0 (Tool length compensation applied after G69)
+G49
+M0 (Tool length compensation cancelled after G69)
+M2
+%

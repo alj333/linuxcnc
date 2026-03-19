@@ -61,6 +61,10 @@ class HeadHeadTwpState:
         self.twp_origin = (0.0, 0.0, 0.0)
         self.twp_bc = (0.0, 0.0)
         self.normal_rotation = 0.0
+        self.motion_enabled = False
+        # Match current head-head shop practice: TCPC starts enabled unless an
+        # operator or program explicitly turns it off.
+        self.tcpc_enabled = True
 
     def _pin_bit_in(self, name):
         self.comp.newpin(name, hal.HAL_BIT, hal.HAL_IN)
@@ -90,14 +94,24 @@ class HeadHeadTwpState:
 
         self._pin_float_in("b_zero_offset")
         self._pin_float_in("c_zero_offset")
+        self._pin_float_in("requested_b_angle")
+        self._pin_float_in("requested_c_angle")
         self._pin_float_in("requested_normal_rotation")
+        self._pin_bit_in("machine_is_enabled")
+        for joint in range(5):
+            self._pin_bit_in(f"joint_{joint}_homed")
 
         for name in (
             "cmd_set_origin_from_current",
             "cmd_set_orientation_from_current",
             "cmd_set_from_current",
+            "cmd_set_from_current_and_requested",
             "cmd_set_normal_rotation",
             "cmd_activate",
+            "cmd_enable_twp_motion",
+            "cmd_disable_twp_motion",
+            "cmd_enable_tcpc",
+            "cmd_disable_tcpc",
             "cmd_cancel",
             "cmd_reset",
         ):
@@ -119,6 +133,8 @@ class HeadHeadTwpState:
         self._pin_bit_out("orientation_defined")
         self._pin_bit_out("valid")
         self._pin_bit_out("active")
+        self._pin_bit_out("motion_enabled")
+        self._pin_bit_out("tcpc_enabled")
         self._pin_s32_out("state_code")
 
     def _get(self, name):
@@ -180,6 +196,18 @@ class HeadHeadTwpState:
         self.prev_bits[pin_name] = current
         return current and not previous
 
+    def _falling_edge(self, pin_name):
+        current = bool(self.comp[pin_name])
+        previous = self.prev_bits[pin_name]
+        self.prev_bits[pin_name] = current
+        return previous and not current
+
+    def _changed_bit(self, pin_name):
+        current = bool(self.comp[pin_name])
+        previous = self.prev_bits[pin_name]
+        self.prev_bits[pin_name] = current
+        return current != previous
+
     def _state_code(self):
         valid = self.origin_defined and self.orientation_defined
         if self.comp["active"]:
@@ -196,14 +224,38 @@ class HeadHeadTwpState:
         self.twp_origin = (0.0, 0.0, 0.0)
         self.twp_bc = (0.0, 0.0)
         self.normal_rotation = 0.0
+        self.motion_enabled = False
         self.comp["active"] = False
 
+    def _clear_for_machine_reset(self):
+        self._clear_state()
+        # Reset to the current shop-default startup mode after estop/off.
+        self.tcpc_enabled = True
+
     def _update_state_machine(self):
+        if self._falling_edge("machine_is_enabled"):
+            self._clear_for_machine_reset()
+
+        homed_changed = False
+        for joint in range(5):
+            if self._changed_bit(f"joint_{joint}_homed"):
+                homed_changed = True
+        if homed_changed:
+            # Any re-home/unhome event invalidates the stored tilted frame.
+            self._clear_state()
+
         if self._rising_edge("cmd_reset"):
             self._clear_state()
 
         if self._rising_edge("cmd_set_normal_rotation"):
             self.normal_rotation = self._get("requested_normal_rotation")
+
+        if self._rising_edge("cmd_enable_tcpc"):
+            self.tcpc_enabled = True
+
+        if self._rising_edge("cmd_disable_tcpc"):
+            self.tcpc_enabled = False
+            self.motion_enabled = False
 
         current_tool_xyz, current_bc = self._current_tool_pose()
 
@@ -221,12 +273,35 @@ class HeadHeadTwpState:
             self.origin_defined = True
             self.orientation_defined = True
 
+        if self._rising_edge("cmd_set_from_current_and_requested"):
+            self.twp_origin = current_tool_xyz
+            self.twp_bc = (
+                self._get("requested_b_angle"),
+                self._get("requested_c_angle"),
+            )
+            self.normal_rotation = self._get("requested_normal_rotation")
+            self.origin_defined = True
+            self.orientation_defined = True
+
         if self._rising_edge("cmd_cancel"):
             self.comp["active"] = False
+            self.motion_enabled = False
 
         if self._rising_edge("cmd_activate"):
             if self.origin_defined and self.orientation_defined:
                 self.comp["active"] = True
+
+        if self._rising_edge("cmd_enable_twp_motion"):
+            if (
+                self.tcpc_enabled
+                and self.origin_defined
+                and self.orientation_defined
+                and self.comp["active"]
+            ):
+                self.motion_enabled = True
+
+        if self._rising_edge("cmd_disable_twp_motion"):
+            self.motion_enabled = False
 
     def _update_outputs(self):
         current_tool_xyz, _ = self._current_tool_pose()
@@ -258,6 +333,8 @@ class HeadHeadTwpState:
         self.comp["origin_defined"] = self.origin_defined
         self.comp["orientation_defined"] = self.orientation_defined
         self.comp["valid"] = self.origin_defined and self.orientation_defined
+        self.comp["motion_enabled"] = self.motion_enabled
+        self.comp["tcpc_enabled"] = self.tcpc_enabled
         self.comp["state_code"] = self._state_code()
 
     def run(self):

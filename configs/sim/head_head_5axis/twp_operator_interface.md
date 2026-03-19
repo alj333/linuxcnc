@@ -6,6 +6,10 @@ This note defines a practical operator-facing TWP model for the head-head
 machine. It is a design target for later LinuxCNC integration, not an
 implemented feature yet.
 
+Companion controller/post target:
+
+- [fanuc_like_twp_tcpc_contract.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/fanuc_like_twp_tcpc_contract.md)
+
 The goal is to keep the operator model close to standard industrial behavior
 while remaining realistic for a LinuxCNC remap/UI implementation.
 
@@ -95,10 +99,11 @@ Pragmatic staged approach:
 
 The first production-oriented TWP implementation should support only:
 
-- set TWP orientation from current `B/C`
-- set TWP origin from current tool tip
+- define TWP from the current tool tip plus programmed `B/C`
+- optional plane-normal rotation
 - activate / cancel
-- plane-local linear motion at fixed `B/C`
+- plane-local linear motion at fixed stored `B/C`
+- rejection of rotary changes while TWP motion is active
 
 Current simulation prototype:
 
@@ -115,7 +120,7 @@ Current prototype commands:
 - `cmd_cancel`
 - `cmd_reset`
 
-Current prototype M-code binding:
+Current debug/helper M-code binding:
 
 - `M150` set origin from current tool-tip position
 - `M151` set orientation from current `B/C`
@@ -143,23 +148,29 @@ Current `state_code` values:
 - `2` defined
 - `3` active
 
-This is intentionally a HAL-driven prototype before any Probe Basic or remap
-binding is added.
+Current machine-facing sample-data path:
 
-Current first live-motion binding:
+- `G43.4` TCPC on
+- `G68.2 [B.. C..] [R..]` define and activate TWP from current tool tip
+- ordinary `G0/G1` in plane-local coordinates
+- `G69` cancel TWP
+- `G49.1` TCPC off
+
+The older M-codes remain useful for manual debugging, but they are no longer
+the intended post target.
+
+Current machine-facing motion model:
+
+- active `G68.2` changes ordinary `G0/G1 X/Y/Z` into plane-local motion
+- with TCPC on and TWP off, manual `B/C` positioning is allowed
+- `G68.2` may omit `B/C` and capture the current rotary orientation
+- `G69` returns motion to normal world coordinates and allows `B/C` moves again
+
+Legacy helper path still available for debugging:
 
 - `G88.5 P.. Q.. R.. [L..]`
-
-Current semantics:
-
-- `P/Q/R` are plane-local `U/V/W`
-- coordinates are absolute from the stored TWP origin
-- motion is executed at the stored TWP `B/C` orientation
-- the remap expands the plane-local point into world `XYZBC` and executes a
-  world `G1`
-
-This is deliberately narrow. It proves fixed-plane TWP motion without yet
-changing the meaning of ordinary `G0/G1` blocks.
+- explicit helper moves in the stored plane
+- useful for transform debugging and regression tests, but not the operator model
 
 It should explicitly not try to solve on day one:
 
@@ -189,6 +200,20 @@ Later extensions:
 
 - TWP activation should fail if the plane definition is incomplete
 - cancelling TWP must not jump the machine unexpectedly
+- tool length compensation changes must be rejected while TWP is active
+- tool changes and current-tool-number changes must be rejected while TWP is active
+- after `G69`, normal tool-state operations must work again without leftover TWP state
+- a TWP move that exceeds travel limits must fail without partial motion
+- after a limit reject, operators must be able to recover with:
+  - `G69`
+  - safe reposition
+  - re-entering `G43.4` / `G68.2` if needed
+- with TCPC on and TWP off, manual `B/C` moves are allowed
+- while TWP is active, `B/C` moves are blocked
+- after `G69`, operators may move `B/C` first and then enter `G68.2`
+- program abort should leave TWP/TCPC state unchanged until explicit cancel
+- estop should clear TWP automatically
+- re-home should clear TWP automatically
 - UI must make the active frame obvious
 - the operator must always be able to see:
   - current world pose

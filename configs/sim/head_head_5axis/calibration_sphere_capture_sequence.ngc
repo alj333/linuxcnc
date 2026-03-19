@@ -1,0 +1,23 @@
+%
+(Calibration sphere capture sequence)
+(Probe the 20 mm sphere center at each stop and capture the measured XYZBC in the wizard)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G69
+G49.1
+G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Reference capture: probe sphere center at B0 C0 and capture as ref)
+G1 X1500.000 Y850.000 Z-600.000 B45.000 C0.000
+M0 (Probe sphere center and capture as B plus)
+G1 X1500.000 Y850.000 Z-600.000 B-45.000 C0.000
+M0 (Probe sphere center and capture as B minus)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C90.000
+M0 (Probe sphere center and capture as C plus)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C-90.000
+M0 (Probe sphere center and capture as C minus)
+G1 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M0 (Probe sphere center and capture as mixed pose)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Return to reference)
+M2
+%

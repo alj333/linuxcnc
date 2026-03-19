@@ -1,0 +1,17 @@
+%
+(TWP limit recovery demo)
+(Expected behavior:)
+(Step 1: The X300 local move below is rejected by the realistic joint-1 positive limit.)
+(Step 2: The tool does not partially move.)
+(Step 3: Recover with: G69, G49.1, G0 X1500 Y850 Z-600 B45 C90, G43.4, G68.2 B45 C90, G1 X50.)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G0 X1500.000 Y1500.000 Z-600.000 B45.000 C90.000
+M0 (Reached near-limit world pose)
+G43.4
+M0 (TCPC enabled)
+G68.2 B45.0 C90.0
+M0 (TWP active before limit-reject demo)
+G1 X300.0
+M2
+%

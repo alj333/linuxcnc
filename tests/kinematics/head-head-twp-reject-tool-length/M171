@@ -1,0 +1,10 @@
+#!/bin/bash
+# Disable explicit TCPC mode for the head-head controller prototype.
+set -e
+if [ -f /home/cnc5/linuxcnc-dev/scripts/rip-environment ]; then
+    . /home/cnc5/linuxcnc-dev/scripts/rip-environment
+fi
+halcmd setp headheadtwp.cmd_disable_tcpc 1
+sleep 0.3
+halcmd setp headheadtwp.cmd_disable_tcpc 0
+exit 0

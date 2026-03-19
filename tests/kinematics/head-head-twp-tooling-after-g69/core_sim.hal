@@ -1,0 +1,66 @@
+# Headless headheadkins regression for kinematics-level TWP mode.
+
+loadrt [KINS]KINEMATICS
+loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+
+addf motion-command-handler servo-thread
+addf motion-controller servo-thread
+
+net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb
+net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb
+net Zpos joint.2.motor-pos-cmd => joint.2.motor-pos-fb
+net Bpos joint.3.motor-pos-cmd => joint.3.motor-pos-fb
+net Cpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb
+
+setp headheadkins.nominal-c-to-b.x 0.0
+setp headheadkins.nominal-c-to-b.y 0.0
+setp headheadkins.nominal-c-to-b.z -270.0
+setp headheadkins.nominal-b-to-tool.x 2.0
+setp headheadkins.nominal-b-to-tool.y -22.0
+setp headheadkins.nominal-b-to-tool.z -305.517
+setp headheadkins.cal-c-to-b.x 0.0
+setp headheadkins.cal-c-to-b.y 0.0
+setp headheadkins.cal-c-to-b.z 0.0
+setp headheadkins.cal-b-to-tool.x 0.0
+setp headheadkins.cal-b-to-tool.y 0.0
+setp headheadkins.cal-b-to-tool.z 0.0
+setp headheadkins.b-zero-offset 0.0
+setp headheadkins.c-zero-offset 0.0
+
+loadusr -Wn headheadtwp python3 ../../../configs/sim/head_head_5axis/head_head_twp_state.py
+
+net Xpos => headheadtwp.current_joint_x
+net Ypos => headheadtwp.current_joint_y
+net Zpos => headheadtwp.current_joint_z
+net Bpos => headheadtwp.current_joint_b
+net Cpos => headheadtwp.current_joint_c
+net headhead-joint-0-homed joint.0.homed => headheadtwp.joint_0_homed
+net headhead-joint-1-homed joint.1.homed => headheadtwp.joint_1_homed
+net headhead-joint-2-homed joint.2.homed => headheadtwp.joint_2_homed
+net headhead-joint-3-homed joint.3.homed => headheadtwp.joint_3_homed
+net headhead-joint-4-homed joint.4.homed => headheadtwp.joint_4_homed
+
+setp headheadtwp.nominal_c_to_b_x 0.0
+setp headheadtwp.nominal_c_to_b_y 0.0
+setp headheadtwp.nominal_c_to_b_z -270.0
+setp headheadtwp.nominal_b_to_tool_x 2.0
+setp headheadtwp.nominal_b_to_tool_y -22.0
+setp headheadtwp.nominal_b_to_tool_z -305.517
+setp headheadtwp.cal_c_to_b_x 0.0
+setp headheadtwp.cal_c_to_b_y 0.0
+setp headheadtwp.cal_c_to_b_z 0.0
+setp headheadtwp.cal_b_to_tool_x 0.0
+setp headheadtwp.cal_b_to_tool_y 0.0
+setp headheadtwp.cal_b_to_tool_z 0.0
+setp headheadtwp.b_zero_offset 0.0
+setp headheadtwp.c_zero_offset 0.0
+setp headheadtwp.requested_normal_rotation 0.0
+
+net headhead-twp-motion-enabled headheadtwp.motion_enabled => headheadkins.twp-mode
+net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
+net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c
+net headhead-twp-normal-rotation headheadtwp.twp_normal_rotation => headheadkins.twp-normal-rotation
+
+net estop-loop iocontrol.0.user-enable-out iocontrol.0.emc-enable-in => headheadtwp.machine_is_enabled
+net tool-prep-loop iocontrol.0.tool-prepare iocontrol.0.tool-prepared
+net tool-change-loop iocontrol.0.tool-change iocontrol.0.tool-changed

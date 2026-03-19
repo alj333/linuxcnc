@@ -1,0 +1,5 @@
+o<move_tool_to_carousel_height> sub
+#<atc_z_tool_change_height> = [#<_ini[ATC]Z_TOOL_CHANGE_HEIGHT>]
+G0 G53 Z#<atc_z_tool_change_height>
+o<move_tool_to_carousel_height> endsub [1]
+M2

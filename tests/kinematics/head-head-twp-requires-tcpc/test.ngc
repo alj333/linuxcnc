@@ -1,0 +1,11 @@
+%
+(Head-head kinematics-level TWP requires explicit TCPC)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M0 (Reached starting world pose)
+G49.1
+M0 (TCPC disabled before TWP mode test)
+G68.2 B45.0 C90.0
+M2
+%

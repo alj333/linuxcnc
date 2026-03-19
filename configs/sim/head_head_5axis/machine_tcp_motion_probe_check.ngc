@@ -1,0 +1,25 @@
+%
+(Machine TCP motion probe check)
+(Run only after fixed-tip TCP passes on the 20 mm sphere)
+(Goal: XYZ and B/C move together without visible tip swing or jump)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G69
+G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Start near the sphere center and verify clear travel before enabling TCPC)
+G43.4
+M0 (TCPC on. Start moving TCP verification)
+G1 X1550.000 Y850.000 Z-600.000 B20.000 C0.000
+M0 (Observe plus X with B tilt. Tip path should stay smooth)
+G1 X1600.000 Y950.000 Z-600.000 B20.000 C90.000
+M0 (Observe plus Y with C rotation)
+G1 X1500.000 Y1000.000 Z-560.000 B0.000 C90.000
+M0 (Observe return X with Z raise while holding C90)
+G1 X1450.000 Y900.000 Z-580.000 B-30.000 C180.000
+M0 (Observe combined XYZ and B/C motion)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Return to start pose. Confirm repeatable recovery)
+G49.1
+M0 (TCPC off. Record visible path quality and return accuracy)
+M2
+%

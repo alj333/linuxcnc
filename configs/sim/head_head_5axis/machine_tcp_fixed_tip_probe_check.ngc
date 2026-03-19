@@ -1,0 +1,27 @@
+%
+(Machine TCP fixed-tip probe check)
+(Use the qualified probe on the 20 mm sphere center)
+(Goal: sphere center stays fixed while B and C change under TCPC)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G69
+G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Probe the 20 mm sphere center at B0 C0, then leave the probe tip centered)
+G43.4
+M0 (TCPC on. Confirm the probe tip is still centered on the sphere)
+G1 X1500.000 Y850.000 Z-600.000 B20.000 C0.000
+M0 (Check fixed tip at B plus 20. No visible walk off the sphere center)
+G1 X1500.000 Y850.000 Z-600.000 B45.000 C0.000
+M0 (Check fixed tip at B plus 45)
+G1 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M0 (Check fixed tip at B45 C90)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C180.000
+M0 (Check fixed tip at B0 C180)
+G1 X1500.000 Y850.000 Z-600.000 B-30.000 C-90.000
+M0 (Check fixed tip at mixed negative pose)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Return to B0 C0 and confirm the probe tip returns to the same sphere center)
+G49.1
+M0 (TCPC off. Record any observed drift before leaving the sphere)
+M2
+%

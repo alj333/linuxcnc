@@ -1,0 +1,7 @@
+#!/bin/bash
+set -e
+rotation="${1:-0}"
+halcmd setp headheadtwp.requested_normal_rotation "$rotation"
+halcmd setp headheadtwp.cmd_set_normal_rotation 1
+sleep 0.1
+halcmd setp headheadtwp.cmd_set_normal_rotation 0

@@ -60,6 +60,13 @@ source scripts/rip-environment
 linuxcnc configs/sim/head_head_5axis/head_head_visual_sim.ini
 ```
 
+Probe Basic launch:
+
+```bash
+cd ~/linuxcnc-dev
+configs/sim/head_head_5axis/launch_probe_basic.sh
+```
+
 ## Locked Production Convention
 
 The future machine math should use standard right-hand industrial convention:
@@ -149,18 +156,48 @@ Current TCP interpretation:
 
 Current TWP interpretation:
 
-- the branch now has a prototype TWP state component plus the earlier offline
-  preprocessor
-- `headheadtwp` can snapshot:
-  - current tool-tip origin
-  - current `B/C` orientation
-  - optional plane-normal rotation
-- for now, live TWP motion is still not implemented
-- the offline transform remains the path-generation test tool
-- plane-local `UVW` points at fixed `B/C` are transformed into world `XYZ`
-- that transformed `XYZBC` path is then executed by the existing TCP-capable
-  kinematics scaffold
-- this is a math-validation step, not yet a production TWP mode inside LinuxCNC
+- the branch now has a kinematics-level TWP mode for sample data
+- machine-facing sample-data syntax is:
+  - `G43.4` TCPC on
+  - `G68.2 [B.. C..] [R..]` define and activate TWP from current tool tip
+  - ordinary `G0/G1 X/Y/Z` in plane-local coordinates
+  - `G69` cancel TWP
+  - `G49.1` TCPC off
+- active TWP keeps the stored `B/C` orientation fixed
+- ordinary `G0/G1` are no longer world-coordinate moves while TWP is active
+- active TWP rejects rotary changes away from the stored `B/C`
+- active TWP rejects tool length compensation changes and tool changes
+- after `G69`, normal tool-state operations are allowed again
+- with TCPC on and TWP off, manual `B/C` motion is allowed
+- `G68.2` may omit `B/C` to capture the current manual rotary orientation
+- a TWP move that exceeds realistic travel limits is rejected before motion, and
+  the validated recovery path is cancel -> safe reposition -> re-enter
+- program abort leaves TWP/TCPC state alone until explicit cancel
+- estop clears TWP and restores default TCPC-on
+- re-home clears TWP and preserves the current TCPC mode
+- the offline transform and `G88.5` path still remain useful math-validation
+  tools, but they are no longer the intended posted interface
+
+Initial machine calibration workflow:
+
+- qualify the OMP40-style probe in the 50 mm ring
+- verify basic B/C direction and zero poses
+- capture first B/C zero corrections
+- verify fixed-tip TCPC on the 20 mm sphere
+- verify moving 5-axis TCP motion
+- only then move on to TWP validation
+
+Current shop-facing calibration references:
+
+- [five_axis_calibration_procedure.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/five_axis_calibration_procedure.md)
+- [machine_tcp_twp_verification_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_twp_verification_sequence.md)
+- [calibration_sphere_capture_sequence.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_sphere_capture_sequence.ngc)
+- [calibration_bc_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_bc_alignment_check.ngc)
+- [calibration_tcpc_fixed_tip_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_tcpc_fixed_tip_check.ngc)
+- [calibration_tcpc_motion_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_tcpc_motion_check.ngc)
+- [machine_tcp_fixed_tip_probe_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_fixed_tip_probe_check.ngc)
+- [machine_tcp_motion_probe_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_motion_probe_check.ngc)
+- [machine_twp_granite_square_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_twp_granite_square_check.ngc)
 
 Prototype TWP state commands from a terminal:
 
@@ -205,16 +242,21 @@ Demo program:
 
 - [twp_state_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_state_demo.ngc)
 - [twp_live_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_live_demo.ngc)
+- [twp_abort_state_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_abort_state_demo.ngc)
+- [twp_estop_reset_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_estop_reset_demo.ngc)
+- [twp_rehome_reset_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_rehome_reset_demo.ngc)
+- [twp_limit_recovery_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_limit_recovery_demo.ngc)
+- [tcp_tcpc_fresh_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/tcp_tcpc_fresh_demo.ngc)
+- [twp_g68_2_fresh_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_g68_2_fresh_demo.ngc)
+- [twp_manual_bc_entry_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_manual_bc_entry_demo.ngc)
+- [fanuc_like_twp_tcpc_contract.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/fanuc_like_twp_tcpc_contract.md)
 
-Important limit:
+Prototype helper path still available:
 
-- the M-codes control the stored TWP state
-- live plane-local motion is now available only through the narrow remap:
-  - `G88.5 P.. Q.. R.. [L..]`
-- `P/Q/R` are plane-local `U/V/W` coordinates relative to the stored TWP origin
-- `G88.5` holds the stored TWP `B/C` orientation fixed and executes a world
-  `G1` move
-- normal `G0/G1` are still world-coordinate moves
+- the debug M-codes still control the stored HAL TWP state directly
+- `G88.5 P.. Q.. R.. [L..]` still executes explicit helper moves in the stored
+  plane
+- this helper path remains useful for transform debugging and regression tests
 
 Reference pose calculator:
 

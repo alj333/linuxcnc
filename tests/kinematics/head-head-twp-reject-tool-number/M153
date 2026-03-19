@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+halcmd setp headheadtwp.cmd_activate 1
+sleep 0.1
+halcmd setp headheadtwp.cmd_activate 0

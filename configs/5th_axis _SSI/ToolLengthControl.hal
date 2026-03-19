@@ -1,0 +1,14 @@
+# compute pivot-length needed for 5axiskins
+# according to gui pivot_len and tool z offset
+loadrt sum2 names=pivotsum
+addf pivotsum servo-thread
+
+#net :gui-pivot-len <= 5axisgui.pivot_len
+net :pivot-length => pivotsum.in0
+
+net :tool-len <= motion.tooloffset.z
+net :tool-len => pivotsum.in1
+#net :tool-len => 5axisgui.tool_length
+
+net :pivot-len <= pivotsum.out
+net :pivot-len => 5axiskins.pivot-length

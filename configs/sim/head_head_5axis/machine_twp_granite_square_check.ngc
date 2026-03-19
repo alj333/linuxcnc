@@ -1,0 +1,26 @@
+%
+(Machine TWP granite-square sanity check)
+(Use after TCP is believable)
+(Goal: local tilted-plane moves look sensible against the granite square)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M0 (Start near the granite-square reference area at the chosen tilted pose)
+G43.4
+M0 (TCPC on)
+G68.2 B45.0 C90.0
+M0 (TWP active. Local XYZ now follow the stored tilted plane)
+G0 X100.0 Y0.0 Z0.0
+M0 (Local plus U. Confirm motion tracks along the expected tilted plane direction)
+G1 X100.0 Y120.0 Z0.0
+M0 (Local plus V. Compare against the granite square as a sanity check)
+G1 X100.0 Y120.0 Z40.0
+M0 (Local plus W. Confirm plane-normal raise looks sensible)
+G1 X0.0 Y0.0 Z0.0
+M0 (Return to local origin)
+G69
+M0 (TWP cancelled. World coordinates restored)
+G49.1
+M0 (TCPC off. Record whether the tilted-plane behavior looked believable)
+M2
+%

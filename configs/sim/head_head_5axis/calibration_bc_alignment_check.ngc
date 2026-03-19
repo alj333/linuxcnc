@@ -1,0 +1,25 @@
+%
+(Calibration B/C alignment check)
+(TCPC off, verify basic B and C direction and zero poses)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G69
+G49.1
+G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Check B0 C0 orientation)
+G1 X1500.000 Y850.000 Z-600.000 B30.000 C0.000
+M0 (Check B plus direction)
+G1 X1500.000 Y850.000 Z-600.000 B-30.000 C0.000
+M0 (Check B minus direction)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Return B to zero)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C90.000
+M0 (Check C plus 90)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C180.000
+M0 (Check C plus 180)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C-90.000
+M0 (Check C minus 90)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Return to B0 C0)
+M2
+%

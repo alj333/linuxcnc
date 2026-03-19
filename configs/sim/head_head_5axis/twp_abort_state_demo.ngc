@@ -1,0 +1,19 @@
+%
+(TWP abort state demo)
+(Expected behavior:)
+(Step 1: Abort while TWP is active leaves TWP and TCPC state intact.)
+(Step 2: Recover with G69 when ready.)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000
+M0 (Reached starting world pose)
+G43.4
+M0 (TCPC enabled)
+G68.2 B45.0 C90.0
+M0 (TWP active. Press Stop/Abort now. Expected: TWP and TCPC stay active.)
+G1 X50.0
+M0 (If you resumed instead of aborting, the small TWP move is complete.)
+G69
+M0 (TWP cancelled after manual abort recovery)
+M2
+%

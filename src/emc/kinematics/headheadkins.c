@@ -24,6 +24,7 @@
 #include "kinematics.h"
 
 #define REQUIRED_COORDINATES "XYZBC"
+#define TWP_ROTARY_TOLERANCE_DEG 1e-3
 
 struct haldata {
     hal_float_t *nominal_c_to_b_x;
@@ -51,6 +52,14 @@ struct haldata {
     hal_float_t *tool_vector_x;
     hal_float_t *tool_vector_y;
     hal_float_t *tool_vector_z;
+
+    hal_bit_t *twp_mode;
+    hal_float_t *twp_motion_origin_x;
+    hal_float_t *twp_motion_origin_y;
+    hal_float_t *twp_motion_origin_z;
+    hal_float_t *twp_b_angle;
+    hal_float_t *twp_c_angle;
+    hal_float_t *twp_normal_rotation;
 } *haldata;
 
 static int comp_id;
@@ -73,6 +82,11 @@ static int JC = -1;
 static double pinv(hal_float_t *pin)
 {
     return pin ? *pin : 0.0;
+}
+
+static int pinb(hal_bit_t *pin)
+{
+    return pin ? *pin : 0;
 }
 
 static void setpin(hal_float_t *pin, double value)
@@ -102,6 +116,53 @@ static void rotate_z(double angle_deg, const double in[3], double out[3])
     out[0] = c * in[0] - s * in[1];
     out[1] = s * in[0] + c * in[1];
     out[2] = in[2];
+}
+
+static void vec_add(const double a[3], const double b[3], double out[3])
+{
+    out[0] = a[0] + b[0];
+    out[1] = a[1] + b[1];
+    out[2] = a[2] + b[2];
+}
+
+static void vec_sub(const double a[3], const double b[3], double out[3])
+{
+    out[0] = a[0] - b[0];
+    out[1] = a[1] - b[1];
+    out[2] = a[2] - b[2];
+}
+
+static double vec_dot(const double a[3], const double b[3])
+{
+    return (a[0] * b[0]) + (a[1] * b[1]) + (a[2] * b[2]);
+}
+
+static void vec_scale(double scale, const double in[3], double out[3])
+{
+    out[0] = scale * in[0];
+    out[1] = scale * in[1];
+    out[2] = scale * in[2];
+}
+
+static void rotate_about_plane_normal(const double x_axis[3],
+                                      const double y_axis[3],
+                                      double rotation_deg,
+                                      double u_axis[3],
+                                      double v_axis[3])
+{
+    double angle = TO_RAD * rotation_deg;
+    double c = cos(angle);
+    double s = sin(angle);
+    double x_term[3];
+    double y_term[3];
+
+    vec_scale(c, x_axis, x_term);
+    vec_scale(s, y_axis, y_term);
+    vec_add(x_term, y_term, u_axis);
+
+    vec_scale(-s, x_axis, x_term);
+    vec_scale(c, y_axis, y_term);
+    vec_add(x_term, y_term, v_axis);
 }
 
 static void effective_angles(double b_cmd, double c_cmd, double *b_eff, double *c_eff)
@@ -174,12 +235,89 @@ static void update_debug_pins(double b_cmd, double c_cmd)
     setpin(haldata->tool_vector_z, vector[2]);
 }
 
+static void twp_plane_axes(double plane_x[3], double plane_y[3], double plane_z[3])
+{
+    double b_eff;
+    double c_eff;
+    double base_x[3] = {1.0, 0.0, 0.0};
+    double base_y[3] = {0.0, 1.0, 0.0};
+    double base_z[3] = {0.0, 0.0, 1.0};
+    double rotated_x[3];
+    double rotated_y[3];
+    double stored_plane_x[3];
+    double stored_plane_y[3];
+
+    effective_angles(pinv(haldata->twp_b_angle),
+                     pinv(haldata->twp_c_angle),
+                     &b_eff,
+                     &c_eff);
+
+    rotate_y(b_eff, base_x, rotated_x);
+    rotate_z(c_eff, rotated_x, stored_plane_x);
+
+    rotate_y(b_eff, base_y, rotated_y);
+    rotate_z(c_eff, rotated_y, stored_plane_y);
+
+    rotate_y(b_eff, base_z, rotated_y);
+    rotate_z(c_eff, rotated_y, plane_z);
+
+    rotate_about_plane_normal(stored_plane_x,
+                              stored_plane_y,
+                              pinv(haldata->twp_normal_rotation),
+                              plane_x,
+                              plane_y);
+}
+
+static void twp_local_to_world(const double local_xyz[3], double world_xyz[3])
+{
+    double plane_x[3];
+    double plane_y[3];
+    double plane_z[3];
+
+    twp_plane_axes(plane_x, plane_y, plane_z);
+
+    world_xyz[0] = pinv(haldata->twp_motion_origin_x)
+                 + (local_xyz[0] * plane_x[0])
+                 + (local_xyz[1] * plane_y[0])
+                 + (local_xyz[2] * plane_z[0]);
+    world_xyz[1] = pinv(haldata->twp_motion_origin_y)
+                 + (local_xyz[0] * plane_x[1])
+                 + (local_xyz[1] * plane_y[1])
+                 + (local_xyz[2] * plane_z[1]);
+    world_xyz[2] = pinv(haldata->twp_motion_origin_z)
+                 + (local_xyz[0] * plane_x[2])
+                 + (local_xyz[1] * plane_y[2])
+                 + (local_xyz[2] * plane_z[2]);
+}
+
+static void twp_world_to_local(const double world_xyz[3], double local_xyz[3])
+{
+    double plane_x[3];
+    double plane_y[3];
+    double plane_z[3];
+    double origin[3] = {
+        pinv(haldata->twp_motion_origin_x),
+        pinv(haldata->twp_motion_origin_y),
+        pinv(haldata->twp_motion_origin_z),
+    };
+    double offset[3];
+
+    twp_plane_axes(plane_x, plane_y, plane_z);
+    vec_sub(world_xyz, origin, offset);
+
+    local_xyz[0] = vec_dot(offset, plane_x);
+    local_xyz[1] = vec_dot(offset, plane_y);
+    local_xyz[2] = vec_dot(offset, plane_z);
+}
+
 static int headheadKinematicsForward(const double *joints,
                                      EmcPose *pos,
                                      const KINEMATICS_FORWARD_FLAGS *fflags,
                                      KINEMATICS_INVERSE_FLAGS *iflags)
 {
     double offset[3];
+    double world_xyz[3];
+    double local_xyz[3];
 
     (void)fflags;
     (void)iflags;
@@ -187,9 +325,20 @@ static int headheadKinematicsForward(const double *joints,
     tool_offset_world(joints[JB], joints[JC], offset);
     update_debug_pins(joints[JB], joints[JC]);
 
-    pos->tran.x = joints[JX] + offset[0];
-    pos->tran.y = joints[JY] + offset[1];
-    pos->tran.z = joints[JZ] + offset[2];
+    world_xyz[0] = joints[JX] + offset[0];
+    world_xyz[1] = joints[JY] + offset[1];
+    world_xyz[2] = joints[JZ] + offset[2];
+
+    if (pinb(haldata->twp_mode)) {
+        twp_world_to_local(world_xyz, local_xyz);
+        pos->tran.x = local_xyz[0];
+        pos->tran.y = local_xyz[1];
+        pos->tran.z = local_xyz[2];
+    } else {
+        pos->tran.x = world_xyz[0];
+        pos->tran.y = world_xyz[1];
+        pos->tran.z = world_xyz[2];
+    }
     pos->b = joints[JB];
     pos->c = joints[JC];
     pos->a = 0.0;
@@ -207,17 +356,32 @@ static int headheadKinematicsInverse(const EmcPose *pos,
 {
     double offset[3];
     EmcPose mapped;
+    double tool_xyz[3];
 
     (void)fflags;
     (void)iflags;
 
-    tool_offset_world(pos->b, pos->c, offset);
-    update_debug_pins(pos->b, pos->c);
-
     mapped = *pos;
-    mapped.tran.x = pos->tran.x - offset[0];
-    mapped.tran.y = pos->tran.y - offset[1];
-    mapped.tran.z = pos->tran.z - offset[2];
+    if (pinb(haldata->twp_mode)) {
+        if (fabs(pos->b - pinv(haldata->twp_b_angle)) > TWP_ROTARY_TOLERANCE_DEG
+            || fabs(pos->c - pinv(haldata->twp_c_angle)) > TWP_ROTARY_TOLERANCE_DEG) {
+            return -1;
+        }
+        double local_xyz[3] = {pos->tran.x, pos->tran.y, pos->tran.z};
+        twp_local_to_world(local_xyz, tool_xyz);
+        mapped.tran.x = tool_xyz[0];
+        mapped.tran.y = tool_xyz[1];
+        mapped.tran.z = tool_xyz[2];
+        mapped.b = pinv(haldata->twp_b_angle);
+        mapped.c = pinv(haldata->twp_c_angle);
+    }
+
+    tool_offset_world(mapped.b, mapped.c, offset);
+    update_debug_pins(mapped.b, mapped.c);
+
+    mapped.tran.x = mapped.tran.x - offset[0];
+    mapped.tran.y = mapped.tran.y - offset[1];
+    mapped.tran.z = mapped.tran.z - offset[2];
 
     position_to_mapped_joints(headhead_max_joints, &mapped, joints);
     return 0;
@@ -226,6 +390,11 @@ static int headheadKinematicsInverse(const EmcPose *pos,
 static int new_hal_float_pin(hal_float_t **pin, int dir, const char *name)
 {
     return hal_pin_float_newf(dir, pin, comp_id, "headheadkins.%s", name);
+}
+
+static int new_hal_bit_pin(hal_bit_t **pin, int dir, const char *name)
+{
+    return hal_pin_bit_newf(dir, pin, comp_id, "headheadkins.%s", name);
 }
 
 static int init_geometry_pins(void)
@@ -279,6 +448,21 @@ static int init_geometry_pins(void)
     result = new_hal_float_pin(&haldata->tool_vector_z, HAL_OUT, "tool-vector.z");
     if (result < 0) return result;
 
+    result = new_hal_bit_pin(&haldata->twp_mode, HAL_IN, "twp-mode");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_motion_origin_x, HAL_IN, "twp-motion-origin.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_motion_origin_y, HAL_IN, "twp-motion-origin.y");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_motion_origin_z, HAL_IN, "twp-motion-origin.z");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_b_angle, HAL_IN, "twp-angle.b");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_c_angle, HAL_IN, "twp-angle.c");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_normal_rotation, HAL_IN, "twp-normal-rotation");
+    if (result < 0) return result;
+
     *haldata->nominal_c_to_b_x = 0.0;
     *haldata->nominal_c_to_b_y = 0.0;
     *haldata->nominal_c_to_b_z = 0.0;
@@ -304,6 +488,14 @@ static int init_geometry_pins(void)
     *haldata->tool_vector_x = 0.0;
     *haldata->tool_vector_y = 0.0;
     *haldata->tool_vector_z = -1.0;
+
+    *haldata->twp_mode = 0;
+    *haldata->twp_motion_origin_x = 0.0;
+    *haldata->twp_motion_origin_y = 0.0;
+    *haldata->twp_motion_origin_z = 0.0;
+    *haldata->twp_b_angle = 0.0;
+    *haldata->twp_c_angle = 0.0;
+    *haldata->twp_normal_rotation = 0.0;
 
     return 0;
 }

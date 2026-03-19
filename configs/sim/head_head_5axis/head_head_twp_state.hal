@@ -8,14 +8,19 @@ net Ypos => headheadtwp.current_joint_y
 net Zpos => headheadtwp.current_joint_z
 net Bpos => headheadtwp.current_joint_b
 net Cpos => headheadtwp.current_joint_c
+net headhead-joint-0-homed joint.0.homed => headheadtwp.joint_0_homed
+net headhead-joint-1-homed joint.1.homed => headheadtwp.joint_1_homed
+net headhead-joint-2-homed joint.2.homed => headheadtwp.joint_2_homed
+net headhead-joint-3-homed joint.3.homed => headheadtwp.joint_3_homed
+net headhead-joint-4-homed joint.4.homed => headheadtwp.joint_4_homed
 
 # Keep the TWP state geometry in sync with the current nominal simulation model.
 setp headheadtwp.nominal_c_to_b_x 0.0
 setp headheadtwp.nominal_c_to_b_y 0.0
 setp headheadtwp.nominal_c_to_b_z -270.0
-setp headheadtwp.nominal_b_to_tool_x 0.0
-setp headheadtwp.nominal_b_to_tool_y 25.0
-setp headheadtwp.nominal_b_to_tool_z -180.0
+setp headheadtwp.nominal_b_to_tool_x 2.0
+setp headheadtwp.nominal_b_to_tool_y -22.0
+setp headheadtwp.nominal_b_to_tool_z -305.517
 setp headheadtwp.cal_c_to_b_x 0.0
 setp headheadtwp.cal_c_to_b_y 0.0
 setp headheadtwp.cal_c_to_b_z 0.0
@@ -25,3 +30,10 @@ setp headheadtwp.cal_b_to_tool_z 0.0
 setp headheadtwp.b_zero_offset 0.0
 setp headheadtwp.c_zero_offset 0.0
 setp headheadtwp.requested_normal_rotation 0.0
+
+# Feed the kinematics layer from the stored TWP state when motion mode is enabled.
+net headhead-twp-motion-enabled headheadtwp.motion_enabled => headheadkins.twp-mode
+net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
+net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c
+net headhead-twp-normal-rotation headheadtwp.twp_normal_rotation => headheadkins.twp-normal-rotation
+net estop-loop iocontrol.0.user-enable-out iocontrol.0.emc-enable-in => headheadtwp.machine_is_enabled

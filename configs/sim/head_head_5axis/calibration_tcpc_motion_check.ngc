@@ -1,0 +1,24 @@
+%
+(Calibration TCPC motion check)
+(Verify smooth XYZ plus B/C TCP motion after fixed-tip TCPC is proven)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G69
+G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Start pose before moving TCPC check)
+G43.4
+M0 (TCPC on)
+G1 X1550.000 Y850.000 Z-600.000 B20.000 C0.000
+M0 (Move plus X with B tilt)
+G1 X1600.000 Y950.000 Z-600.000 B20.000 C90.000
+M0 (Move plus Y with C rotation)
+G1 X1500.000 Y1000.000 Z-560.000 B0.000 C90.000
+M0 (Move X and Z while holding C90)
+G1 X1450.000 Y900.000 Z-580.000 B-30.000 C180.000
+M0 (Combined XYZ and B/C move)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Return to start pose)
+G49.1
+M0 (TCPC off)
+M2
+%
