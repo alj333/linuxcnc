@@ -1298,6 +1298,35 @@
 - Relaunched Probe Basic after the update so the cleaned-up Verify page is
   live.
 
+# 2026-03-20 - Added software acceptance matrix and fanless-PC rebuild notes
+
+- Added a formal software-hardening acceptance checklist at:
+  - `configs/sim/head_head_5axis/software_acceptance_matrix.md`
+- Current acceptance matrix covers:
+  - automated sim/runtime checks for:
+    - TWP `G0/G1`
+    - TCPC-required guard
+    - rotary rejection
+    - tool/TLO protections
+    - tooling recovery after `G69`
+    - limit reject and recovery
+    - abort / estop / re-home semantics
+    - remap queuebuster regression
+  - manual sim acceptance checks
+  - the ordered real-machine acceptance path once hardware is ready
+- Added a rebuild/migration note for the future fanless PC at:
+  - `configs/sim/head_head_5axis/fanless_pc_rebuild_notes.md`
+- Current rebuild note records the non-repo dependencies on this test machine:
+  - Probe Basic virtualenv in `/home/cnc5/dev/venv`
+  - local Probe Basic checkout in `/home/cnc5/dev/probe_basic`
+  - local QtPyVCP checkout in `/home/cnc5/dev/qtpyvcp`
+  - local QtPyVCP `hal_qlib.py` shutdown patch
+  - reduced STL directory in `/home/cnc5/Vismach/reduced`
+  - desktop launcher path
+- Updated:
+  - `configs/sim/head_head_5axis/README.md`
+- No runtime verification was needed for this documentation pass.
+
 # 2026-03-18 - Added remaining tool-state safety coverage
 
 - Added runtime regression:

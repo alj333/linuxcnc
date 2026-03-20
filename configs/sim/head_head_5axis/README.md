@@ -193,6 +193,8 @@ Current shop-facing calibration references:
 - [machine_bringup_checklist.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_bringup_checklist.md)
 - [machine_rotary_zeroing_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_rotary_zeroing_sequence.md)
 - [machine_tcp_twp_verification_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_twp_verification_sequence.md)
+- [software_acceptance_matrix.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/software_acceptance_matrix.md)
+- [fanless_pc_rebuild_notes.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/fanless_pc_rebuild_notes.md)
 - [calibration_sphere_capture_sequence.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_sphere_capture_sequence.ngc)
 - [calibration_bc_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_bc_alignment_check.ngc)
 - [calibration_tcpc_fixed_tip_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_tcpc_fixed_tip_check.ngc)
