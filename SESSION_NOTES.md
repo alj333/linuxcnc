@@ -1061,31 +1061,242 @@
   - use the reduced STL model and the live sim as the visual reference
   - use the new machine-side programs as the first structured on-machine TCP/TWP
     proof sequence before solving final calibration numbers
-  - `tests/kinematics/head-head-twp-requires-tcpc`
-    - result:
-      - `pause 1 ok`
-      - `pause 2 ok`
-      - expected interpreter error observed:
-        - `TWP mode enable requested while TCPC mode is not enabled`
-  - `tests/kinematics/head-head-twp-reject-rotary`
-    - result:
-      - `pause 1 ok`
-      - `pause 2 ok`
-      - `pause 3 ok`
-      - expected runtime error observed:
-        - `Linear move on line 11 fails kinematicsInverse`
-  - `tests/kinematics/head-head-twp-reject-tool-length`
-    - result:
-      - `pause 1 ok`
-      - `pause 2 ok`
-      - expected interpreter error observed:
-        - `Cannot change tool length compensation while TWP is active`
-  - `tests/kinematics/head-head-twp-reject-tool-change`
-    - result:
-      - `pause 1 ok`
-      - `pause 2 ok`
-      - expected interpreter error observed:
-        - `Cannot change tools while TWP is active`
+
+# 2026-03-19 - Added first-step B/C rotary zeroing workflow
+
+- Added a dedicated first-step rotary zeroing package to assist the home / zero
+  alignment of the B and C axes before TCP work:
+  - `configs/sim/head_head_5axis/machine_rotary_zeroing_sequence.md`
+  - `configs/sim/head_head_5axis/machine_b_zero_alignment_check.ngc`
+  - `configs/sim/head_head_5axis/machine_c_zero_alignment_check.ngc`
+- This is aimed at the new direct-output rotary encoders:
+  - get the zero reference right first
+  - then rely on the encoder feedback for accurate repeatable rotary positioning
+- Updated the Probe Basic `Rotary Zero Offsets` page to include:
+  - direct load buttons for the B-zero and C-zero programs
+  - rotary zeroing log fields for:
+    - B zero reference
+    - B zero observed error
+    - C zero reference
+    - C zero observed error
+    - zeroing pass result
+- Updated:
+  - `configs/sim/head_head_5axis/five_axis_calibration_procedure.md`
+  - `configs/sim/head_head_5axis/README.md`
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Verified the wizard still syntax-checks and relaunched Probe Basic after the update.
+
+# 2026-03-19 - Added first-pass solve assistant to the sphere map
+
+- Extended the Probe Basic calibration wizard so the `Sphere Map` page now
+  computes a first-pass recommended next adjustment from the captured drift
+  pattern.
+- Current solve-assistant outputs:
+  - suggested first adjustment:
+    - `B_ZERO_OFFSET`
+    - `C_ZERO_OFFSET`
+    - `cal-c-to-b`
+    - `cal-b-to-tool`
+  - supporting drift breakdown:
+    - B paired antisymmetric drift
+    - C paired antisymmetric drift
+    - B common residual
+    - C common residual
+    - mixed B/C residual
+    - overall common residual
+- The recommendation block now also gives a sign-guided first trial:
+  - small positive/negative test changes are evaluated against the current
+    sphere-map residual
+  - the wizard suggests the first small move to try, for example:
+    - positive or negative `B_ZERO_OFFSET`
+    - positive or negative `C_ZERO_OFFSET`
+    - first likely axis/sign for `cal-c-to-b`
+    - first likely axis/sign for `cal-b-to-tool`
+- The generated summary now also includes the recommended-next-adjustment block
+  so the operator record carries both the raw capture and the suggested first
+  move.
+- Updated:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Verified with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic after the update so the solve assistant is live.
+
+# 2026-03-20 - Added machine bring-up checklist to the calibration workflow
+
+- Added a dedicated operator bring-up reference:
+  - `configs/sim/head_head_5axis/machine_bringup_checklist.md`
+- Extended the Probe Basic calibration wizard `Setup` page to include:
+  - direct load buttons for:
+    - B/C alignment
+    - B zero check
+    - C zero check
+    - machine fixed-tip TCP check
+    - machine TWP granite-square check
+  - a machine bring-up checklist log with staged status fields for:
+    - power/reset
+    - home/reference
+    - probe qualification
+    - sphere setup
+    - B/C zeroing
+    - sphere map capture
+    - fixed-tip TCP
+    - moving TCP
+    - TWP check
+    - overall bring-up state
+- Updated the generated summary so the bring-up checklist status is carried in
+  the operator output along with the calibration values.
+- Updated:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+  - `configs/sim/head_head_5axis/five_axis_calibration_procedure.md`
+  - `configs/sim/head_head_5axis/README.md`
+- Verified with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic after the update so the bring-up checklist is live.
+
+# 2026-03-20 - Added bring-up recovery guidance to the Verify page
+
+- Extended the Probe Basic `Verify` page with a read-only recovery guidance
+  block that points the operator back to the first page to revisit when a
+  bring-up stage is marked `fail` or `hold`.
+- Current guidance logic:
+  - fixed-tip TCP failure -> return first to `Rotary Zero` and `Sphere Map`
+  - moving TCP failure -> return first to `B To Tool` and `C To B`
+  - TWP failure -> verify the granite-square setup, then re-check fixed-tip TCP
+  - rotary zero blocker -> return to the dedicated B/C zero checks
+  - sphere-map blocker -> return to `Probe Qual` and `Sphere Map`
+  - all key stages passed -> keep the summary as the machine record
+- The same recovery guidance is now included in the generated summary block so
+  the operator handoff carries both the calibration values and the current next
+  action if a stage failed.
+- Updated:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Verified with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic after the update so the Verify page guidance is live.
+
+# 2026-03-20 - Added pose-by-pose acceptance logging for machine verification
+
+- Extended the Probe Basic `Verify` page so the operator can log each machine
+  verification pose explicitly instead of relying only on a free-form drift
+  note.
+- Added dedicated pose-status groups for:
+  - fixed-tip TCP:
+    - `B0/C0` entry
+    - `B20/C0`
+    - `B45/C0`
+    - `B45/C90`
+    - `B0/C180`
+    - `B-30/C-90`
+    - return to `B0/C0`
+  - moving TCP:
+    - start pose
+    - each programmed XYZBC move
+    - return to start
+  - TWP:
+    - tilted start
+    - local `+U`
+    - local `+V`
+    - local `+W`
+    - return to local origin
+- The generated summary now:
+  - records compact pose-status lines for fixed-tip TCP, moving TCP, and TWP
+  - infers the first drift pose from the first `fail` or `hold` pose if the
+    operator did not fill the explicit first-drift field manually
+- Updated:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Verified with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic after the update so the pose logging is live.
+
+# 2026-03-20 - Added pose-specific follow-up guidance to machine verification
+
+- Extended the Probe Basic `Verify` page so the recovery guidance now uses the
+  first flagged machine verification pose to narrow the next likely adjustment.
+- Current pose-specific hints include:
+  - B-dominant fixed-tip failures -> look at `B_ZERO_OFFSET` first
+  - C-heavy or mixed fixed-tip failures -> look at `C_ZERO_OFFSET` and
+    C-related common residual first
+  - first moving-TCP failure on the early B-dominant move -> re-check
+    `cal-b-to-tool` and B-related geometry first
+  - first moving-TCP failure on the C-heavy or mixed moves -> re-check
+    `cal-c-to-b` / C-related geometry first
+  - TWP `+U/+V/+W` failures -> distinguish plane-entry, plane-orientation, and
+    plane-normal follow-up checks
+- The generated summary now also includes a `Pose-based follow-up` block so the
+  operator handoff carries the likely next adjustment area from the first
+  failed pose.
+- Updated:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Verified with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic after the update so the pose-specific guidance is
+  live.
+
+# 2026-03-20 - Added trial-change plans to the calibration wizard
+
+- Extended the Probe Basic machine-verification guidance so it now turns the
+  dominant sphere-map recommendation plus the first flagged machine pose into a
+  small trial-change plan.
+- Current trial plan behavior:
+  - uses the existing sign-guided first trial from the sphere-map assistant
+  - chooses a first re-check pose from the earliest failed fixed-tip, moving
+    TCP, or TWP pose when available
+  - falls back to a sensible default re-check pose for:
+    - `B_ZERO_OFFSET`
+    - `C_ZERO_OFFSET`
+    - `cal-c-to-b`
+    - `cal-b-to-tool`
+  - tells the operator what to re-run next if the first small change helps
+  - tells the operator to revert and try the runner-up adjustment if it gets
+    worse
+- The same trial plan is now included in the generated summary output under
+  `Trial change plan`.
+- Updated:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Verified with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic after the update so the trial-change plan is live.
+
+# 2026-03-20 - Added one-click suggested re-check helpers
+
+- Extended the Probe Basic `Verify` page with direct operator actions for the
+  current suggested re-check:
+  - `Load Suggested Re-check`
+  - `Go To Suggested Pose`
+- Current behavior:
+  - chooses a suggested program from the current failed pose family or dominant
+    adjustment bucket:
+    - fixed-tip TCP
+    - moving TCP
+    - TWP granite-square
+  - builds an MDI sequence for the suggested pose with the needed TCPC/TWP mode
+    setup for that pose family
+  - uses the same dominant-adjustment and first-failed-pose logic as the trial
+    change plan
+- Updated:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Verified with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic after the update so the re-check helpers are live.
+
+# 2026-03-20 - Streamlined the Verify page for operator use
+
+- Cleaned up the Probe Basic `Verify` page so the real-machine workflow is the
+  first visible path and the older sim/reference programs are separated into a
+  secondary `Reference and sim tools` section.
+- Added quick pose-log status helpers for each machine verification group:
+  - fixed-tip TCP
+  - moving TCP
+  - TWP
+- Each pose group now has one-click `Mark Pending`, `Mark Pass`, `Mark Hold`,
+  and `Mark Fail` buttons so operators do not need to edit every pose field by
+  hand during a run.
+- Updated:
+  - `configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Verified with:
+  - `python3 -m py_compile configs/sim/head_head_5axis/user_tabs/five_axis_calibration/five_axis_calibration.py`
+- Relaunched Probe Basic after the update so the cleaned-up Verify page is
+  live.
 
 # 2026-03-18 - Added remaining tool-state safety coverage
 

@@ -49,6 +49,8 @@ class UserTab(QWidget):
         self.capture_fields = {}
         self.note_fields = {}
         self.capture_preview = None
+        self.recommendation_preview = None
+        self.verify_guidance_preview = None
         self.generated_preview = None
         self.status_banner = None
         self.step_list = None
@@ -230,12 +232,37 @@ class UserTab(QWidget):
         )
         button_row.addWidget(safe_pose_button)
 
+        program_row = QHBoxLayout()
+        layout.addLayout(program_row)
+        program_row.addWidget(self._program_button("Load B/C Align", "calibration_bc_alignment_check.ngc"))
+        program_row.addWidget(self._program_button("Load B Zero", "machine_b_zero_alignment_check.ngc"))
+        program_row.addWidget(self._program_button("Load C Zero", "machine_c_zero_alignment_check.ngc"))
+        program_row.addWidget(self._program_button("Load Fixed-Tip TCP", "machine_tcp_fixed_tip_probe_check.ngc"))
+        program_row.addWidget(self._program_button("Load TWP Check", "machine_twp_granite_square_check.ngc"))
+        program_row.addStretch(1)
+
+        checklist_box = QGroupBox("Machine bring-up checklist")
+        checklist_form = QFormLayout(checklist_box)
+        checklist_form.addRow("Power-up / reset", self._metadata_entry("bringup_power_reset", "pending"))
+        checklist_form.addRow("Home / reference state", self._metadata_entry("bringup_home_state", "pending"))
+        checklist_form.addRow("Probe qualification", self._metadata_entry("bringup_probe_state", "pending"))
+        checklist_form.addRow("Sphere stand setup", self._metadata_entry("bringup_sphere_state", "pending"))
+        checklist_form.addRow("B/C zeroing", self._metadata_entry("bringup_rotary_zero_state", "pending"))
+        checklist_form.addRow("Sphere map captured", self._metadata_entry("bringup_sphere_map_state", "pending"))
+        checklist_form.addRow("Fixed-tip TCP", self._metadata_entry("bringup_fixed_tip_state", "pending"))
+        checklist_form.addRow("Moving TCP", self._metadata_entry("bringup_moving_tcp_state", "pending"))
+        checklist_form.addRow("TWP granite-square check", self._metadata_entry("bringup_twp_state", "pending"))
+        checklist_form.addRow("Overall machine bring-up", self._metadata_entry("bringup_overall_state", "pending"))
+        layout.addWidget(checklist_box)
+
         layout.addWidget(self._instruction_box("Procedure", [
-            "1. Home the machine and confirm no active TWP state.",
-            "2. Fit and verify the wireless probe before any 5-axis geometry capture.",
-            "3. Place the 20 mm sphere on the tall 45 degree stand in a reachable part of travel.",
-            "4. Keep the granite square available for the final TWP plane sanity check.",
-            "5. Use Save Draft often while building up the calibration set.",
+            "1. Power up, clear faults, and confirm the machine starts from a sane reference state.",
+            "2. Clear any leftover TWP state with G69 and confirm TCPC is off unless a step explicitly enables it.",
+            "3. Qualify the wireless probe before any 5-axis geometry capture.",
+            "4. Place the 20 mm sphere on the tall 45 degree stand in a reachable part of travel.",
+            "5. Run the B and C zero checks before trying to solve TCP drift.",
+            "6. Capture the sphere map, then move into fixed-tip TCP, moving TCP, and finally the granite-square TWP check.",
+            "7. Use Save Draft often while building up the calibration set.",
         ]))
 
         layout.addWidget(self._notes_box(
@@ -329,6 +356,11 @@ class UserTab(QWidget):
         self.capture_preview.setMinimumHeight(180)
         layout.addWidget(self.capture_preview)
 
+        self.recommendation_preview = QPlainTextEdit()
+        self.recommendation_preview.setReadOnly(True)
+        self.recommendation_preview.setMinimumHeight(170)
+        layout.addWidget(self.recommendation_preview)
+
         layout.addWidget(self._instruction_box("Capture sequence", [
             "1. Run the capture sequence program or move manually to each listed B/C pose.",
             "2. At each stop, probe the 20 mm sphere center with the same probing routine.",
@@ -346,8 +378,8 @@ class UserTab(QWidget):
     def _build_rotary_page(self):
         page, layout = self._page_shell(
             "Rotary Zero Offsets",
-            "Use the qualified probe and the mounted 20 mm sphere to confirm the angular zero "
-            "corrections needed to make B0/C0 and a second rotary pose match the expected head orientation.",
+            "Use the direct-output rotary encoders, the granite square, and the mounted sphere setup to establish "
+            "believable B0/C0 first, then refine the angular zero corrections from repeatable checks.",
         )
 
         layout.addWidget(self._current_baseline_box("Current defaults", {
@@ -365,14 +397,26 @@ class UserTab(QWidget):
         layout.addLayout(pose_row)
         pose_row.addWidget(self._mdi_button("Check B0 C0", "G0 X1500 Y850 Z-600 B0 C0"))
         pose_row.addWidget(self._mdi_button("Check B45 C90", "G0 X1500 Y850 Z-600 B45 C90"))
+        pose_row.addWidget(self._program_button("Load B Zero Check", "machine_b_zero_alignment_check.ngc"))
+        pose_row.addWidget(self._program_button("Load C Zero Check", "machine_c_zero_alignment_check.ngc"))
         pose_row.addStretch(1)
 
+        zero_box = QGroupBox("Rotary zeroing log")
+        zero_form = QFormLayout(zero_box)
+        zero_form.addRow("B zero reference", self._metadata_entry("b_zero_reference", "granite square"))
+        zero_form.addRow("B zero observed error", self._metadata_entry("b_zero_observed_error", ""))
+        zero_form.addRow("C zero reference", self._metadata_entry("c_zero_reference", "machine-forward reference"))
+        zero_form.addRow("C zero observed error", self._metadata_entry("c_zero_observed_error", ""))
+        zero_form.addRow("Zeroing pass result", self._metadata_entry("rotary_zero_pass_result", "pending"))
+        layout.addWidget(zero_box)
+
         layout.addWidget(self._instruction_box("How to measure", [
-            "1. Start from the sphere capture map and look at the B plus/B minus and C plus/C minus drift symmetry.",
-            "2. Use rotary zero offsets to reduce the paired directional error first, before touching geometry corrections.",
-            "3. Re-check at B45/C90 or another reachable mixed pose to confirm the chosen sign convention still helps.",
-            "4. Use the granite square only as a secondary visual check, not the primary source of zero-offset values.",
-            "5. Enter only the extra rotary correction needed beyond the nominal zero model.",
+            "1. Run the dedicated B zero and C zero alignment programs before trying to solve TCP drift.",
+            "2. Because the encoders are mounted directly on the gearbox output, zero the rotary reference first and trust the feedback after that.",
+            "3. Use the granite square as the primary B0 reference and a clear spindle-facing machine reference for C0.",
+            "4. After B0/C0 are believable, use the sphere capture map to trim the remaining paired B and C drift symmetry.",
+            "5. Re-check at B45/C90 or another reachable mixed pose to confirm the chosen sign convention still helps.",
+            "6. Enter only the extra rotary correction needed beyond the nominal zero model.",
         ]))
 
         layout.addWidget(self._notes_box(
@@ -456,24 +500,28 @@ class UserTab(QWidget):
     def _build_verify_page(self):
         page, layout = self._page_shell(
             "Verification",
-            "After updating offsets, verify fixed-tip TCPC, moving TCP motion, and tilted-plane motion "
-            "using the current sample programs, the 20 mm sphere, and the granite square.",
+            "Run the real-machine verification path first: fixed-tip TCP, moving TCP, then the granite-square "
+            "TWP check. The older sim/reference programs stay available here as secondary debug tools only.",
         )
 
-        grid = QGridLayout()
-        layout.addLayout(grid)
+        machine_box = QGroupBox("Machine verification workflow")
+        machine_grid = QGridLayout(machine_box)
+        machine_grid.addWidget(self._program_button("1. Load Machine Fixed-Tip", "machine_tcp_fixed_tip_probe_check.ngc"), 0, 0)
+        machine_grid.addWidget(self._program_button("2. Load Machine Moving TCP", "machine_tcp_motion_probe_check.ngc"), 0, 1)
+        machine_grid.addWidget(self._program_button("3. Load Machine TWP Check", "machine_twp_granite_square_check.ngc"), 1, 0)
+        machine_grid.addWidget(self._mdi_button("Enable TCPC", "G43.4"), 1, 1)
+        machine_grid.addWidget(self._mdi_button("Cancel TWP", "G69"), 2, 0)
+        machine_grid.addWidget(self._mdi_button("Disable TCPC", "G49.1"), 2, 1)
+        machine_grid.addWidget(self._mdi_button("Tilt Pose", "G0 X1500 Y850 Z-600 B45 C90"), 3, 0)
+        layout.addWidget(machine_box)
 
-        grid.addWidget(self._program_button("Load B/C Alignment", "calibration_bc_alignment_check.ngc"), 0, 0)
-        grid.addWidget(self._program_button("Load Fixed-Tip TCPC", "calibration_tcpc_fixed_tip_check.ngc"), 0, 1)
-        grid.addWidget(self._program_button("Load Moving TCPC", "calibration_tcpc_motion_check.ngc"), 1, 0)
-        grid.addWidget(self._program_button("Load TWP Demo", "twp_g68_2_fresh_demo.ngc"), 1, 1)
-        grid.addWidget(self._program_button("Load Machine Fixed-Tip", "machine_tcp_fixed_tip_probe_check.ngc"), 2, 0)
-        grid.addWidget(self._program_button("Load Machine Moving TCP", "machine_tcp_motion_probe_check.ngc"), 2, 1)
-        grid.addWidget(self._program_button("Load Machine TWP Check", "machine_twp_granite_square_check.ngc"), 3, 0)
-        grid.addWidget(self._mdi_button("Enable TCPC", "G43.4"), 3, 1)
-        grid.addWidget(self._mdi_button("Cancel TWP", "G69"), 4, 0)
-        grid.addWidget(self._mdi_button("Disable TCPC", "G49.1"), 4, 1)
-        grid.addWidget(self._mdi_button("Tilt Pose", "G0 X1500 Y850 Z-600 B45 C90"), 5, 0)
+        reference_box = QGroupBox("Reference and sim tools")
+        reference_grid = QGridLayout(reference_box)
+        reference_grid.addWidget(self._program_button("Load B/C Alignment", "calibration_bc_alignment_check.ngc"), 0, 0)
+        reference_grid.addWidget(self._program_button("Load Fixed-Tip TCPC", "calibration_tcpc_fixed_tip_check.ngc"), 0, 1)
+        reference_grid.addWidget(self._program_button("Load Moving TCPC", "calibration_tcpc_motion_check.ngc"), 1, 0)
+        reference_grid.addWidget(self._program_button("Load TWP Demo", "twp_g68_2_fresh_demo.ngc"), 1, 1)
+        layout.addWidget(reference_box)
 
         verify_log = QGroupBox("Machine verification log")
         verify_form = QFormLayout(verify_log)
@@ -514,6 +562,54 @@ class UserTab(QWidget):
             self._metadata_entry("verify_twp_likely_cause", ""),
         )
         layout.addWidget(verify_log)
+
+        fixed_tip_box = QGroupBox("Fixed-tip TCP pose log")
+        fixed_tip_form = QFormLayout(fixed_tip_box)
+        fixed_tip_form.addRow("B0 C0 entry", self._metadata_entry("verify_fixed_tip_pose_b0_c0_entry", "pending"))
+        fixed_tip_form.addRow("B20 C0", self._metadata_entry("verify_fixed_tip_pose_b20_c0", "pending"))
+        fixed_tip_form.addRow("B45 C0", self._metadata_entry("verify_fixed_tip_pose_b45_c0", "pending"))
+        fixed_tip_form.addRow("B45 C90", self._metadata_entry("verify_fixed_tip_pose_b45_c90", "pending"))
+        fixed_tip_form.addRow("B0 C180", self._metadata_entry("verify_fixed_tip_pose_b0_c180", "pending"))
+        fixed_tip_form.addRow("B-30 C-90", self._metadata_entry("verify_fixed_tip_pose_bneg30_cneg90", "pending"))
+        fixed_tip_form.addRow("Return B0 C0", self._metadata_entry("verify_fixed_tip_pose_return_b0_c0", "pending"))
+        fixed_tip_form.addRow(self._pose_group_button_row("fixed_tip"))
+        layout.addWidget(fixed_tip_box)
+
+        moving_box = QGroupBox("Moving TCP pose log")
+        moving_form = QFormLayout(moving_box)
+        moving_form.addRow("Start clear pose", self._metadata_entry("verify_moving_pose_start", "pending"))
+        moving_form.addRow("X1550 Y850 Z-600 B20 C0", self._metadata_entry("verify_moving_pose_x1550_y850_z600_b20_c0", "pending"))
+        moving_form.addRow("X1600 Y950 Z-600 B20 C90", self._metadata_entry("verify_moving_pose_x1600_y950_z600_b20_c90", "pending"))
+        moving_form.addRow("X1500 Y1000 Z-560 B0 C90", self._metadata_entry("verify_moving_pose_x1500_y1000_z560_b0_c90", "pending"))
+        moving_form.addRow("X1450 Y900 Z-580 B-30 C180", self._metadata_entry("verify_moving_pose_x1450_y900_z580_bneg30_c180", "pending"))
+        moving_form.addRow("Return start pose", self._metadata_entry("verify_moving_pose_return_start", "pending"))
+        moving_form.addRow(self._pose_group_button_row("moving_tcp"))
+        layout.addWidget(moving_box)
+
+        twp_box = QGroupBox("TWP pose log")
+        twp_form = QFormLayout(twp_box)
+        twp_form.addRow("Tilted start pose", self._metadata_entry("verify_twp_pose_start", "pending"))
+        twp_form.addRow("Local +U", self._metadata_entry("verify_twp_pose_u_plus", "pending"))
+        twp_form.addRow("Local +V", self._metadata_entry("verify_twp_pose_v_plus", "pending"))
+        twp_form.addRow("Local +W", self._metadata_entry("verify_twp_pose_w_plus", "pending"))
+        twp_form.addRow("Return local origin", self._metadata_entry("verify_twp_pose_return_origin", "pending"))
+        twp_form.addRow(self._pose_group_button_row("twp"))
+        layout.addWidget(twp_box)
+
+        self.verify_guidance_preview = QPlainTextEdit()
+        self.verify_guidance_preview.setReadOnly(True)
+        self.verify_guidance_preview.setMinimumHeight(190)
+        layout.addWidget(self.verify_guidance_preview)
+
+        recheck_row = QHBoxLayout()
+        layout.addLayout(recheck_row)
+        load_recheck_button = QPushButton("Load Suggested Re-check")
+        load_recheck_button.clicked.connect(self._load_suggested_recheck)
+        recheck_row.addWidget(load_recheck_button)
+        go_recheck_button = QPushButton("Go To Suggested Pose")
+        go_recheck_button.clicked.connect(self._go_to_suggested_recheck_pose)
+        recheck_row.addWidget(go_recheck_button)
+        recheck_row.addStretch(1)
 
         layout.addWidget(self._instruction_box("Acceptance checks", [
             "1. B/C alignment check: verify basic rotary direction and zero logic with TCPC off.",
@@ -595,6 +691,25 @@ class UserTab(QWidget):
         self.note_fields[key] = edit
         return box
 
+    def _pose_group_button_row(self, group_name):
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        for label, value in (
+            ("Mark Pending", "pending"),
+            ("Mark Pass", "pass"),
+            ("Mark Hold", "hold"),
+            ("Mark Fail", "fail"),
+        ):
+            button = QPushButton(label)
+            button.clicked.connect(
+                lambda _checked=False, group=group_name, status=value: self._set_pose_group_status(group, status)
+            )
+            layout.addWidget(button)
+        layout.addStretch(1)
+        return row
+
     def _mdi_button(self, label, command):
         button = QPushButton(label)
         button.clicked.connect(lambda: self._issue_mdi(command))
@@ -629,6 +744,19 @@ class UserTab(QWidget):
         except linuxcnc.error as exc:
             self._set_status(f"MDI error: {exc}", error=True)
             QMessageBox.warning(self, "MDI error", str(exc))
+
+    def _issue_mdi_sequence(self, commands):
+        try:
+            self.command.mode(linuxcnc.MODE_MDI)
+            self.command.wait_complete()
+            for command in commands:
+                self.command.mdi(command)
+                self.command.wait_complete()
+            if commands:
+                self._set_status(f"MDI sequence sent: {commands[-1]}")
+        except linuxcnc.error as exc:
+            self._set_status(f"MDI sequence error: {exc}", error=True)
+            QMessageBox.warning(self, "MDI sequence error", str(exc))
 
     def _load_program(self, path):
         try:
@@ -667,6 +795,245 @@ class UserTab(QWidget):
     def _format_vec(self, vec):
         return f"({vec[0]:+.3f}, {vec[1]:+.3f}, {vec[2]:+.3f})"
 
+    def _vec_mag(self, vec):
+        return (vec[0] ** 2 + vec[1] ** 2 + vec[2] ** 2) ** 0.5
+
+    def _vec_sub(self, a, b):
+        return (
+            a[0] - b[0],
+            a[1] - b[1],
+            a[2] - b[2],
+        )
+
+    def _vec_avg(self, a, b):
+        return (
+            (a[0] + b[0]) / 2.0,
+            (a[1] + b[1]) / 2.0,
+            (a[2] + b[2]) / 2.0,
+        )
+
+    def _vec_half_diff(self, a, b):
+        return (
+            (a[0] - b[0]) / 2.0,
+            (a[1] - b[1]) / 2.0,
+            (a[2] - b[2]) / 2.0,
+        )
+
+    def _capture_ready(self):
+        required = ("ref_x", "ref_y", "ref_z", "b_pos_x", "b_neg_x", "c_pos_x", "c_neg_x")
+        return all(self.capture_fields[key].text().strip() for key in required)
+
+    def _rotate_y(self, angle_deg, vec):
+        angle = math.radians(angle_deg)
+        c = math.cos(angle)
+        s = math.sin(angle)
+        x, y, z = vec
+        return (
+            c * x + s * z,
+            y,
+            -s * x + c * z,
+        )
+
+    def _rotate_z(self, angle_deg, vec):
+        angle = math.radians(angle_deg)
+        c = math.cos(angle)
+        s = math.sin(angle)
+        x, y, z = vec
+        return (
+            c * x - s * y,
+            s * x + c * y,
+            z,
+        )
+
+    def _capture_pose_targets(self):
+        return {
+            "b_pos": (45.0, 0.0),
+            "b_neg": (-45.0, 0.0),
+            "c_pos": (0.0, 90.0),
+            "c_neg": (0.0, -90.0),
+            "bc_mix": (45.0, 90.0),
+        }
+
+    def _current_model_params(self):
+        return {
+            "c_to_b": (
+                self.baseline["c_to_b"]["x"] + self._float_value("cal_c_to_b_x"),
+                self.baseline["c_to_b"]["y"] + self._float_value("cal_c_to_b_y"),
+                self.baseline["c_to_b"]["z"] + self._float_value("cal_c_to_b_z"),
+            ),
+            "b_to_tool": (
+                self.baseline["b_to_tool"]["x"] + self._float_value("cal_b_to_tool_x"),
+                self.baseline["b_to_tool"]["y"] + self._float_value("cal_b_to_tool_y"),
+                self.baseline["b_to_tool"]["z"] + self._float_value("cal_b_to_tool_z"),
+            ),
+            "b_zero": self._float_value("b_zero_offset"),
+            "c_zero": self._float_value("c_zero_offset"),
+        }
+
+    def _tool_offset_world(self, params, b_cmd, c_cmd):
+        b_eff = b_cmd + params["b_zero"]
+        c_eff = c_cmd + params["c_zero"]
+        b_rotated = self._rotate_y(b_eff, params["b_to_tool"])
+        c_frame = (
+            params["c_to_b"][0] + b_rotated[0],
+            params["c_to_b"][1] + b_rotated[1],
+            params["c_to_b"][2] + b_rotated[2],
+        )
+        return self._rotate_z(c_eff, c_frame)
+
+    def _predicted_capture_deltas(self, params):
+        ref_offset = self._tool_offset_world(params, 0.0, 0.0)
+        predicted = {}
+        for prefix, (b_deg, c_deg) in self._capture_pose_targets().items():
+            pose_offset = self._tool_offset_world(params, b_deg, c_deg)
+            predicted[prefix] = self._vec_sub(ref_offset, pose_offset)
+        return predicted
+
+    def _measured_capture_deltas(self):
+        return {
+            "b_pos": self._capture_delta("b_pos"),
+            "b_neg": self._capture_delta("b_neg"),
+            "c_pos": self._capture_delta("c_pos"),
+            "c_neg": self._capture_delta("c_neg"),
+            "bc_mix": self._capture_delta("bc_mix"),
+        }
+
+    def _residual_score(self, params):
+        measured = self._measured_capture_deltas()
+        predicted = self._predicted_capture_deltas(params)
+        total = 0.0
+        for key, measured_vec in measured.items():
+            residual = self._vec_sub(measured_vec, predicted[key])
+            total += self._vec_mag(residual) ** 2
+        return total ** 0.5
+
+    def _trial_hint(self, ranked_name):
+        params = self._current_model_params()
+        base_score = self._residual_score(params)
+
+        if ranked_name == "B_ZERO_OFFSET":
+            trials = [(-0.1, "negative"), (0.1, "positive")]
+            best = None
+            for delta, label in trials:
+                trial = dict(params)
+                trial["b_zero"] = params["b_zero"] + delta
+                score = self._residual_score(trial)
+                if best is None or score < best[0]:
+                    best = (score, delta, label)
+            if best and best[0] < base_score:
+                return f"Suggested first trial: {best[2]} B zero change (~{best[1]:+.3f} deg), then re-check B+/B-."
+            return "Suggested first trial: B zero bucket is dominant, but the sign is still ambiguous. Try a very small change and re-capture B+/B-."
+
+        if ranked_name == "C_ZERO_OFFSET":
+            trials = [(-0.1, "negative"), (0.1, "positive")]
+            best = None
+            for delta, label in trials:
+                trial = dict(params)
+                trial["c_zero"] = params["c_zero"] + delta
+                score = self._residual_score(trial)
+                if best is None or score < best[0]:
+                    best = (score, delta, label)
+            if best and best[0] < base_score:
+                return f"Suggested first trial: {best[2]} C zero change (~{best[1]:+.3f} deg), then re-check C+/C-."
+            return "Suggested first trial: C zero bucket is dominant, but the sign is still ambiguous. Try a very small change and re-capture C+/C-."
+
+        if ranked_name in ("cal-c-to-b", "cal-b-to-tool"):
+            field = "c_to_b" if ranked_name == "cal-c-to-b" else "b_to_tool"
+            best = None
+            for axis_index, axis_name in enumerate(("x", "y", "z")):
+                for delta, label in ((-0.1, "negative"), (0.1, "positive")):
+                    trial = {
+                        "c_to_b": list(params["c_to_b"]),
+                        "b_to_tool": list(params["b_to_tool"]),
+                        "b_zero": params["b_zero"],
+                        "c_zero": params["c_zero"],
+                    }
+                    trial[field][axis_index] += delta
+                    trial["c_to_b"] = tuple(trial["c_to_b"])
+                    trial["b_to_tool"] = tuple(trial["b_to_tool"])
+                    score = self._residual_score(trial)
+                    if best is None or score < best[0]:
+                        best = (score, axis_name, delta, label)
+            if best and best[0] < base_score:
+                return (
+                    f"Suggested first trial: {best[3]} {ranked_name}.{best[1]} change "
+                    f"(~{best[2]:+.3f} mm), then re-capture the sphere map."
+                )
+            return f"Suggested first trial: {ranked_name} looks dominant, but no clean sign stands out yet. Try a very small single-axis change and re-capture."
+
+        return ""
+
+    def _recommendation_lines(self):
+        if not self._capture_ready():
+            return [
+                "Recommended next adjustment",
+                "",
+                "Capture at least the reference, B plus/B minus, and C plus/C minus sphere centers",
+                "before using the solve assistant.",
+            ]
+
+        b_pos = self._capture_delta("b_pos")
+        b_neg = self._capture_delta("b_neg")
+        c_pos = self._capture_delta("c_pos")
+        c_neg = self._capture_delta("c_neg")
+        bc_mix = self._capture_delta("bc_mix")
+
+        b_common = self._vec_avg(b_pos, b_neg)
+        b_antisym = self._vec_half_diff(b_pos, b_neg)
+        c_common = self._vec_avg(c_pos, c_neg)
+        c_antisym = self._vec_half_diff(c_pos, c_neg)
+        global_common = self._vec_avg(b_common, c_common)
+
+        b_zero_score = self._vec_mag(b_antisym)
+        c_zero_score = self._vec_mag(c_antisym)
+        c_to_b_score = self._vec_mag(c_common)
+        b_to_tool_score = max(self._vec_mag(b_common), self._vec_mag(bc_mix))
+
+        ranked = [
+            ("B_ZERO_OFFSET", b_zero_score, "B plus/B minus drift flips around zero and is larger than the C pair."),
+            ("C_ZERO_OFFSET", c_zero_score, "C plus/C minus drift flips around zero and is larger than the B pair."),
+            ("cal-c-to-b", c_to_b_score, "C-related poses share a common residual after the paired zero error is separated."),
+            ("cal-b-to-tool", b_to_tool_score, "B-related and mixed poses keep a common residual after zero is separated."),
+        ]
+        ranked.sort(key=lambda item: item[1], reverse=True)
+
+        lines = [
+            "Recommended next adjustment",
+            "",
+            f"1. {ranked[0][0]}",
+            f"   Reason: {ranked[0][2]}",
+            f"   Score: {ranked[0][1]:.3f} mm",
+            f"   {self._trial_hint(ranked[0][0])}",
+            "",
+            "Supporting drift summary",
+            f"- B paired antisymmetric drift: {self._format_vec(b_antisym)} |mag|={b_zero_score:.3f}",
+            f"- C paired antisymmetric drift: {self._format_vec(c_antisym)} |mag|={c_zero_score:.3f}",
+            f"- B common residual: {self._format_vec(b_common)} |mag|={self._vec_mag(b_common):.3f}",
+            f"- C common residual: {self._format_vec(c_common)} |mag|={self._vec_mag(c_common):.3f}",
+            f"- Mixed BC residual: {self._format_vec(bc_mix)} |mag|={self._vec_mag(bc_mix):.3f}",
+            f"- Overall common residual: {self._format_vec(global_common)} |mag|={self._vec_mag(global_common):.3f}",
+        ]
+
+        if ranked[0][1] < 0.01:
+            lines.extend([
+                "",
+                "No dominant error is visible yet. Re-check repeatability before changing offsets.",
+            ])
+        else:
+            runner_up = ranked[1]
+            lines.extend([
+                "",
+                f"Second look if the first change does not help: {runner_up[0]}",
+                f"Reason: {runner_up[2]}",
+            ])
+        return lines
+
+    def _dominant_adjustment_name(self):
+        for line in self._recommendation_lines():
+            if line.startswith("1. "):
+                return line[3:].strip()
+        return ""
+
     def _update_capture_preview(self):
         if self.capture_preview is None:
             return
@@ -692,29 +1059,407 @@ class UserTab(QWidget):
             "- common remaining drift after zero cleanup points toward geometry correction",
         ]
         self.capture_preview.setPlainText("\n".join(lines))
+        if self.recommendation_preview is not None:
+            self.recommendation_preview.setPlainText("\n".join(self._recommendation_lines()))
+        if self.verify_guidance_preview is not None:
+            self.verify_guidance_preview.setPlainText("\n".join(self._verify_guidance_lines()))
+
+    def _status_bucket(self, key):
+        return self._metadata_value(key, "pending").strip().lower()
+
+    def _first_flagged_pose(self, pose_keys):
+        for label, key in pose_keys:
+            if self._status_bucket(key) in ("fail", "hold"):
+                return label
+        return ""
+
+    def _pose_status_line(self, pose_keys):
+        parts = []
+        for label, key in pose_keys:
+            parts.append(f"{label}={self._metadata_value(key, 'pending')}")
+        return ", ".join(parts)
+
+    def _set_pose_group_status(self, group_name, status):
+        pose_group = self._verify_pose_groups().get(group_name, [])
+        for _label, key in pose_group:
+            field = self.metadata_fields.get(key)
+            if field is not None:
+                field.setText(status)
+        self._set_status(f"Set {group_name} pose states to {status}.")
+
+    def _verify_pose_groups(self):
+        return {
+            "fixed_tip": [
+                ("B0/C0 entry", "verify_fixed_tip_pose_b0_c0_entry"),
+                ("B20/C0", "verify_fixed_tip_pose_b20_c0"),
+                ("B45/C0", "verify_fixed_tip_pose_b45_c0"),
+                ("B45/C90", "verify_fixed_tip_pose_b45_c90"),
+                ("B0/C180", "verify_fixed_tip_pose_b0_c180"),
+                ("B-30/C-90", "verify_fixed_tip_pose_bneg30_cneg90"),
+                ("Return B0/C0", "verify_fixed_tip_pose_return_b0_c0"),
+            ],
+            "moving_tcp": [
+                ("Start", "verify_moving_pose_start"),
+                ("X1550 Y850 Z-600 B20 C0", "verify_moving_pose_x1550_y850_z600_b20_c0"),
+                ("X1600 Y950 Z-600 B20 C90", "verify_moving_pose_x1600_y950_z600_b20_c90"),
+                ("X1500 Y1000 Z-560 B0 C90", "verify_moving_pose_x1500_y1000_z560_b0_c90"),
+                ("X1450 Y900 Z-580 B-30 C180", "verify_moving_pose_x1450_y900_z580_bneg30_c180"),
+                ("Return start", "verify_moving_pose_return_start"),
+            ],
+            "twp": [
+                ("Tilted start", "verify_twp_pose_start"),
+                ("Local +U", "verify_twp_pose_u_plus"),
+                ("Local +V", "verify_twp_pose_v_plus"),
+                ("Local +W", "verify_twp_pose_w_plus"),
+                ("Return origin", "verify_twp_pose_return_origin"),
+            ],
+        }
+
+    def _pose_focus_lines(self):
+        pose_groups = self._verify_pose_groups()
+        fixed_tip_pose = self._first_flagged_pose(pose_groups["fixed_tip"])
+        moving_pose = self._first_flagged_pose(pose_groups["moving_tcp"])
+        twp_pose = self._first_flagged_pose(pose_groups["twp"])
+
+        if fixed_tip_pose in ("B20/C0", "B45/C0"):
+            return [
+                "Pose-based follow-up",
+                "",
+                f"First fixed-tip issue appears at {fixed_tip_pose}.",
+                "This is still a B-dominant pose. Check B zero first, then re-check B-related sphere-map drift before changing mixed geometry.",
+            ]
+
+        if fixed_tip_pose in ("B45/C90", "B0/C180", "B-30/C-90"):
+            return [
+                "Pose-based follow-up",
+                "",
+                f"First fixed-tip issue appears at {fixed_tip_pose}.",
+                "This is already a C or mixed rotary pose. Check C zero and the C-related common residual before moving on to B-to-tool changes.",
+            ]
+
+        if fixed_tip_pose == "Return B0/C0":
+            return [
+                "Pose-based follow-up",
+                "",
+                "The first fixed-tip issue is the return to B0/C0.",
+                "Check repeatability first: probe qualification, rotary return consistency, and whether the sphere setup moved during the test.",
+            ]
+
+        if moving_pose == "X1550 Y850 Z-600 B20 C0":
+            return [
+                "Pose-based follow-up",
+                "",
+                "The first moving-TCP issue appears on the first B-dominant move.",
+                "Check B-to-tool and B-related zero/geometry before chasing the later C-heavy poses.",
+            ]
+
+        if moving_pose in ("X1600 Y950 Z-600 B20 C90", "X1500 Y1000 Z-560 B0 C90"):
+            return [
+                "Pose-based follow-up",
+                "",
+                f"The first moving-TCP issue appears at {moving_pose}.",
+                "That is a C-heavy move. Check C zero and C-to-B geometry before changing the B-to-tool offset again.",
+            ]
+
+        if moving_pose == "X1450 Y900 Z-580 B-30 C180":
+            return [
+                "Pose-based follow-up",
+                "",
+                "The first moving-TCP issue appears on the mixed negative pose.",
+                "Check the common geometry terms next, especially C-to-B first, then confirm the B-to-tool correction still helps across mixed poses.",
+            ]
+
+        if moving_pose == "Return start":
+            return [
+                "Pose-based follow-up",
+                "",
+                "The path looked acceptable until the return-to-start check.",
+                "Check repeatability and whether the zero/reference state is drifting between passes before making a larger geometry change.",
+            ]
+
+        if twp_pose == "Local +U":
+            return [
+                "Pose-based follow-up",
+                "",
+                "The first TWP issue appears on local +U.",
+                "Check the entry B/C pose and confirm the active TWP definition matches the intended stored plane before changing plane-normal assumptions.",
+            ]
+
+        if twp_pose == "Local +V":
+            return [
+                "Pose-based follow-up",
+                "",
+                "The first TWP issue appears on local +V.",
+                "That usually points to plane-orientation trouble rather than pure TCP length. Re-check the chosen B/C pose and C-related alignment first.",
+            ]
+
+        if twp_pose == "Local +W":
+            return [
+                "Pose-based follow-up",
+                "",
+                "The first TWP issue appears on local +W.",
+                "That is the plane-normal move. Re-check TCP credibility first, then confirm the tilted-plane normal is being established from the intended pose.",
+            ]
+
+        if twp_pose == "Return origin":
+            return [
+                "Pose-based follow-up",
+                "",
+                "The TWP path looks acceptable until the return-to-origin check.",
+                "Check local-origin setup and whether the stored plane is being canceled and re-entered consistently.",
+            ]
+
+        return [
+            "Pose-based follow-up",
+            "",
+            "No pose-specific issue is marked yet.",
+            "Use the first failed pose fields if you want the wizard to narrow the next adjustment further.",
+        ]
+
+    def _preferred_recheck_pose(self, adjustment_name):
+        pose_groups = self._verify_pose_groups()
+        fixed_tip_pose = self._first_flagged_pose(pose_groups["fixed_tip"])
+        moving_pose = self._first_flagged_pose(pose_groups["moving_tcp"])
+        twp_pose = self._first_flagged_pose(pose_groups["twp"])
+
+        if fixed_tip_pose:
+            return fixed_tip_pose
+        if moving_pose:
+            return moving_pose
+        if twp_pose:
+            return twp_pose
+
+        defaults = {
+            "B_ZERO_OFFSET": "B45/C0",
+            "C_ZERO_OFFSET": "B45/C90",
+            "cal-c-to-b": "X1600 Y950 Z-600 B20 C90",
+            "cal-b-to-tool": "X1550 Y850 Z-600 B20 C0",
+        }
+        return defaults.get(adjustment_name, "")
+
+    def _suggested_recheck_program_filename(self):
+        pose_groups = self._verify_pose_groups()
+        fixed_tip_pose = self._first_flagged_pose(pose_groups["fixed_tip"])
+        moving_pose = self._first_flagged_pose(pose_groups["moving_tcp"])
+        twp_pose = self._first_flagged_pose(pose_groups["twp"])
+        dominant = self._dominant_adjustment_name()
+
+        if twp_pose:
+            return "machine_twp_granite_square_check.ngc"
+        if moving_pose:
+            return "machine_tcp_motion_probe_check.ngc"
+        if fixed_tip_pose:
+            return "machine_tcp_fixed_tip_probe_check.ngc"
+
+        defaults = {
+            "B_ZERO_OFFSET": "machine_tcp_fixed_tip_probe_check.ngc",
+            "C_ZERO_OFFSET": "machine_tcp_fixed_tip_probe_check.ngc",
+            "cal-c-to-b": "machine_tcp_motion_probe_check.ngc",
+            "cal-b-to-tool": "machine_tcp_motion_probe_check.ngc",
+        }
+        return defaults.get(dominant, "")
+
+    def _suggested_recheck_sequence(self):
+        pose = self._preferred_recheck_pose(self._dominant_adjustment_name())
+        fixed_tip_targets = {
+            "B0/C0 entry": "G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000",
+            "B20/C0": "G1 X1500.000 Y850.000 Z-600.000 B20.000 C0.000",
+            "B45/C0": "G1 X1500.000 Y850.000 Z-600.000 B45.000 C0.000",
+            "B45/C90": "G1 X1500.000 Y850.000 Z-600.000 B45.000 C90.000",
+            "B0/C180": "G1 X1500.000 Y850.000 Z-600.000 B0.000 C180.000",
+            "B-30/C-90": "G1 X1500.000 Y850.000 Z-600.000 B-30.000 C-90.000",
+            "Return B0/C0": "G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000",
+        }
+        moving_targets = {
+            "Start": "G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000",
+            "X1550 Y850 Z-600 B20 C0": "G1 X1550.000 Y850.000 Z-600.000 B20.000 C0.000",
+            "X1600 Y950 Z-600 B20 C90": "G1 X1600.000 Y950.000 Z-600.000 B20.000 C90.000",
+            "X1500 Y1000 Z-560 B0 C90": "G1 X1500.000 Y1000.000 Z-560.000 B0.000 C90.000",
+            "X1450 Y900 Z-580 B-30 C180": "G1 X1450.000 Y900.000 Z-580.000 B-30.000 C180.000",
+            "Return start": "G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000",
+        }
+        twp_targets = {
+            "Tilted start": ["G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000"],
+            "Local +U": ["G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000", "G68.2 B45.0 C90.0", "G0 X100.0 Y0.0 Z0.0"],
+            "Local +V": ["G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000", "G68.2 B45.0 C90.0", "G1 X100.0 Y120.0 Z0.0"],
+            "Local +W": ["G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000", "G68.2 B45.0 C90.0", "G1 X100.0 Y120.0 Z40.0"],
+            "Return origin": ["G0 X1500.000 Y850.000 Z-600.000 B45.000 C90.000", "G68.2 B45.0 C90.0", "G1 X0.0 Y0.0 Z0.0"],
+        }
+
+        if pose in fixed_tip_targets:
+            return ["G69", "G43.4", "G94 F1200", fixed_tip_targets[pose]]
+        if pose in moving_targets:
+            return ["G69", "G43.4", "G94 F1200", moving_targets[pose]]
+        if pose in twp_targets:
+            return ["G69", "G43.4", "G94 F1200", *twp_targets[pose]]
+        return []
+
+    def _load_suggested_recheck(self):
+        filename = self._suggested_recheck_program_filename()
+        if not filename:
+            self._set_status("No suggested re-check program is available yet.", error=True)
+            return
+        self._load_program(str(CONFIG_DIR / filename))
+
+    def _go_to_suggested_recheck_pose(self):
+        commands = self._suggested_recheck_sequence()
+        if not commands:
+            self._set_status("No suggested re-check pose is available yet.", error=True)
+            return
+        self._issue_mdi_sequence(commands)
+
+    def _trial_change_plan_lines(self):
+        dominant = self._dominant_adjustment_name()
+        if not dominant:
+            return [
+                "Trial change plan",
+                "",
+                "Capture the sphere map first so the wizard can propose a controlled first trial.",
+            ]
+
+        recheck_pose = self._preferred_recheck_pose(dominant)
+        lines = [
+            "Trial change plan",
+            "",
+            self._trial_hint(dominant),
+        ]
+
+        if recheck_pose:
+            lines.append(f"Re-run first: {recheck_pose}")
+        else:
+            lines.append("Re-run first: the earliest pose that showed drift in the current test.")
+
+        if dominant in ("B_ZERO_OFFSET", "C_ZERO_OFFSET"):
+            lines.append("If that pose improves, re-run the paired fixed-tip checks before touching geometry corrections.")
+        elif dominant == "cal-c-to-b":
+            lines.append("If that pose improves, re-run the C-heavy moving-TCP or mixed fixed-tip poses before changing B-to-tool.")
+        elif dominant == "cal-b-to-tool":
+            lines.append("If that pose improves, re-run the early B-dominant moving-TCP pose and then the fixed-tip B checks.")
+
+        lines.append("If it gets worse, revert the trial change and move to the runner-up adjustment from the sphere-map recommendation.")
+        return lines
+
+    def _verify_guidance_lines(self):
+        fixed_tip = self._status_bucket("verify_fixed_tip_result")
+        moving_tcp = self._status_bucket("verify_moving_tcp_result")
+        twp = self._status_bucket("verify_twp_result")
+        rotary = self._status_bucket("bringup_rotary_zero_state")
+        sphere_map = self._status_bucket("bringup_sphere_map_state")
+        overall = self._status_bucket("bringup_overall_state")
+
+        lines = [
+            "Bring-up recovery guidance",
+            "",
+        ]
+
+        if fixed_tip in ("fail", "hold"):
+            lines.extend([
+                "Fixed-tip TCP is not yet believable.",
+                "Return first to: Rotary Zero and Sphere Map.",
+                "Check order: B/C zero reference -> paired B/C drift -> small zero change -> re-run fixed-tip TCP.",
+            ])
+            lines.extend(["", *self._pose_focus_lines()[2:]])
+            lines.extend(["", *self._trial_change_plan_lines()[2:]])
+            return lines
+
+        if moving_tcp in ("fail", "hold"):
+            lines.extend([
+                "Fixed-tip TCP passed, but moving TCP is not stable yet.",
+                "Return first to: B To Tool and C To B.",
+                "Check order: look for common residual in the sphere map -> apply a small geometry correction -> re-run moving TCP.",
+            ])
+            lines.extend(["", *self._pose_focus_lines()[2:]])
+            lines.extend(["", *self._trial_change_plan_lines()[2:]])
+            return lines
+
+        if twp in ("fail", "hold"):
+            lines.extend([
+                "TCP looks usable, but the TWP plane check is not yet believable.",
+                "Return first to: verify the granite-square setup, then re-check fixed-tip TCP before changing TWP assumptions.",
+                "If TCP is clean and TWP still looks wrong, review the active B/C pose and local plane definition path.",
+            ])
+            lines.extend(["", *self._pose_focus_lines()[2:]])
+            lines.extend(["", *self._trial_change_plan_lines()[2:]])
+            return lines
+
+        if rotary in ("fail", "hold"):
+            lines.extend([
+                "The first blocker is still rotary zero alignment.",
+                "Return first to: the B and C zero check programs and the Rotary Zero page.",
+            ])
+            return lines
+
+        if sphere_map in ("fail", "hold"):
+            lines.extend([
+                "Capture quality is still the next blocker.",
+                "Return first to: Probe Qual and Sphere Map.",
+                "Do not adjust offsets until the sphere map repeats cleanly.",
+            ])
+            return lines
+
+        if overall == "pass" or (fixed_tip == "pass" and moving_tcp == "pass" and twp == "pass"):
+            lines.extend([
+                "Current bring-up state looks good.",
+                "Next step: keep the summary as the machine record and repeat the same sequence after any mechanical change.",
+            ])
+            return lines
+
+        lines.extend([
+            "No failed stage is marked yet.",
+            "Recommended path: Rotary Zero -> Sphere Map -> Fixed-tip TCP -> Moving TCP -> TWP check.",
+        ])
+        lines.extend(["", *self._pose_focus_lines()[2:]])
+        lines.extend(["", *self._trial_change_plan_lines()[2:]])
+        return lines
 
     def _update_summary(self):
         if self.generated_preview is None:
             return
         self._update_capture_preview()
+        pose_groups = self._verify_pose_groups()
+        fixed_tip_first = self._metadata_value(
+            "verify_fixed_tip_first_drift_pose",
+            self._first_flagged_pose(pose_groups["fixed_tip"]),
+        )
+        moving_first = self._metadata_value(
+            "verify_moving_tcp_first_drift_pose",
+            self._first_flagged_pose(pose_groups["moving_tcp"]),
+        )
+        twp_first = self._metadata_value(
+            "verify_twp_first_drift_pose",
+            self._first_flagged_pose(pose_groups["twp"]),
+        )
         lines = [
             "# Head-head 5-axis calibration summary",
             "",
             "# Measurement setup",
+            f"# Bring-up power/reset: {self._metadata_value('bringup_power_reset', 'pending')}",
+            f"# Bring-up home/reference: {self._metadata_value('bringup_home_state', 'pending')}",
+            f"# Bring-up probe qualification: {self._metadata_value('bringup_probe_state', 'pending')}",
+            f"# Bring-up sphere setup: {self._metadata_value('bringup_sphere_state', 'pending')}",
+            f"# Bring-up B/C zeroing: {self._metadata_value('bringup_rotary_zero_state', 'pending')}",
+            f"# Bring-up sphere map: {self._metadata_value('bringup_sphere_map_state', 'pending')}",
+            f"# Bring-up fixed-tip TCP: {self._metadata_value('bringup_fixed_tip_state', 'pending')}",
+            f"# Bring-up moving TCP: {self._metadata_value('bringup_moving_tcp_state', 'pending')}",
+            f"# Bring-up TWP check: {self._metadata_value('bringup_twp_state', 'pending')}",
+            f"# Bring-up overall: {self._metadata_value('bringup_overall_state', 'pending')}",
             f"# Probe ring ID (mm): {self._metadata_value('ring_id_mm', '50.0')}",
             f"# Sphere diameter (mm): {self._metadata_value('sphere_diameter_mm', '20.0')}",
             f"# Sphere stand angle (deg): {self._metadata_value('sphere_stand_angle_deg', '45.0')}",
             f"# Probe repeatability in ring (mm): {self._metadata_value('probe_repeatability_mm', '0.0')}",
             f"# Sphere center repeatability (mm): {self._metadata_value('sphere_repeatability_mm', '0.0')}",
             f"# Fixed-tip TCP result: {self._metadata_value('verify_fixed_tip_result', 'pending')}",
-            f"# Fixed-tip first drift pose: {self._metadata_value('verify_fixed_tip_first_drift_pose', '')}",
+            f"# Fixed-tip first drift pose: {fixed_tip_first}",
             f"# Fixed-tip likely cause: {self._metadata_value('verify_fixed_tip_likely_cause', '')}",
+            f"# Fixed-tip pose states: {self._pose_status_line(pose_groups['fixed_tip'])}",
             f"# Moving TCP result: {self._metadata_value('verify_moving_tcp_result', 'pending')}",
-            f"# Moving TCP first drift pose: {self._metadata_value('verify_moving_tcp_first_drift_pose', '')}",
+            f"# Moving TCP first drift pose: {moving_first}",
             f"# Moving TCP likely cause: {self._metadata_value('verify_moving_tcp_likely_cause', '')}",
+            f"# Moving TCP pose states: {self._pose_status_line(pose_groups['moving_tcp'])}",
             f"# TWP result: {self._metadata_value('verify_twp_result', 'pending')}",
-            f"# TWP first drift pose: {self._metadata_value('verify_twp_first_drift_pose', '')}",
+            f"# TWP first drift pose: {twp_first}",
             f"# TWP likely cause: {self._metadata_value('verify_twp_likely_cause', '')}",
+            f"# TWP pose states: {self._pose_status_line(pose_groups['twp'])}",
             "",
             "# Captured sphere centers",
             f"# ref_xyz = {self._format_vec((self._capture_float('ref_x'), self._capture_float('ref_y'), self._capture_float('ref_z')))}",
@@ -723,6 +1468,30 @@ class UserTab(QWidget):
             f"# c_pos_delta = {self._format_vec(self._capture_delta('c_pos'))}",
             f"# c_neg_delta = {self._format_vec(self._capture_delta('c_neg'))}",
             f"# bc_mix_delta = {self._format_vec(self._capture_delta('bc_mix'))}",
+            "",
+            "# Recommended next adjustment",
+        ]
+        for line in self._recommendation_lines()[2:]:
+            lines.append(f"# {line}" if line else "#")
+        lines.extend([
+            "",
+            "# Bring-up recovery guidance",
+        ])
+        for line in self._verify_guidance_lines()[2:]:
+            lines.append(f"# {line}" if line else "#")
+        lines.extend([
+            "",
+            "# Pose-based follow-up",
+        ])
+        for line in self._pose_focus_lines()[2:]:
+            lines.append(f"# {line}" if line else "#")
+        lines.extend([
+            "",
+            "# Trial change plan",
+        ])
+        for line in self._trial_change_plan_lines()[2:]:
+            lines.append(f"# {line}" if line else "#")
+        lines.extend([
             "",
             "# Rotary zero offsets",
             f"setp headheadkins.b-zero-offset {self._float_value('b_zero_offset'):.6f}",
@@ -757,7 +1526,7 @@ class UserTab(QWidget):
             f"setp headheadvismach.b_to_tool_z {self.baseline['b_to_tool']['z'] + self._float_value('cal_b_to_tool_z'):.6f}",
             "",
             "# Notes",
-        ]
+        ])
         for key, edit in self.note_fields.items():
             text = edit.toPlainText().strip()
             if text:

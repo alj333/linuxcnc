@@ -1,0 +1,24 @@
+%
+(Machine C zero alignment check)
+(Use before TCP calibration to align C home and C0)
+(Use the sphere stand, a table reference, or a known spindle-facing feature)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G69
+G49.1
+G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (At C0. Confirm the spindle or probe faces the intended machine-forward reference)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C5.000
+M0 (Check C plus 5. Confirm positive direction and compare against the reference)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C-5.000
+M0 (Check C minus 5. Confirm symmetry around zero)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C90.000
+M0 (Check C plus 90. Confirm quarter-turn orientation is believable)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C180.000
+M0 (Check C plus 180. Confirm half-turn orientation)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C-90.000
+M0 (Check C minus 90. Confirm negative quarter-turn orientation)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Return to C0. Set or refine C zero offset before moving on)
+M2
+%

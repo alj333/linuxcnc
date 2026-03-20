@@ -22,12 +22,22 @@ This procedure does not yet automate solving the final offsets. It defines the
 measurement and verification sequence the operators should follow while using
 the Probe Basic calibration wizard.
 
+Companion operator checklist:
+
+- [machine_bringup_checklist.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_bringup_checklist.md)
+
 Practical machine verification package:
 
 - [machine_tcp_twp_verification_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_twp_verification_sequence.md)
 - [machine_tcp_fixed_tip_probe_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_fixed_tip_probe_check.ngc)
 - [machine_tcp_motion_probe_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_motion_probe_check.ngc)
 - [machine_twp_granite_square_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_twp_granite_square_check.ngc)
+
+Rotary zeroing package:
+
+- [machine_rotary_zeroing_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_rotary_zeroing_sequence.md)
+- [machine_b_zero_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_b_zero_alignment_check.ngc)
+- [machine_c_zero_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_c_zero_alignment_check.ngc)
 
 ## Required Setup
 
@@ -75,6 +85,7 @@ Purpose:
 
 - confirm B and C move in the expected directions
 - confirm commanded zero poses match the intended machine orientation
+- establish the first believable `B0` and `C0` references before TCP work
 
 Program:
 
@@ -85,12 +96,16 @@ Procedure:
 1. Keep TCPC off.
 2. Move the probe clear of fixtures.
 3. Run the rotary alignment check program.
+4. If the machine is at the first real zeroing stage, run the dedicated zeroing sequence:
+   - [machine_b_zero_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_b_zero_alignment_check.ngc)
+   - [machine_c_zero_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_c_zero_alignment_check.ngc)
+5. Because the new encoders are mounted directly on the gearbox output, focus on getting the zero reference right first.
 4. At each stop, confirm:
    - B positive tilts in the expected direction
    - C positive rotates in the expected direction
    - the head returns cleanly to `B0 C0`
-5. Use the granite square as a visual reference for `B0`.
-6. Use the sphere or another clear visual reference to confirm `C0`, `C90`,
+6. Use the granite square as a visual reference for `B0`.
+7. Use the sphere or another clear visual reference to confirm `C0`, `C90`,
    `C180`, and `C-90` orientation logic.
 
 Acceptance:
@@ -139,6 +154,7 @@ Acceptance:
 Purpose:
 
 - establish the first `B_ZERO_OFFSET` and `C_ZERO_OFFSET` values
+- refine zero after the mechanical/reference alignment is already believable
 
 Wizard page:
 

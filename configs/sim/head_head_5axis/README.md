@@ -190,11 +190,15 @@ Initial machine calibration workflow:
 Current shop-facing calibration references:
 
 - [five_axis_calibration_procedure.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/five_axis_calibration_procedure.md)
+- [machine_bringup_checklist.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_bringup_checklist.md)
+- [machine_rotary_zeroing_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_rotary_zeroing_sequence.md)
 - [machine_tcp_twp_verification_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_twp_verification_sequence.md)
 - [calibration_sphere_capture_sequence.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_sphere_capture_sequence.ngc)
 - [calibration_bc_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_bc_alignment_check.ngc)
 - [calibration_tcpc_fixed_tip_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_tcpc_fixed_tip_check.ngc)
 - [calibration_tcpc_motion_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_tcpc_motion_check.ngc)
+- [machine_b_zero_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_b_zero_alignment_check.ngc)
+- [machine_c_zero_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_c_zero_alignment_check.ngc)
 - [machine_tcp_fixed_tip_probe_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_fixed_tip_probe_check.ngc)
 - [machine_tcp_motion_probe_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_motion_probe_check.ngc)
 - [machine_twp_granite_square_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_twp_granite_square_check.ngc)

@@ -1,0 +1,22 @@
+%
+(Machine B zero alignment check)
+(Use before TCP calibration to align B home and B0)
+(Use the granite square and a short probe or gauge in the spindle)
+G17 G21 G40 G49 G54 G61 G80 G90 G94
+F1200
+G69
+G49.1
+G0 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (At B0 C0. Align the spindle or probe axis to the granite square and record the observed zero error)
+G1 X1500.000 Y850.000 Z-600.000 B5.000 C0.000
+M0 (Check B plus 5. Confirm positive direction and compare against the square)
+G1 X1500.000 Y850.000 Z-600.000 B-5.000 C0.000
+M0 (Check B minus 5. Confirm symmetry around zero)
+G1 X1500.000 Y850.000 Z-600.000 B15.000 C0.000
+M0 (Check B plus 15. Confirm the encoder follows the expected direction)
+G1 X1500.000 Y850.000 Z-600.000 B-15.000 C0.000
+M0 (Check B minus 15. Confirm the return path is repeatable)
+G1 X1500.000 Y850.000 Z-600.000 B0.000 C0.000
+M0 (Return to B0. Set or refine B zero offset before moving on)
+M2
+%
