@@ -10,6 +10,29 @@ Use it in two phases:
 The goal is to keep one ordered validation path instead of rediscovering the
 same checks later.
 
+One-command runner:
+
+- [run_head_head_acceptance.sh](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/run_head_head_acceptance.sh)
+
+Basic use:
+
+```bash
+cd /home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis
+./run_head_head_acceptance.sh
+```
+
+Notes:
+
+- the runner sources the RIP environment and prefers each harness `test.sh`
+  entry point when present
+- those harness entry points already clear `sim.var` before launch so tests do
+  not leak parameter state into each other
+- the runner now inserts a short cooldown between harnesses and retries the
+  known LinuxCNC realtime teardown race if a previous session has not fully
+  released `homemod` / `headheadkins` yet
+- use `--stop-on-fail` to stop at the first failing harness
+- use `--logs DIR` to keep a named log set
+
 ## Phase 1: Automated Sim Acceptance
 
 Run these from `/home/cnc5/linuxcnc-dev`.
@@ -187,6 +210,26 @@ Expected:
 Purpose:
 
 - keeps the original remap ordering fix from regressing
+
+### 9. Manual `B/C` entry contract
+
+Command:
+
+```bash
+cd tests/kinematics/head-head-twp-manual-bc-entry
+/home/cnc5/linuxcnc-dev/scripts/rip-environment linuxcnc -r test.ini
+```
+
+Expected:
+
+- `pause 1 ok` through `pause 11 ok`
+- `program complete`
+
+Purpose:
+
+- proves TCPC-on / TWP-off manual `B/C` motion
+- proves `G68.2` can capture current `B/C`
+- proves `G69` -> manual `B/C` -> re-enter TWP is still valid
 
 ## Phase 2: Manual Sim Acceptance
 

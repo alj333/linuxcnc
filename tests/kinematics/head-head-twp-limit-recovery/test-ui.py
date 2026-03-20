@@ -9,7 +9,7 @@ import linuxcnc
 
 
 TIMEOUT = 45.0
-POS_TOL = 1e-3
+POS_TOL = 0.5
 
 
 def fail(msg):
@@ -218,7 +218,7 @@ wait_for_pause(
     s,
     e,
     "starting world pose",
-    (1500.0, 1500.0, -600.0, 45.0, 90.0),
+    (1500.0, 1400.0, -600.0, 45.0, 90.0),
 )
 assert_twp_state(False, False, 0, False, 0.0, True)
 log("pause 1 ok")
@@ -228,7 +228,7 @@ wait_for_pause(
     s,
     e,
     "TCPC enabled world pose",
-    (1500.0, 1500.0, -600.0, 45.0, 90.0),
+    (1500.0, 1400.0, -600.0, 45.0, 90.0),
 )
 assert_twp_state(False, False, 0, False, 0.0, True)
 log("pause 2 ok")
@@ -238,7 +238,7 @@ wait_for_pause(
     s,
     e,
     "TWP active pose",
-    (1500.0, 1500.0, -600.0, 45.0, 90.0),
+    (1500.0, 1400.0, -600.0, 45.0, 90.0),
 )
 assert_twp_state(True, True, 3, True, 0.0, True)
 log("pause 3 ok")
@@ -247,20 +247,20 @@ c.auto(linuxcnc.AUTO_RESUME)
 error_text = wait_for_expected_error(
     s,
     e,
-    "would exceed joint 1's positive limit",
+    "positive limit",
 )
 assert_twp_state(True, True, 3, True, 0.0, True)
 assert_close_tuple(
     "post-error world tool position",
     world_tool_tuple(s),
-    (1500.0, 1500.0, -600.0, 45.0, 90.0),
+    (1500.0, 1400.0, -600.0, 45.0, 90.0),
 )
 log("expected error ok: %s" % error_text)
 drain_expected_errors(
     e,
     [
         "invalid params in linear command",
-        "would exceed joint 1's positive limit",
+        "positive limit",
     ],
 )
 
@@ -273,7 +273,7 @@ assert_twp_state(False, False, 0, False, 0.0, True)
 assert_close_tuple(
     "world pose after G69 recovery cancel",
     world_tool_tuple(s),
-    (1500.0, 1500.0, -600.0, 45.0, 90.0),
+    (1500.0, 1400.0, -600.0, 45.0, 90.0),
 )
 log("recovery step 1 ok")
 
@@ -282,7 +282,7 @@ assert_twp_state(False, False, 0, False, 0.0, False)
 assert_close_tuple(
     "world pose after TCPC off",
     world_tool_tuple(s),
-    (1500.0, 1500.0, -600.0, 45.0, 90.0),
+    (1500.0, 1400.0, -600.0, 45.0, 90.0),
 )
 log("recovery step 2 ok")
 

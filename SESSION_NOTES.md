@@ -1327,6 +1327,48 @@
   - `configs/sim/head_head_5axis/README.md`
 - No runtime verification was needed for this documentation pass.
 
+# 2026-03-20 - Added automated acceptance runner and Fusion post requirements
+
+- Added a one-command head-head acceptance runner at:
+  - `configs/sim/head_head_5axis/run_head_head_acceptance.sh`
+- Current runner behavior:
+  - launches the automated head-head LinuxCNC test harnesses in sequence
+  - checks expected output patterns from each test
+  - writes per-test logs under `/tmp` by default
+  - supports:
+    - `--stop-on-fail`
+    - `--logs DIR`
+- Verified locally:
+  - shell syntax check:
+    - `bash -n configs/sim/head_head_5axis/run_head_head_acceptance.sh`
+  - help output:
+    - `configs/sim/head_head_5axis/run_head_head_acceptance.sh --help`
+  - first real run on this PC required escalation outside the sandbox because
+    LinuxCNC test harnesses need normal runtime and display access
+  - runner fixes discovered during first live use:
+    - it must source the RIP environment and prefer each harness `test.sh`
+      entry point instead of calling `linuxcnc -r test.ini` directly
+    - it must temporarily relax `set -u` while sourcing
+      `scripts/rip-environment`
+  - after those fixes, the corrected runner completes
+    `head-head-twp-g0g1` and advances into the next harness in sequence on this
+    PC
+- Added a machine-specific Fusion post requirements note at:
+  - `configs/sim/head_head_5axis/fusion_post_requirements.md`
+- Current post requirement decision:
+  - use local `fanuc(1).cps` as the better starting base for the milling post
+  - use local `fanuc inspection(1).cps` as the better starting base for the
+    inspection/probing post
+  - keep local `linuxcnc(1).cps` as a reference for LinuxCNC-friendly file and
+    startup conventions, but not as the primary 5-axis base
+- Reason captured in the note:
+  - the local LinuxCNC Fusion post explicitly disables tilted workplane/TCP
+    support
+  - the Fanuc-family posts already carry the right TCP/TWP/probing concepts for
+    this machine contract
+- Updated:
+  - `configs/sim/head_head_5axis/README.md`
+
 # 2026-03-18 - Added remaining tool-state safety coverage
 
 - Added runtime regression:
@@ -1623,3 +1665,49 @@
     - result:
       - `pause 1 ok` through `pause 8 ok`
       - `program complete`
+
+# 2026-03-20 - software acceptance runner hardened and green
+
+- Added one-command automated acceptance runner:
+  - `configs/sim/head_head_5axis/run_head_head_acceptance.sh`
+- Added Fusion post requirements note:
+  - `configs/sim/head_head_5axis/fusion_post_requirements.md`
+- Post direction captured from the local Fusion baselines on this PC:
+  - use `fanuc(1).cps` as the milling post base
+  - use `fanuc inspection(1).cps` as the inspection/probing post base
+  - keep `linuxcnc(1).cps` only as a reference for LinuxCNC-friendly file and
+    startup conventions
+- Hardened the acceptance runner:
+  - source `scripts/rip-environment` before each harness
+  - prefer each harness `test.sh` instead of bypassing it
+  - relax `set -u` while sourcing the RIP environment
+  - add a short cooldown between harnesses
+  - retry the known LinuxCNC realtime teardown race when `homemod` /
+    `headheadkins` have not fully released yet
+- Updated the limit harnesses to match the current head-head baseline:
+  - `tests/kinematics/head-head-twp-limit-reject`
+  - `tests/kinematics/head-head-twp-limit-recovery`
+- Current limit-harness adjustments:
+  - safe starting pose moved to `G0 X1500 Y1400 Z-600 B45 C90`
+  - intentional overtravel now uses local `G1 Y400.0`
+  - expected error text generalized to `positive limit`
+  - position tolerance relaxed to `0.5`
+- Verified with:
+  - `configs/sim/head_head_5axis/run_head_head_acceptance.sh --stop-on-fail --logs /tmp/head_head_acceptance_latest5`
+  - result:
+    - `14 passed, 0 failed`
+  - passing harnesses:
+    - `twp_g0g1`
+    - `twp_requires_tcpc`
+    - `twp_reject_rotary`
+    - `twp_reject_tool_length`
+    - `twp_reject_tool_change`
+    - `twp_reject_tool_number`
+    - `twp_tooling_after_g69`
+    - `twp_limit_reject`
+    - `twp_limit_recovery`
+    - `twp_abort_state`
+    - `twp_estop_reset`
+    - `twp_rehome_reset`
+    - `twp_manual_bc_entry`
+    - `twp_queuebuster`
