@@ -1792,3 +1792,25 @@
 - Linked the new results-file spec from:
   - `configs/sim/head_head_5axis/fusion_post_requirements.md`
   - `configs/sim/head_head_5axis/README.md`
+
+# 2026-03-24 - first machine power-up note for partial reassembly
+
+- The machine is being reassembled and first power-up may only have `X/Y`
+  available.
+- Current config status:
+  - the main head-head Probe Basic config already allows unhomed motion:
+    - `configs/sim/head_head_5axis/head_head_probe_basic.ini`
+  - the head-head sim configs already allow unhomed motion:
+    - `configs/sim/head_head_5axis/head_head_visual_sim.ini`
+    - `configs/sim/head_head_5axis/head_head_math_sim.ini`
+  - the current legacy machine config also already allows unhomed motion:
+    - `configs/5th_axis/5th_axis.ini`
+- Relevant setting:
+  - `NO_FORCE_HOMING = 1`
+- Practical consequence:
+  - the PC can be moved to the machine and used for first-power `X/Y` motion
+    checks before a full homing path exists
+  - do not attempt a fake full-home just to get motion during partial
+    reassembly
+- Updated:
+  - `configs/sim/head_head_5axis/machine_bringup_checklist.md`

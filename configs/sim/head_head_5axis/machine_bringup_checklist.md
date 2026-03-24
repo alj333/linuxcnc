@@ -10,6 +10,13 @@ believable, and TCPC/TWP behavior is good enough to continue into calibration.
 - machine is powered and clear of faults
 - probe, 20 mm sphere stand, and granite square are available
 - safe travel around the sphere stand has already been checked
+- current configs already allow unhomed motion on startup:
+  - `head_head_probe_basic.ini`
+  - `head_head_visual_sim.ini`
+  - `head_head_math_sim.ini`
+  - current legacy `5th_axis.ini`
+- this means early power-up and jog/recovery work can be done before a full
+  homing path is available
 
 ## Ordered Checklist
 
@@ -17,10 +24,16 @@ believable, and TCPC/TWP behavior is good enough to continue into calibration.
    - release E-stop
    - power the machine
    - confirm drives and axis feedback look sane
+   - if only `X/Y` are assembled, it is acceptable to move those axes without
+     homing first
+   - do not attempt a fake full-home just to get motion
    - log result as `pass`, `hold`, or `fail`
 
 2. Establish reference state
-   - home/reference the machine using the normal shop method
+   - if the machine is only partly assembled, skip full homing and use unhomed
+     motion carefully for first-power checks
+   - once the full axis set and home path are available, home/reference the
+     machine using the normal shop method
    - cancel any leftover TWP with `G69`
    - disable TCPC with `G49.1`
    - move to a safe pose such as `G0 X1500 Y850 Z-600 B0 C0`
