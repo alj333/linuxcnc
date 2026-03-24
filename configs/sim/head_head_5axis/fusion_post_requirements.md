@@ -9,6 +9,12 @@ It is written against the actual local Fusion post baselines on this PC:
 - `/home/cnc5/Fusion/fanuc(1).cps`
 - `/home/cnc5/Fusion/fanuc inspection(1).cps`
 
+Related machine/process references:
+
+- [fanuc_like_twp_tcpc_contract.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/fanuc_like_twp_tcpc_contract.md)
+- [inspection_alignment_contract.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/inspection_alignment_contract.md)
+- [inspection_results_format_spec.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/inspection_results_format_spec.md)
+
 ## Primary Decision
 
 Recommended starting point:
@@ -192,12 +198,18 @@ The inspection post must support the workflow:
 
 This is a primary requirement, not a nice-to-have.
 
+The frame/application rules for that workflow are defined in:
+
+- [inspection_alignment_contract.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/inspection_alignment_contract.md)
+
 ### Probing Motion Rules
 
 Required:
 
 - probing should default to world or indexed frames, not active TWP motion,
   unless TWP probing is explicitly validated later
+- alignment probing should follow the one-frame / one-correction rule from the
+  alignment contract
 - do not probe while unsupported rotation compensation modes are active
 - use explicit mode transitions around probing sections
 - keep probing output conservative and easy to diagnose
@@ -214,6 +226,10 @@ Preferred:
 
 - one predictable results-file convention for this machine
 - easy operator retrieval from LinuxCNC
+
+The first production file target is defined in:
+
+- [inspection_results_format_spec.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/inspection_results_format_spec.md)
 
 ## LinuxCNC-Specific Adaptation Requirements
 

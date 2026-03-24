@@ -1711,3 +1711,84 @@
     - `twp_rehome_reset`
     - `twp_manual_bc_entry`
     - `twp_queuebuster`
+
+# 2026-03-24 - inspection alignment contract added
+
+- Added:
+  - `configs/sim/head_head_5axis/inspection_alignment_contract.md`
+- Purpose:
+  - define the approved WCS/alignment workflow for inspection and mold
+    alignment
+  - prevent the earlier failure mode where valid probe data was applied in the
+    wrong frame
+- Current production-default alignment rule:
+  - probe in `G54`
+  - `G69` active
+  - indexed `B/C` allowed
+  - TCPC allowed if needed for safe head-head motion
+  - apply correction once, preferably in the Fusion setup
+  - verify in the same frame used for measurement
+- Linked the alignment contract from:
+  - `configs/sim/head_head_5axis/fusion_post_requirements.md`
+  - `configs/sim/head_head_5axis/README.md`
+- No runtime verification required for this pass because it is a machine/process
+  contract document, not code.
+
+# 2026-03-24 - old probing workflow reviewed
+
+- Reviewed legacy probing files from:
+  - `/home/cnc5/Old System/probing`
+  - `/home/cnc5/Old System/Backup Feb 2026/linuxcnc/configs/5th_axis`
+- Added:
+  - `configs/sim/head_head_5axis/legacy_probe_workflow_review.md`
+- Useful legacy pattern confirmed:
+  - Fusion-style file-based result logs with:
+    - `RESULTSFILE`
+    - `G331`
+    - `G330`
+    - repeated `G800` / `G801` entries
+- Main legacy risk confirmed:
+  - many old probe macros wrote directly to the active WCS with `G10 L2 P#5220`
+  - the old config also used a dynamic rotary-aware work-offset remap:
+    - `dynamic-work-offsets-v2.ngc`
+    - remapped as `M254`
+- Key old-system frame-mixing evidence:
+  - `Probe101.ngc` used `G54`
+  - `Probe#1 Alt WCS.ngc` used `G55`
+- Current decision:
+  - keep the legacy file-based results pattern
+  - do not carry the dynamic-WCS correction behavior into the default
+    mold-alignment workflow
+- Linked the legacy review from:
+  - `configs/sim/head_head_5axis/inspection_alignment_contract.md`
+  - `configs/sim/head_head_5axis/README.md`
+
+# 2026-03-24 - inspection results file spec added
+
+- Added:
+  - `configs/sim/head_head_5axis/inspection_results_format_spec.md`
+- Purpose:
+  - define the first production inspection/alignment results-file target for the
+    head-head machine
+  - keep the legacy Fusion-friendly `G331` / `G330` / `G800` / `G801` pattern
+    but add the missing frame metadata
+- New required header metadata:
+  - `ACTIVE_WCS`
+  - `ACTIVE_B`
+  - `ACTIVE_C`
+  - `TCPC`
+  - `TWP`
+  - `TWP_ROT`
+  - `MACHINECFG`
+  - `TIMESTAMP`
+  - `RESULT_STATUS`
+  - `ARTIFACT`
+  - optional `CORRECTION_TARGET` / `FRAME_POLICY`
+- Current production-default intent:
+  - file-based Fusion import remains the first production inspection path
+  - mold-alignment result sets should default to:
+    - `RESULT_STATUS RAW`
+    - `CORRECTION_TARGET FUSION_SETUP`
+- Linked the new results-file spec from:
+  - `configs/sim/head_head_5axis/fusion_post_requirements.md`
+  - `configs/sim/head_head_5axis/README.md`
