@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<pyvcp>
+  <vbox>
+    <labelframe text="B/C SSI encoder alignment">
+      <vbox>
+        <hbox>
+          <label><text>"B SSI deg"</text></label>
+          <number>
+            <halpin>"b-ssi-position"</halpin>
+            <format>"+09.3f"</format>
+            <font>('Helvetica',18)</font>
+          </number>
+        </hbox>
+        <hbox>
+          <label><text>"C SSI deg"</text></label>
+          <number>
+            <halpin>"c-ssi-position"</halpin>
+            <format>"+09.3f"</format>
+            <font>('Helvetica',18)</font>
+          </number>
+        </hbox>
+        <hbox>
+          <label><text>"B data invalid"</text></label>
+          <led>
+            <halpin>"b-ssi-invalid"</halpin>
+            <size>18</size>
+            <on_color>"red"</on_color>
+            <off_color>"green"</off_color>
+          </led>
+        </hbox>
+        <hbox>
+          <label><text>"C data invalid"</text></label>
+          <led>
+            <halpin>"c-ssi-invalid"</halpin>
+            <size>18</size>
+            <on_color>"red"</on_color>
+            <off_color>"green"</off_color>
+          </led>
+        </hbox>
+      </vbox>
+    </labelframe>
+  </vbox>
+</pyvcp>

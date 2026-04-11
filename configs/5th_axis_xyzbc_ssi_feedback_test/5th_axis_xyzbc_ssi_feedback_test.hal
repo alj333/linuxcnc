@@ -1,0 +1,290 @@
+# Temporary dev/test HAL for B/C SSI feedback testing.
+# X/Y/Z/B/C motion only. B/C outputs still use the original 5th Axis stepgen
+# servo style, but B/C motor feedback comes from the zeroed SSI encoders.
+
+loadrt [KINS]KINEMATICS
+loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+loadrt pid names=pid.x,pid.y,pid.z,pid.b,pid.c
+loadrt sum2 names=b_ssi_zero,c_ssi_zero,b_ssi_wrap_add,c_ssi_wrap_add
+loadrt mux2 names=b_ssi_wrap_mux,c_ssi_wrap_mux
+loadrt comp names=b_ssi_wrap_low,c_ssi_wrap_low
+loadrt mult2 names=c_ssi_axis_scale
+loadrt hostmot2
+loadrt hm2_eth board_ip="10.10.10.10" config="num_encoders=3 num_pwmgens=0 num_stepgens=5 ssi_chan_0=crc%6unwarn%1bnerr%1babs%20ige ssi_chan_1=crc%6unwarn%1bnerr%1babs%20ige"
+
+setp hm2_7i95.0.watchdog.timeout_ns 5000000
+setp hm2_7i95.0.dpll.01.timer-us -350
+setp hm2_7i95.0.stepgen.timer-number 1
+
+# 20-bit single-turn SSI absolute encoders for B/C feedback testing.
+setp hm2_7i95.0.ssi.00.frequency-khz 200
+setp hm2_7i95.0.ssi.00.timer-number 1
+setp hm2_7i95.0.ssi.00.abs.counts-per-rev 1048576
+setp hm2_7i95.0.ssi.00.abs.scale -2912.711111111111
+
+setp hm2_7i95.0.ssi.01.frequency-khz 200
+setp hm2_7i95.0.ssi.01.timer-number 1
+setp hm2_7i95.0.ssi.01.abs.counts-per-rev 1048576
+setp hm2_7i95.0.ssi.01.abs.scale -2912.711111111111
+
+# Zeroed B/C SSI encoder values. The raw absolute pins remain unchanged.
+# B/C can start near the SSI single-turn wrap, so these paths add 360 deg when
+# the zeroed startup branch lands below -180 deg.
+setp b_ssi_zero.in1 -182.1640
+setp c_ssi_zero.in1 -179.0476
+setp b_ssi_wrap_add.in1 360.0
+setp b_ssi_wrap_low.in1 -180.0
+setp b_ssi_wrap_low.hyst 1.0
+setp c_ssi_wrap_add.in1 360.0
+setp c_ssi_wrap_low.in1 -180.0
+setp c_ssi_wrap_low.hyst 1.0
+setp c_ssi_axis_scale.in1 -1.0
+net b-ssi-abs-position <= hm2_7i95.0.ssi.00.abs.position => b_ssi_zero.in0
+net c-ssi-abs-position <= hm2_7i95.0.ssi.01.abs.position => c_ssi_zero.in0
+net b-ssi-zeroed-position <= b_ssi_zero.out => b_ssi_wrap_add.in0
+net b-ssi-zeroed-position => b_ssi_wrap_low.in0
+net b-ssi-zeroed-position => b_ssi_wrap_mux.in0
+net b-ssi-wrap-added <= b_ssi_wrap_add.out => b_ssi_wrap_mux.in1
+net b-ssi-wrap-low <= b_ssi_wrap_low.out => b_ssi_wrap_mux.sel
+net b-pos-fb <= b_ssi_wrap_mux.out
+net c-ssi-zeroed-position <= c_ssi_zero.out => c_ssi_wrap_add.in0
+net c-ssi-zeroed-position => c_ssi_wrap_low.in0
+net c-ssi-zeroed-position => c_ssi_wrap_mux.in0
+net c-ssi-wrap-added <= c_ssi_wrap_add.out => c_ssi_wrap_mux.in1
+net c-ssi-wrap-low <= c_ssi_wrap_low.out => c_ssi_wrap_mux.sel
+net c-ssi-startup-normalized <= c_ssi_wrap_mux.out => c_ssi_axis_scale.in0
+net c-pos-fb <= c_ssi_axis_scale.out
+net b-ssi-invalid <= hm2_7i95.0.ssi.00.data-invalid
+net c-ssi-invalid <= hm2_7i95.0.ssi.01.data-invalid
+
+addf hm2_7i95.0.read servo-thread
+addf motion-command-handler servo-thread
+addf motion-controller servo-thread
+addf pid.x.do-pid-calcs servo-thread
+addf pid.y.do-pid-calcs servo-thread
+addf pid.z.do-pid-calcs servo-thread
+addf pid.b.do-pid-calcs servo-thread
+addf pid.c.do-pid-calcs servo-thread
+addf b_ssi_zero servo-thread
+addf c_ssi_zero servo-thread
+addf b_ssi_wrap_add servo-thread
+addf b_ssi_wrap_low servo-thread
+addf b_ssi_wrap_mux servo-thread
+addf c_ssi_wrap_add servo-thread
+addf c_ssi_wrap_low servo-thread
+addf c_ssi_wrap_mux servo-thread
+addf c_ssi_axis_scale servo-thread
+addf hm2_7i95.0.write servo-thread
+
+# External I/O used during maintenance bring-up.
+net machine-is-enabled => hm2_7i95.0.ssr.00.out-04
+net home-x <= hm2_7i95.0.inmux.00.input-00
+net home-y <= hm2_7i95.0.inmux.00.input-01
+net home-z <= hm2_7i95.0.inmux.00.input-02
+net home-b <= hm2_7i95.0.inmux.00.input-04
+net home-c <= hm2_7i95.0.inmux.00.input-05
+net estop-ext <= hm2_7i95.0.inmux.00.input-06
+net servo-alarm <= hm2_7i95.0.inmux.00.input-15
+
+# X axis.
+setp hm2_7i95.0.stepgen.00.direction.invert_output true
+setp hm2_7i95.0.encoder.00.counter-mode 0
+setp hm2_7i95.0.encoder.00.filter 1
+setp hm2_7i95.0.encoder.00.index-invert 0
+setp hm2_7i95.0.encoder.00.index-mask 0
+setp hm2_7i95.0.encoder.00.index-mask-invert 0
+setp hm2_7i95.0.encoder.00.scale [JOINT_0]INPUT_SCALE
+setp pid.x.Pgain [JOINT_0]P
+setp pid.x.Igain [JOINT_0]I
+setp pid.x.Dgain [JOINT_0]D
+setp pid.x.bias [JOINT_0]BIAS
+setp pid.x.FF0 [JOINT_0]FF0
+setp pid.x.FF1 [JOINT_0]FF1
+setp pid.x.FF2 [JOINT_0]FF2
+setp pid.x.deadband [JOINT_0]DEADBAND
+setp pid.x.maxoutput [JOINT_0]MAX_OUTPUT
+setp pid.x.error-previous-target true
+setp pid.x.maxerror 0.012700
+net x-index-enable <=> pid.x.index-enable
+net x-enable => pid.x.enable
+net x-pos-cmd => pid.x.command
+net x-pos-fb => pid.x.feedback
+net x-output <= pid.x.output
+setp hm2_7i95.0.stepgen.00.dirsetup [JOINT_0]DIRSETUP
+setp hm2_7i95.0.stepgen.00.dirhold [JOINT_0]DIRHOLD
+setp hm2_7i95.0.stepgen.00.steplen [JOINT_0]STEPLEN
+setp hm2_7i95.0.stepgen.00.stepspace [JOINT_0]STEPSPACE
+setp hm2_7i95.0.stepgen.00.position-scale [JOINT_0]STEP_SCALE
+setp hm2_7i95.0.stepgen.00.step_type 0
+setp hm2_7i95.0.stepgen.00.control-type 1
+setp hm2_7i95.0.stepgen.00.maxaccel [JOINT_0]STEPGEN_MAXACCEL
+setp hm2_7i95.0.stepgen.00.maxvel [JOINT_0]STEPGEN_MAXVEL
+net x-pos-cmd <= joint.0.motor-pos-cmd
+net x-output => hm2_7i95.0.stepgen.00.velocity-cmd
+net x-pos-fb <= hm2_7i95.0.stepgen.00.position-fb
+net x-pos-fb => joint.0.motor-pos-fb
+net x-enable <= joint.0.amp-enable-out
+net x-enable => hm2_7i95.0.stepgen.00.enable
+net home-x => joint.0.home-sw-in
+net x-index-enable hm2_7i95.0.encoder.00.index-enable <=> joint.0.index-enable
+
+# Y axis.
+setp hm2_7i95.0.stepgen.01.direction.invert_output true
+setp hm2_7i95.0.encoder.01.counter-mode 0
+setp hm2_7i95.0.encoder.01.filter 1
+setp hm2_7i95.0.encoder.01.index-invert 0
+setp hm2_7i95.0.encoder.01.index-mask 0
+setp hm2_7i95.0.encoder.01.index-mask-invert 0
+setp hm2_7i95.0.encoder.01.scale [JOINT_1]INPUT_SCALE
+setp pid.y.Pgain [JOINT_1]P
+setp pid.y.Igain [JOINT_1]I
+setp pid.y.Dgain [JOINT_1]D
+setp pid.y.bias [JOINT_1]BIAS
+setp pid.y.FF0 [JOINT_1]FF0
+setp pid.y.FF1 [JOINT_1]FF1
+setp pid.y.FF2 [JOINT_1]FF2
+setp pid.y.deadband [JOINT_1]DEADBAND
+setp pid.y.maxoutput [JOINT_1]MAX_OUTPUT
+setp pid.y.error-previous-target true
+setp pid.y.maxerror 0.012700
+net y-index-enable <=> pid.y.index-enable
+net y-enable => pid.y.enable
+net y-pos-cmd => pid.y.command
+net y-pos-fb => pid.y.feedback
+net y-output <= pid.y.output
+setp hm2_7i95.0.stepgen.01.dirsetup [JOINT_1]DIRSETUP
+setp hm2_7i95.0.stepgen.01.dirhold [JOINT_1]DIRHOLD
+setp hm2_7i95.0.stepgen.01.steplen [JOINT_1]STEPLEN
+setp hm2_7i95.0.stepgen.01.stepspace [JOINT_1]STEPSPACE
+setp hm2_7i95.0.stepgen.01.position-scale [JOINT_1]STEP_SCALE
+setp hm2_7i95.0.stepgen.01.step_type 0
+setp hm2_7i95.0.stepgen.01.control-type 1
+setp hm2_7i95.0.stepgen.01.maxaccel [JOINT_1]STEPGEN_MAXACCEL
+setp hm2_7i95.0.stepgen.01.maxvel [JOINT_1]STEPGEN_MAXVEL
+net y-pos-cmd <= joint.1.motor-pos-cmd
+net y-output => hm2_7i95.0.stepgen.01.velocity-cmd
+net y-pos-fb <= hm2_7i95.0.stepgen.01.position-fb
+net y-pos-fb => joint.1.motor-pos-fb
+net y-enable <= joint.1.amp-enable-out
+net y-enable => hm2_7i95.0.stepgen.01.enable
+net home-y => joint.1.home-sw-in
+net y-index-enable hm2_7i95.0.encoder.01.index-enable <=> joint.1.index-enable
+
+# Z axis.
+setp hm2_7i95.0.stepgen.02.direction.invert_output true
+setp hm2_7i95.0.encoder.02.counter-mode 0
+setp hm2_7i95.0.encoder.02.filter 1
+setp hm2_7i95.0.encoder.02.index-invert 0
+setp hm2_7i95.0.encoder.02.index-mask 0
+setp hm2_7i95.0.encoder.02.index-mask-invert 0
+setp hm2_7i95.0.encoder.02.scale [JOINT_2]INPUT_SCALE
+setp pid.z.Pgain [JOINT_2]P
+setp pid.z.Igain [JOINT_2]I
+setp pid.z.Dgain [JOINT_2]D
+setp pid.z.bias [JOINT_2]BIAS
+setp pid.z.FF0 [JOINT_2]FF0
+setp pid.z.FF1 [JOINT_2]FF1
+setp pid.z.FF2 [JOINT_2]FF2
+setp pid.z.deadband [JOINT_2]DEADBAND
+setp pid.z.maxoutput [JOINT_2]MAX_OUTPUT
+setp pid.z.error-previous-target true
+setp pid.z.maxerror 0.012700
+net z-index-enable <=> pid.z.index-enable
+net z-enable => pid.z.enable
+net z-pos-cmd => pid.z.command
+net z-pos-fb => pid.z.feedback
+net z-output <= pid.z.output
+setp hm2_7i95.0.stepgen.02.dirsetup [JOINT_2]DIRSETUP
+setp hm2_7i95.0.stepgen.02.dirhold [JOINT_2]DIRHOLD
+setp hm2_7i95.0.stepgen.02.steplen [JOINT_2]STEPLEN
+setp hm2_7i95.0.stepgen.02.stepspace [JOINT_2]STEPSPACE
+setp hm2_7i95.0.stepgen.02.position-scale [JOINT_2]STEP_SCALE
+setp hm2_7i95.0.stepgen.02.step_type 0
+setp hm2_7i95.0.stepgen.02.control-type 1
+setp hm2_7i95.0.stepgen.02.maxaccel [JOINT_2]STEPGEN_MAXACCEL
+setp hm2_7i95.0.stepgen.02.maxvel [JOINT_2]STEPGEN_MAXVEL
+net z-pos-cmd <= joint.2.motor-pos-cmd
+net z-output => hm2_7i95.0.stepgen.02.velocity-cmd
+net z-pos-fb <= hm2_7i95.0.stepgen.02.position-fb
+net z-pos-fb => joint.2.motor-pos-fb
+net z-enable <= joint.2.amp-enable-out
+net z-enable => hm2_7i95.0.stepgen.02.enable
+net home-z => joint.2.home-sw-in
+net z-index-enable hm2_7i95.0.encoder.02.index-enable <=> joint.2.index-enable
+
+
+# B axis. Servo feedback comes from the zeroed SSI encoder signal.
+setp pid.b.Pgain [JOINT_3]P
+setp pid.b.Igain [JOINT_3]I
+setp pid.b.Dgain [JOINT_3]D
+setp pid.b.bias [JOINT_3]BIAS
+setp pid.b.FF0 [JOINT_3]FF0
+setp pid.b.FF1 [JOINT_3]FF1
+setp pid.b.FF2 [JOINT_3]FF2
+setp pid.b.deadband [JOINT_3]DEADBAND
+setp pid.b.maxoutput [JOINT_3]MAX_OUTPUT
+setp pid.b.error-previous-target true
+setp pid.b.maxerror 0.012700
+net b-enable => pid.b.enable
+net b-pos-cmd => pid.b.command
+net b-pos-fb => pid.b.feedback
+net b-output <= pid.b.output
+setp hm2_7i95.0.stepgen.03.dirsetup [JOINT_3]DIRSETUP
+setp hm2_7i95.0.stepgen.03.dirhold [JOINT_3]DIRHOLD
+setp hm2_7i95.0.stepgen.03.steplen [JOINT_3]STEPLEN
+setp hm2_7i95.0.stepgen.03.stepspace [JOINT_3]STEPSPACE
+setp hm2_7i95.0.stepgen.03.position-scale [JOINT_3]STEP_SCALE
+setp hm2_7i95.0.stepgen.03.step_type 0
+setp hm2_7i95.0.stepgen.03.control-type 1
+setp hm2_7i95.0.stepgen.03.maxaccel [JOINT_3]STEPGEN_MAXACCEL
+setp hm2_7i95.0.stepgen.03.maxvel [JOINT_3]STEPGEN_MAXVEL
+net b-pos-cmd <= joint.3.motor-pos-cmd
+net b-output => hm2_7i95.0.stepgen.03.velocity-cmd
+net b-stepgen-pos-fb <= hm2_7i95.0.stepgen.03.position-fb
+net b-pos-fb => joint.3.motor-pos-fb
+net b-enable <= joint.3.amp-enable-out
+net b-enable => hm2_7i95.0.stepgen.03.enable
+setp hm2_7i95.0.inmux.00.input-04-slow true
+net home-b => joint.3.home-sw-in
+
+# C axis. Servo feedback comes from the zeroed/scaled SSI encoder signal.
+setp hm2_7i95.0.stepgen.04.direction.invert_output true
+setp pid.c.Pgain [JOINT_4]P
+setp pid.c.Igain [JOINT_4]I
+setp pid.c.Dgain [JOINT_4]D
+setp pid.c.bias [JOINT_4]BIAS
+setp pid.c.FF0 [JOINT_4]FF0
+setp pid.c.FF1 [JOINT_4]FF1
+setp pid.c.FF2 [JOINT_4]FF2
+setp pid.c.deadband [JOINT_4]DEADBAND
+setp pid.c.maxoutput [JOINT_4]MAX_OUTPUT
+setp pid.c.error-previous-target true
+setp pid.c.maxerror 0.012700
+net c-enable => pid.c.enable
+net c-pos-cmd => pid.c.command
+net c-pos-fb => pid.c.feedback
+net c-output <= pid.c.output
+setp hm2_7i95.0.stepgen.04.dirsetup [JOINT_4]DIRSETUP
+setp hm2_7i95.0.stepgen.04.dirhold [JOINT_4]DIRHOLD
+setp hm2_7i95.0.stepgen.04.steplen [JOINT_4]STEPLEN
+setp hm2_7i95.0.stepgen.04.stepspace [JOINT_4]STEPSPACE
+setp hm2_7i95.0.stepgen.04.position-scale [JOINT_4]STEP_SCALE
+setp hm2_7i95.0.stepgen.04.step_type 0
+setp hm2_7i95.0.stepgen.04.control-type 1
+setp hm2_7i95.0.stepgen.04.maxaccel [JOINT_4]STEPGEN_MAXACCEL
+setp hm2_7i95.0.stepgen.04.maxvel [JOINT_4]STEPGEN_MAXVEL
+net c-pos-cmd <= joint.4.motor-pos-cmd
+net c-output => hm2_7i95.0.stepgen.04.velocity-cmd
+net c-stepgen-pos-fb <= hm2_7i95.0.stepgen.04.position-fb
+net c-pos-fb => joint.4.motor-pos-fb
+net c-enable <= joint.4.amp-enable-out
+net c-enable => hm2_7i95.0.stepgen.04.enable
+setp hm2_7i95.0.inmux.00.input-05-slow true
+net home-c => joint.4.home-sw-in
+
+# Machine state and basic I/O.
+net machine-is-enabled <= motion.motion-enabled
+net estop-ext => iocontrol.0.emc-enable-in
+net servo-alarm => motion.feed-hold
+net tool-prepare-loopback iocontrol.0.tool-prepare => iocontrol.0.tool-prepared
+net tool-change-loopback iocontrol.0.tool-change => iocontrol.0.tool-changed

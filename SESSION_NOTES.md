@@ -1814,3 +1814,536 @@
     reassembly
 - Updated:
   - `configs/sim/head_head_5axis/machine_bringup_checklist.md`
+
+# 2026-03-30 - XYZ maintenance config prepared for unhomed assembly work
+
+- Added a separate temporary maintenance config so the main machine setup does
+  not need to be repurposed for assembly motion:
+  - `configs/5th_axis_xyz_maintenance/5th_axis_xyz_maintenance.ini`
+  - `configs/5th_axis_xyz_maintenance/5th_axis_xyz_maintenance.hal`
+  - `configs/5th_axis_xyz_maintenance/xhc.hal`
+  - `configs/5th_axis_xyz_maintenance/xhc-hb04-layout2_mm.ini`
+  - `configs/5th_axis_xyz_maintenance/launch_xyz_maintenance.sh`
+- Intent:
+  - real machine maintenance / assembly work only
+  - `X/Y/Z` motion only
+  - no homing required on startup
+  - keep `B/C/W`, spindle, probe, and remap-specific behavior out of this
+    temporary config
+- Key config state:
+  - `DISPLAY = axis`
+  - `JOINTS = 3`
+  - `KINEMATICS = trivkins coordinates=XYZ`
+  - `NO_FORCE_HOMING = 1`
+  - all `X/Y/Z` joints set with:
+    - `HOME_SEARCH_VEL = 0`
+    - `HOME_USE_INDEX = NO`
+- Pendant state:
+  - `WHB04B-6` wiring is mapped only to `joint.0/1/2`
+  - the pendant's fourth selector position is intentionally left unused in this
+    config
+  - conservative jog tuning retained:
+    - `coefs = 0.25`
+    - `scales = 0.5/-0.5/0.5/0.5`
+    - `jogmode = vnormal`
+    - reduced `mpg_accels`
+- Desktop launch shortcut added:
+  - `/home/cnc5/Desktop/XYZ Maint.desktop`
+- Verified live startup:
+  - launched `/home/cnc5/linuxcnc-dev/configs/5th_axis_xyz_maintenance/launch_xyz_maintenance.sh`
+  - LinuxCNC started and stayed running
+  - Mesa `7I95T` was detected successfully on `10.10.10.10`
+  - no fatal INI or HAL load errors were seen during startup
+- Non-fatal startup warning:
+  - `hm2_eth` reported missing `iptables`
+  - this affects realtime network-access restriction only and did not block
+    LinuxCNC startup
+- Next resume point:
+  - use `XYZ Maint` on the desktop for assembly / maintenance motion
+  - if motion quality issues remain, compare keyboard jog versus pendant jog
+    inside this stripped-down config before changing the main machine config
+
+# 2026-04-02 - XYZ maintenance handwheel issue resolved
+
+- The `WHB04B-6` hand controller was still jumpy in the temporary XYZ
+  maintenance config even after USB receiver testing, receiver swap, and USB
+  port changes.
+- Important debug result:
+  - standalone `xhc-whb04b-6 -ue` testing showed the USB / wireless path had
+    separate issues during diagnosis, but the final LinuxCNC motion problem was
+    not caused by the reduced axis acceleration values.
+- Root cause in the maintenance config:
+  - `configs/5th_axis_xyz_maintenance/xhc.hal` had been rewritten to jog
+    `joint.0/1/2` directly.
+  - the original known-good machine config in:
+    - `/home/cnc5/Old System/Backup Feb 2026/linuxcnc/configs/5th_axis/xhc.hal`
+    used the standard axis path instead:
+    - `halui.axis.*.select`
+    - `axis.*.jog-scale`
+    - `axis.*.jog-counts`
+    - `axis.*.jog-enable`
+    - `axis.*.jog-vel-mode`
+- Fix applied:
+  - replaced the maintenance `xhc.hal` wiring with the old-style axis-based
+    jog path for `X/Y/Z`
+  - restored the pendant mode wiring used by the known-good config:
+    - auto/manual/mdi/joint/teleop status and commands
+  - kept the config limited to `X/Y/Z` only
+  - corrected the AXIS `[DISPLAY]INCREMENTS` line in
+    `5th_axis_xyz_maintenance.ini` from:
+    - `INCREMENTS = JOG ...`
+    to a plain numeric list that AXIS accepts
+- Result:
+  - restarted `XYZ Maint`
+  - pendant motion is now working correctly
+  - user confirmed: `Fixed!`
+- Current known-good temporary maintenance launcher remains:
+  - `/home/cnc5/linuxcnc-dev/configs/5th_axis_xyz_maintenance/launch_xyz_maintenance.sh`
+  - desktop shortcut: `/home/cnc5/Desktop/XYZ Maint.desktop`
+- Practical lesson for future temporary configs:
+  - do not replace the WHB04B-6 axis jog path with direct `joint.*` jog wiring
+    unless there is a proven machine-specific reason to do so
+
+# 2026-04-11 - XYZBC maintenance config added for B/C setup
+
+- Added a separate temporary maintenance config copied from the known-good XYZ
+  maintenance setup:
+  - `configs/5th_axis_xyzbc_maintenance/5th_axis_xyzbc_maintenance.ini`
+  - `configs/5th_axis_xyzbc_maintenance/5th_axis_xyzbc_maintenance.hal`
+  - `configs/5th_axis_xyzbc_maintenance/xhc.hal`
+  - `configs/5th_axis_xyzbc_maintenance/encoder_alignment.xml`
+  - `configs/5th_axis_xyzbc_maintenance/encoder_alignment_postgui.hal`
+  - `configs/5th_axis_xyzbc_maintenance/launch_xyzbc_maintenance.sh`
+- Intent:
+  - real-machine setup/testing only
+  - `X/Y/Z/B/C` motion
+  - no homing required on startup
+  - B/C driven with the original 5th Axis stepgen servo style
+  - new B/C SSI encoders displayed for alignment only
+- Important feedback choice:
+  - `joint.3.motor-pos-fb` remains `hm2_7i95.0.stepgen.03.position-fb`
+  - `joint.4.motor-pos-fb` remains `hm2_7i95.0.stepgen.04.position-fb`
+  - `hm2_7i95.0.ssi.00.abs.position` and `hm2_7i95.0.ssi.01.abs.position`
+    are exposed in the AXIS PyVCP side panel but are not connected to the servo
+    drive feedback path yet
+- Pendant choice:
+  - kept the old known-good `axis.*.jog-*` path
+  - did not use direct `joint.*.jog-*` injection, because that caused the jumpy
+    WHB04B-6 behavior in the previous maintenance config
+- Validation performed:
+  - XML parse check for `encoder_alignment.xml`
+  - shell syntax check for `launch_xyzbc_maintenance.sh`
+  - grep check confirmed no direct `joint.*.jog-*` wiring in the new config
+- Not yet performed:
+  - live LinuxCNC launch against the machine hardware
+
+# 2026-04-11 - XYZBC maintenance launch test
+
+- Launched:
+  - `configs/5th_axis_xyzbc_maintenance/launch_xyzbc_maintenance.sh`
+- Startup result:
+  - LinuxCNC started and stayed running
+  - Mesa `7I95T` detected at `10.10.10.10`
+  - HostMot2 reported five stepgen pairs and two SSI channels as expected
+- Known non-fatal warning still present:
+  - missing `iptables` prevents hm2_eth from installing realtime network access
+    restriction rules
+  - this warning did not block startup
+- Live SSI checks:
+  - `hm2_7i95.0.ssi.00.data-invalid = FALSE`
+  - `hm2_7i95.0.ssi.00.abs.position = -98.47939`
+  - `hm2_7i95.0.ssi.01.data-invalid = FALSE`
+  - `hm2_7i95.0.ssi.01.abs.position = -185.9199`
+- PyVCP panel check:
+  - `pyvcp.b-ssi-position` is connected to `b-ssi-position`
+  - `pyvcp.c-ssi-position` is connected to `c-ssi-position`
+- B/C servo feedback remains monitor-safe:
+  - `b-pos-fb` is linked from `hm2_7i95.0.stepgen.03.position-fb` to
+    `joint.3.motor-pos-fb` and `pid.b.feedback`
+  - `c-pos-fb` is linked from `hm2_7i95.0.stepgen.04.position-fb` to
+    `joint.4.motor-pos-fb` and `pid.c.feedback`
+  - SSI encoder positions are not connected to B/C motor feedback yet
+- Current practical state:
+  - config is suitable for visual encoder alignment checks with B/C drives
+    still unpowered
+  - next live step is to power B/C drives when ready and test very small B/C
+    jogs while watching both AXIS commanded position and the SSI panel
+
+# 2026-04-11 - XYZBC maintenance confirmed by user
+
+- User confirmed the launched `XYZBC` maintenance config is working correctly.
+- Current validated state:
+  - LinuxCNC starts and stays running
+  - B/C SSI encoder display is live in the AXIS PyVCP panel
+  - B/C servo feedback remains on stepgen feedback, not SSI feedback
+  - B/C servo drives were still unpowered during this confirmation
+- Next practical step when ready:
+  - power B/C drives and test very small B/C jogs while watching commanded B/C
+    position against the SSI encoder panel.
+
+# 2026-04-11 - XYZBC maintenance restart after encoder centering
+
+- Restarted the running `XYZBC` maintenance LinuxCNC session with Ctrl-C and
+  relaunched the same launcher.
+- Shutdown produced the known AXIS/Tk Ctrl-C traceback and an xhc component
+  assertion during cleanup, but LinuxCNC cleaned up and unloaded HostMot2.
+- Relaunch result:
+  - LinuxCNC started again
+  - Mesa `7I95T` detected again at `10.10.10.10`
+  - five stepgens and two SSI channels were present again
+- Post-restart SSI readings:
+  - B `hm2_7i95.0.ssi.00.abs.rawcounts = -531025`
+  - B `hm2_7i95.0.ssi.00.abs.position = 182.313`
+  - B `hm2_7i95.0.ssi.00.data-invalid = FALSE`
+  - C `hm2_7i95.0.ssi.01.abs.rawcounts = -526659`
+  - C `hm2_7i95.0.ssi.01.abs.position = 180.814`
+  - C `hm2_7i95.0.ssi.01.data-invalid = FALSE`
+- Interpretation:
+  - after restart, the absolute encoder reports on the other side of the
+    midpoint/wrap convention, so the scaled display is near `+180` rather than
+    the earlier `-180`
+  - both channels are still valid and near the intended mid-range alignment
+
+# 2026-04-11 - XYZBC SSI display zeroed
+
+- Adjusted only the `XYZBC` maintenance display path so the B/C SSI alignment
+  panel reads near zero at the current mechanical reference.
+- Added `sum2` components in:
+  - `configs/5th_axis_xyzbc_maintenance/5th_axis_xyzbc_maintenance.hal`
+- Current display offsets:
+  - `b_ssi_zero.in1 = -182.5739`
+  - `c_ssi_zero.in1 = -180.8140`
+- Important distinction:
+  - raw HostMot2 SSI absolute positions are unchanged
+  - B/C motor feedback remains on stepgen feedback, not SSI feedback
+  - only the AXIS PyVCP alignment display is zeroed
+- Restarted LinuxCNC after the change.
+- Post-restart check:
+  - raw B display source `b-ssi-abs-position = 182.5739`
+  - zeroed B panel signal `b-ssi-position = -9.313965e-06`
+  - raw C display source `c-ssi-abs-position = 180.8137`
+  - zeroed C panel signal `c-ssi-position = -0.0003250732`
+- Practical result:
+  - the B/C SSI alignment panel now reads approximately `0.000` for both axes
+    at the current locked mechanical positions.
+
+# 2026-04-11 - C SSI display changed to 2:1 axis scale
+
+- User requested the C SSI display in the maintenance config be treated as a
+  2:1 C-axis relationship for display only.
+- Updated only the display path in:
+  - `configs/5th_axis_xyzbc_maintenance/5th_axis_xyzbc_maintenance.hal`
+- Added:
+  - `loadrt mult2 names=c_ssi_axis_scale`
+  - `setp c_ssi_axis_scale.in1 2.0`
+  - `c_ssi_zero.out` now feeds `c_ssi_axis_scale.in0`
+  - PyVCP `c-ssi-position` now receives `c_ssi_axis_scale.out`
+- B display path is unchanged.
+- B/C servo feedback remains unchanged and still uses stepgen feedback, not SSI.
+- Restarted LinuxCNC after the edit.
+- Post-restart check:
+  - `c-ssi-abs-position = 180.6444`
+  - `c-ssi-zeroed-position = -0.1695832`
+  - `c-ssi-position = -0.3391664`
+- Interpretation:
+  - the C panel is now displaying twice the zeroed 1:1 SSI encoder delta
+  - this is display-only for the maintenance config; feedback integration is a
+    later config step
+
+# 2026-04-11 - C SSI display ratio corrected to 0.5
+
+- User observed the previous C display scale was backwards:
+  - a roughly 90 degree C-axis rotation displayed roughly 180 degrees on the SSI
+    panel
+  - B display was tracking correctly
+- Corrected only the C display multiplier in:
+  - `configs/5th_axis_xyzbc_maintenance/5th_axis_xyzbc_maintenance.hal`
+- Changed:
+  - `c_ssi_axis_scale.in1 = 2.0`
+  - to `c_ssi_axis_scale.in1 = 0.5`
+- Applied the same change live with `halcmd setp c_ssi_axis_scale.in1 0.5`.
+- Post-change live check:
+  - `c-ssi-zeroed-position = -0.2732667`
+  - `c-ssi-position = -0.1366333`
+- Interpretation:
+  - the AXIS C SSI panel now displays half of the zeroed encoder delta
+  - expected result is that a 90 degree C-axis move displays about 90 degrees
+    instead of 180 degrees
+- B display path remains unchanged.
+- B/C servo feedback remains unchanged and still uses stepgen feedback, not SSI.
+
+# 2026-04-11 - C SSI display ratio corrected to 1.0
+
+- User tested the prior `0.5` C SSI display multiplier and found a 90 degree C
+  move displayed about 45 degrees.
+- Combined with the earlier `2.0` test displaying about 180 degrees for a 90
+  degree move, this shows the zeroed SSI delta already matches C-axis display
+  degrees for this maintenance panel.
+- Corrected C display multiplier to:
+  - `c_ssi_axis_scale.in1 = 1.0`
+- Applied live with:
+  - `halcmd setp c_ssi_axis_scale.in1 1.0`
+- Updated:
+  - `configs/5th_axis_xyzbc_maintenance/5th_axis_xyzbc_maintenance.hal`
+  - `configs/5th_axis_xyzbc_maintenance/README.md`
+- Post-change live check:
+  - `c_ssi_axis_scale.in1 = 1`
+  - `c-ssi-zeroed-position = -0.4768571`
+  - `c-ssi-position = -0.4768571`
+- Interpretation:
+  - the C SSI panel is now one-to-one with the zeroed SSI encoder delta
+  - B/C servo feedback remains unchanged and still uses stepgen feedback, not SSI
+
+# 2026-04-11 - XYZBC maintenance config locked as current baseline
+
+- User confirmed the C display confusion came from older implementation planning.
+- Locked the current `XYZBC` maintenance config as the baseline for full 5-axis
+  maintenance work:
+  - axes: `X/Y/Z/B/C`
+  - no homing required on startup
+  - B/C servo output uses original 5th Axis stepgen servo style
+  - B/C motor feedback remains on stepgen feedback
+  - SSI encoder values remain display-only
+  - B SSI display is 1:1 zeroed encoder delta
+  - C SSI display is 1:1 zeroed encoder delta
+  - pendant jog wiring remains on the known-good `axis.*.jog-*` path
+- Confirmed by grep:
+  - no SSI-to-`joint.3/4.motor-pos-fb` links in the maintenance config
+  - `joint.3.motor-pos-fb` is fed by `hm2_7i95.0.stepgen.03.position-fb`
+  - `joint.4.motor-pos-fb` is fed by `hm2_7i95.0.stepgen.04.position-fb`
+- Updated:
+  - `configs/5th_axis_xyzbc_maintenance/README.md`
+- Next-stage SSI servo feedback work should be done in a separate config, not by
+  changing this locked maintenance baseline.
+
+# 2026-04-11 - XYZBC maintenance scope clarified
+
+- User clarified the locked `XYZBC` maintenance config will be used only for
+  moving servos during maintenance work.
+- Updated the config README to state it is not a production machining,
+  calibration, or SSI-feedback commissioning config.
+- This config remains maintenance servo-motion only.
+
+# 2026-04-11 - XYZBC SSI feedback test config created
+
+- Created a separate next-stage dev/test copy from the locked maintenance
+  baseline:
+  - `configs/5th_axis_xyzbc_ssi_feedback_test/`
+- Purpose:
+  - test using the B/C SSI absolute encoders as the actual B/C servo feedback
+  - keep the locked `configs/5th_axis_xyzbc_maintenance/` config as the
+    maintenance fallback with no SSI feedback in the servo loop
+- New launcher:
+  - `configs/5th_axis_xyzbc_ssi_feedback_test/launch_xyzbc_ssi_feedback_test.sh`
+- Renamed config files:
+  - `5th_axis_xyzbc_ssi_feedback_test.ini`
+  - `5th_axis_xyzbc_ssi_feedback_test.hal`
+  - `5th_axis_xyzbc_ssi_feedback_test.var`
+- Feedback routing in the new test config:
+  - `hm2_7i95.0.ssi.00.abs.position` -> `b_ssi_zero.in0`
+  - `b_ssi_zero.out` -> `b-pos-fb`
+  - `b-pos-fb` -> `pid.b.feedback`
+  - `b-pos-fb` -> `joint.3.motor-pos-fb`
+  - `hm2_7i95.0.ssi.01.abs.position` -> `c_ssi_zero.in0`
+  - `c_ssi_zero.out` -> `c_ssi_axis_scale.in0`
+  - `c_ssi_axis_scale.out` -> `c-pos-fb`
+  - `c-pos-fb` -> `pid.c.feedback`
+  - `c-pos-fb` -> `joint.4.motor-pos-fb`
+- Stepgen feedback is no longer the B/C motor feedback source in this new test
+  config, but it remains exposed as monitor-only signals:
+  - `b-stepgen-pos-fb <= hm2_7i95.0.stepgen.03.position-fb`
+  - `c-stepgen-pos-fb <= hm2_7i95.0.stepgen.04.position-fb`
+- C SSI scale remains one-to-one for the zeroed display/feedback path:
+  - `c_ssi_axis_scale.in1 = 1.0`
+- Static checks performed:
+  - XML parse check for `encoder_alignment.xml`
+  - shell syntax check for `launch_xyzbc_ssi_feedback_test.sh`
+  - grep confirmed B/C motor feedback is sourced from zeroed SSI signals in the
+    new test config
+- Not yet performed:
+  - live LinuxCNC launch of the SSI feedback test config
+- Safety note:
+  - start with B/C drives disabled or mechanically safe
+  - test one axis at a time with tiny jogs
+  - if feedback direction or following-error behavior is wrong, go back to the
+    locked `5th_axis_xyzbc_maintenance` config
+
+
+# 2026-04-11 - XYZBC SSI feedback test launch and C startup wrap correction
+
+- Launched `configs/5th_axis_xyzbc_ssi_feedback_test/launch_xyzbc_ssi_feedback_test.sh` after shutting down the locked maintenance session.
+- First power-on attempt produced repeated joint 4 following errors. Live HAL showed SSI data valid, but C feedback was outside the tight startup following-error window.
+- Updated only the SSI feedback test config; locked maintenance config remains unchanged.
+- Tightened B/C zero offsets and added C startup wrap-branch normalization:
+  - `b_ssi_zero.in1 = -182.1640`
+  - `c_ssi_zero.in1 = -179.0476`
+  - `c_ssi_wrap_add` adds `360.0` when the zeroed C startup branch lands below `-180.0`
+  - `c_ssi_startup_normalized` feeds `c_ssi_axis_scale.in0`, then `c-pos-fb` feeds `pid.c.feedback` and `joint.4.motor-pos-fb`
+- Relaunched the feedback test config. Live checks after relaunch:
+  - `b-pos-fb` approximately `0.000 deg`
+  - `c-ssi-zeroed-position` approximately `-360 deg`
+  - `c-ssi-startup-normalized` approximately `0.000 deg`
+  - `c-pos-fb` approximately `0.000 deg`
+  - B/C SSI `data-invalid` pins `FALSE`
+  - joint 4 not f-errored before drive enable
+- Note: this is still a dev/test startup branch correction near the current home range, not a complete future-proof C-axis power-up position validation scheme.
+
+# 2026-04-11 - C SSI feedback direction matched to servo setup
+
+- While the feedback-test config was live, C SSI feedback and C stepgen position moved in opposite signs:
+  - C SSI feedback was approximately `+0.870 deg`
+  - C stepgen position feedback was approximately `-0.829 deg`
+- With joint 4 amp-enable false, set live `c_ssi_axis_scale.in1 = -1.0` and confirmed C SSI feedback became approximately `-0.869 deg`, matching the C stepgen sign.
+- Updated only `configs/5th_axis_xyzbc_ssi_feedback_test/5th_axis_xyzbc_ssi_feedback_test.hal` so C uses `setp c_ssi_axis_scale.in1 -1.0` on restart.
+- B direction has not yet been proven under motion in this feedback-test config.
+
+# 2026-04-11 - SSI feedback direction verification caution
+
+- User correctly noted that stepgen position feedback is calculated from the command/pulse train and is not definitive real machine position because the servo drive has its own position control.
+- Treat the C `c_ssi_axis_scale.in1 = -1.0` change as provisional until verified by an actual tiny commanded C move and the corresponding SSI feedback direction.
+- Correct proof for B/C SSI feedback sign: during a small positive LinuxCNC command, the SSI-derived `joint.N.motor-pos-fb` must move positive in the same coordinate sense; during a small negative command it must move negative.
+- Do not use stepgen position feedback as absolute truth for B/C machine position; at most it is a command-side reference from the previous maintenance setup.
+
+# 2026-04-11 - Stepgen feedback use clarified
+
+- User clarified stepgen position feedback can be used for direction and estimates only, not as definitive B/C machine position.
+- Current feedback-test interpretation: C `c_ssi_axis_scale.in1 = -1.0` is a provisional direction match against the command-side/stepgen direction estimate, while final sign proof still requires a tiny commanded motion with SSI feedback moving in the same command sign.
+
+# 2026-04-11 - SSI feedback test B/C safety limits reduced
+
+- User reported continued following error and asked whether the INI/HAL need larger changes for closed-loop B/C SSI feedback.
+- Interpretation: using SSI as real feedback is not just a display reroute; B/C need conservative outer-loop tuning and startup behavior because the old maintenance setup closed the LinuxCNC loop against calculated stepgen position.
+- Updated only the feedback-test config with slower B/C commissioning limits:
+  - `[DISPLAY]`/`[TRAJ]` angular jog default `0.25 deg/s`, max `1 deg/s`
+  - `[AXIS_B]`/`[AXIS_C]` max velocity `1 deg/s`, max acceleration `3 deg/s^2`
+  - `[JOINT_3]`/`[JOINT_4]` max velocity `1 deg/s`, max acceleration `3 deg/s^2`
+  - B/C `STEPGEN_MAXVEL = 1.5`, `STEPGEN_MAXACCEL = 6`
+  - B/C `P = 50.0`, `MAX_OUTPUT = 1.0`
+  - B/C following error windows set to `FERROR = 2`, `MIN_FERROR = 0.5`
+- Relaunched feedback-test config. AXIS reported angular jog max `1 deg/s`, default `0.25 deg/s`. Live HAL confirmed B/C PID/output/stepgen limits loaded, B/C command and feedback matched at idle, and both SSI data-invalid pins were `FALSE`.
+
+# 2026-04-11 - SSI feedback test confirmed B/C motion
+
+- User confirmed motion on both B and C axes in the SSI feedback test config after the conservative B/C limits were applied.
+- Live HAL snapshot after motion:
+  - B enabled `TRUE`, command `1.103569 deg`, SSI feedback `1.103746 deg`, f-error approx `-0.000177 deg`, `joint.3.f-errored = FALSE`, `pid.b.output` approx `0.008313 deg/s`
+  - C enabled `TRUE`, command `0.929413 deg`, SSI feedback `0.929695 deg`, f-error approx `0.000061 deg`, `joint.4.f-errored = FALSE`, `pid.c.output` approx `0.003036 deg/s`
+  - B/C SSI `data-invalid` pins were both `FALSE`
+- This confirms the SSI closed-loop feedback test config can move B and C under the current conservative settings. Continue using tiny moves while verifying direction, scaling, and following-error behavior before increasing limits.
+
+# 2026-04-11 - SSI feedback MDI check returned B/C to zero
+
+- User completed MDI check and reported both B and C returned to zero satisfactorily.
+- Final live HAL checkpoint after return to zero:
+  - B command `0.011 deg`, SSI feedback `0.010950 deg`, f-error approx `-0.000293 deg`, `joint.3.f-errored = FALSE`, `pid.b.output` approx `0.002518 deg/s`
+  - C command `0.005 deg`, SSI feedback `0.004784 deg`, f-error approx `0.000216 deg`, `joint.4.f-errored = FALSE`, `pid.c.output` approx `-0.006358 deg/s`
+  - `motion.in-position = TRUE`
+  - B/C SSI `data-invalid` pins both `FALSE`
+- Current status: SSI feedback test config is working for conservative B/C MDI motion under the temporary low-speed/low-output limits.
+
+# 2026-04-11 - SSI feedback test speeds bumped and B wrap normalized
+
+- User asked to bump speeds up a bit after successful conservative MDI testing.
+- Updated only the SSI feedback test config limits:
+  - angular jog default `0.5 deg/s`, max `2 deg/s`
+  - B/C axis and joint max velocity `2 deg/s`, max acceleration `6 deg/s^2`
+  - B/C `STEPGEN_MAXVEL = 3`, `STEPGEN_MAXACCEL = 12`
+  - B/C `MAX_OUTPUT = 2.0`, with `P = 50.0` unchanged
+- After restart, B came up on the SSI wrap branch (`b-ssi-zeroed-position` approx `-363.205 deg`). Stopped LinuxCNC and added B wrap normalization matching the C below-`-180` branch handling.
+- Relaunched after B wrap fix. Live HAL showed:
+  - B raw zeroed branch approx `-363.205 deg`, normalized `b-pos-fb` approx `-3.205 deg`
+  - C `c-pos-fb` approx `-3.242 deg`
+  - joint 3/4 command and feedback matched, joint 3/4 f-errored `FALSE`
+  - B/C PID maxoutput loaded as `2`, SSI data-invalid pins both `FALSE`
+
+# 2026-04-11 - SSI feedback test speeds bumped to 4 deg/s
+
+- User reported the `2 deg/s` feedback-test setup still looked good and asked to bump speeds again.
+- Updated only the SSI feedback test config limits:
+  - angular jog default `1 deg/s`, max `4 deg/s`
+  - B/C axis and joint max velocity `4 deg/s`, max acceleration `12 deg/s^2`
+  - B/C `STEPGEN_MAXVEL = 6`, `STEPGEN_MAXACCEL = 24`
+  - B/C `MAX_OUTPUT = 4.0`, with `P = 50.0` unchanged
+  - B/C following-error windows unchanged at `FERROR = 2`, `MIN_FERROR = 0.5`
+- Relaunched feedback-test config. AXIS reported angular jog max `4 deg/s`, default `1 deg/s`. Live HAL confirmed B/C PID maxoutput `4`, stepgen maxvel `6`, stepgen maxaccel `24`, B/C near zero, no B/C f-error, and both SSI data-invalid pins `FALSE`.
+
+# 2026-04-11 - SSI feedback test speeds bumped to 8 deg/s
+
+- User reported the `4 deg/s` feedback-test setup still looked good and asked to bump speeds again.
+- Updated only the SSI feedback test config limits:
+  - angular jog default `2 deg/s`, max `8 deg/s`
+  - B/C axis and joint max velocity `8 deg/s`, max acceleration `24 deg/s^2`
+  - B/C `STEPGEN_MAXVEL = 12`, `STEPGEN_MAXACCEL = 48`
+  - B/C `MAX_OUTPUT = 8.0`, with `P = 50.0` unchanged
+  - B/C following-error windows unchanged at `FERROR = 2`, `MIN_FERROR = 0.5`
+- Relaunched feedback-test config. AXIS reported angular jog max `8 deg/s`, default `2 deg/s`. Live HAL confirmed B/C PID maxoutput `8`, stepgen maxvel `12`, stepgen maxaccel `48`, B/C command and feedback matched near zero, no B/C f-error, and both SSI data-invalid pins `FALSE`.
+
+# 2026-04-11 - SSI feedback test ready for live program testing
+
+- User reported current B/C motion looks good at the `8 deg/s` SSI feedback test settings and noted the real test will be live programs.
+- Current comparison to locked maintenance/original config:
+  - commanded angular max and B/C joint max velocity are `8 deg/s` vs original `10 deg/s` (`80%`)
+  - B/C joint max acceleration is `24 deg/s^2` vs original `30 deg/s^2` (`80%`)
+  - correction loop is still softer/capped: B/C `P = 50` vs original `1000`, B/C `MAX_OUTPUT = 8`, B `STEPGEN_MAXVEL = 12` vs original `65`, C `STEPGEN_MAXVEL = 12` vs original `50`
+- Live checkpoint after current motion looked good:
+  - B command `-0.011 deg`, SSI feedback `-0.011023 deg`, f-error approx `0.000023 deg`, `joint.3.f-errored = FALSE`, `pid.b.output` approx `0.001151 deg/s`
+  - C command `0.005 deg`, SSI feedback `0.004784 deg`, f-error approx `-0.000127 deg`, `joint.4.f-errored = FALSE`, `pid.c.output` approx `-0.006358 deg/s`
+  - B/C SSI `data-invalid` pins both `FALSE`, `motion.in-position = TRUE`
+- Remaining caveat: jogging/MDI validates basic feedback direction and stability, but live programs still need testing for coordinated motion, blending, reversals, and larger B/C moves.
+
+# 2026-04-11 - Locked XYZBC SSI maintenance config
+
+- User asked to lock the current working SSI feedback state as a maintenance XYZBC-SSI config.
+- Created separate locked config copy:
+  - `configs/5th_axis_xyzbc_ssi_maintenance/`
+  - launcher: `configs/5th_axis_xyzbc_ssi_maintenance/launch_xyzbc_ssi_maintenance.sh`
+  - INI: `5th_axis_xyzbc_ssi_maintenance.ini`
+  - HAL: `5th_axis_xyzbc_ssi_maintenance.hal`
+  - VAR: `5th_axis_xyzbc_ssi_maintenance.var`
+- This locked maintenance-SSI config preserves the validated current state:
+  - B/C SSI feedback routed to `joint.3/4.motor-pos-fb` and `pid.b/c.feedback`
+  - B/C below-`-180` startup wrap normalization
+  - C SSI display/feedback scale `c_ssi_axis_scale.in1 = -1.0`
+  - angular jog default `2 deg/s`, max `8 deg/s`
+  - B/C max velocity `8 deg/s`, max acceleration `24 deg/s^2`
+  - B/C `STEPGEN_MAXVEL = 12`, `STEPGEN_MAXACCEL = 48`
+  - B/C `P = 50.0`, `MAX_OUTPUT = 8.0`
+  - B/C following-error windows `FERROR = 2`, `MIN_FERROR = 0.5`
+- Existing configs remain intact:
+  - no-SSI fallback: `configs/5th_axis_xyzbc_maintenance/`
+  - dev/test source: `configs/5th_axis_xyzbc_ssi_feedback_test/`
+- Static checks performed on the new maintenance-SSI copy:
+  - `bash -n launch_xyzbc_ssi_maintenance.sh` passed
+  - PyVCP XML parse check passed for `encoder_alignment.xml`
+  - grep confirmed new INI references `5th_axis_xyzbc_ssi_maintenance` machine, preference, parameter, and HAL files
+  - grep confirmed B/C SSI feedback and wrap-normalization links in the new HAL
+- Did not launch the new locked maintenance-SSI copy yet; the currently running LinuxCNC session was left undisturbed.
+
+# 2026-04-11 - Pause handoff and power-loss checkpoint
+
+- User paused the task for a few hours and requested notes, session details, commit, and push in case of PC power loss.
+- Current machine/control status before shutdown:
+  - LinuxCNC was running from `configs/5th_axis_xyzbc_ssi_feedback_test/launch_xyzbc_ssi_feedback_test.sh` with the same settings now locked into `configs/5th_axis_xyzbc_ssi_maintenance/`.
+  - Live HAL snapshot: B command `-0.010680 deg`, B SSI feedback `-0.010336 deg`, B f-error `0`, `joint.3.f-errored = FALSE`, `pid.b.output = 0`.
+  - Live HAL snapshot: C command `-0.005173 deg`, C SSI feedback `-0.005173 deg`, C f-error `0`, `joint.4.f-errored = FALSE`, `pid.c.output = 0`.
+  - B/C SSI `data-invalid` pins were both `FALSE`; `motion.in-position = TRUE`.
+- Locked working baseline configs for resume:
+  - no-SSI fallback maintenance: `configs/5th_axis_xyzbc_maintenance/`
+  - SSI closed-loop maintenance baseline: `configs/5th_axis_xyzbc_ssi_maintenance/`
+  - SSI development/test source: `configs/5th_axis_xyzbc_ssi_feedback_test/`
+- Current SSI maintenance baseline details:
+  - B/C SSI feedback feeds `joint.3/4.motor-pos-fb` and `pid.b/c.feedback`.
+  - B/C have below-`-180` startup wrap normalization.
+  - C SSI feedback/display scale is `c_ssi_axis_scale.in1 = -1.0`.
+  - angular jog default `2 deg/s`, max `8 deg/s`.
+  - B/C max velocity `8 deg/s`, max acceleration `24 deg/s^2`.
+  - B/C `STEPGEN_MAXVEL = 12`, `STEPGEN_MAXACCEL = 48`, `P = 50.0`, `MAX_OUTPUT = 8.0`.
+  - B/C following-error windows are `FERROR = 2`, `MIN_FERROR = 0.5`.
+- Next planned phase after pause: create/use a new TCP calibration config copied from `configs/5th_axis_xyzbc_ssi_maintenance/`, wire/validate the wireless touch probe, and use the 30 mm sphere to collect logged probe data for B/C zero and TCP pivot/offset solving.
+- Suggested calibration approach: G-code programs should perform safe, repeatable probing and log data; offline Python should calculate B/C zero corrections and TCP offsets from the logged sphere-center data.
+
+# 2026-04-11 - LinuxCNC shutdown before pause
+
+- After the pause checkpoint, stopped the running LinuxCNC session that had been launched from `configs/5th_axis_xyzbc_ssi_feedback_test/launch_xyzbc_ssi_feedback_test.sh`.
+- Shutdown completed cleanly at the HAL/HostMot2 level: shutdown script ran, `hm2_eth` reset/unloaded, and HostMot2 unloaded.
+- No LinuxCNC/milltask/AXIS/HALUI/XHC processes were left running after shutdown.

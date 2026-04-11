@@ -1,0 +1,5 @@
+# AXIS PyVCP panel connections for monitor-only B/C SSI encoder alignment.
+net b-ssi-position => pyvcp.b-ssi-position
+net c-ssi-position => pyvcp.c-ssi-position
+net b-ssi-invalid => pyvcp.b-ssi-invalid
+net c-ssi-invalid => pyvcp.c-ssi-invalid
