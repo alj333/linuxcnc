@@ -2347,3 +2347,36 @@
 - After the pause checkpoint, stopped the running LinuxCNC session that had been launched from `configs/5th_axis_xyzbc_ssi_feedback_test/launch_xyzbc_ssi_feedback_test.sh`.
 - Shutdown completed cleanly at the HAL/HostMot2 level: shutdown script ran, `hm2_eth` reset/unloaded, and HostMot2 unloaded.
 - No LinuxCNC/milltask/AXIS/HALUI/XHC processes were left running after shutdown.
+
+# 2026-04-11 - End-of-day lock-in and next-session plan
+
+- User finished for the day and asked to lock in progress, current status, and planning for the next session.
+- Current working machine baseline is the AXIS-based SSI maintenance config, not Probe Basic:
+  - `configs/5th_axis_xyzbc_ssi_maintenance/`
+  - launcher: `configs/5th_axis_xyzbc_ssi_maintenance/launch_xyzbc_ssi_maintenance.sh`
+- Reason for using AXIS now: maintenance work needed to release/bypass the homing requirement; Probe Basic work is paused and will be revisited later.
+- Locked baselines available for resume:
+  - no-SSI maintenance fallback: `configs/5th_axis_xyzbc_maintenance/`
+  - SSI closed-loop maintenance baseline: `configs/5th_axis_xyzbc_ssi_maintenance/`
+  - SSI dev/test source config: `configs/5th_axis_xyzbc_ssi_feedback_test/`
+- Current machine status at end of day:
+  - LinuxCNC was shut down cleanly after the pause checkpoint.
+  - No LinuxCNC/milltask/AXIS/HALUI/XHC/HostMot2 processes were left running.
+  - Last live B/C state before shutdown was in-position, SSI data valid on both channels, and no B/C following-error flags.
+- Current SSI maintenance baseline summary:
+  - B/C SSI feedback feeds `joint.3/4.motor-pos-fb` and `pid.b/c.feedback`.
+  - B/C below-`-180` startup wrap normalization is active.
+  - C SSI feedback/display scale is `c_ssi_axis_scale.in1 = -1.0`.
+  - angular jog default `2 deg/s`, max `8 deg/s`.
+  - B/C max velocity `8 deg/s`, max acceleration `24 deg/s^2`.
+  - B/C `STEPGEN_MAXVEL = 12`, `STEPGEN_MAXACCEL = 48`, `P = 50.0`, `MAX_OUTPUT = 8.0`.
+  - B/C following-error windows are `FERROR = 2`, `MIN_FERROR = 0.5`.
+- Next session plan:
+  - Start by launching the locked SSI maintenance config if machine motion needs to be rechecked.
+  - Create a new TCP/probe calibration config copied from `configs/5th_axis_xyzbc_ssi_maintenance/`; do not edit the locked maintenance baseline directly.
+  - Working name for the new config: `configs/5th_axis_xyzbc_tcp_calibration/`.
+  - Add/validate wireless touch probe input into `motion.probe-input`.
+  - Use the 30 mm sphere as the calibration artifact.
+  - Write G-code routines for safe repeatable probing and CSV-style logging; use offline Python to calculate B/C zero corrections and TCP offsets.
+  - Account for probe length and spindle/C-axis non-concentricity in the offline geometry model rather than assuming the spindle is concentric to C.
+  - Keep Probe Basic migration as a later task after the calibration/maintenance path is stable.
