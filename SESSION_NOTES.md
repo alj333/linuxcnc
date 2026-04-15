@@ -2380,3 +2380,15 @@
   - Write G-code routines for safe repeatable probing and CSV-style logging; use offline Python to calculate B/C zero corrections and TCP offsets.
   - Account for probe length and spindle/C-axis non-concentricity in the offline geometry model rather than assuming the spindle is concentric to C.
   - Keep Probe Basic migration as a later task after the calibration/maintenance path is stable.
+
+# 2026-04-15 - Shutdown/restart context checkpoint
+
+- User is shutting down the PC soon and asked to save memory/context for restart.
+- Latest pushed branch: `head-head-kinematics-rnd-pushable` on remote `alj333`, latest commit `b79afff637 Document XYZBC SSI calibration handoff`.
+- LinuxCNC is not running; process check found no `linuxcnc`, `milltask`, `axis`, `halui`, `xhc`, or HostMot2 processes.
+- Resume baseline: `configs/5th_axis_xyzbc_ssi_maintenance/` using launcher `configs/5th_axis_xyzbc_ssi_maintenance/launch_xyzbc_ssi_maintenance.sh`.
+- This AXIS-based maintenance config is the locked basic fully functional XYZBC machine setup with B/C SSI closed-loop feedback. Probe Basic work remains paused because AXIS was needed to bypass/release homing requirements for maintenance work.
+- Keep the locked maintenance config stable. For the next phase, create a new config copied from it, planned as `configs/5th_axis_xyzbc_tcp_calibration/`.
+- Next phase goal: calibrate B/C zero points and solve TCP/pivot offsets using the wireless touch probe and 30 mm sphere.
+- Calibration approach: G-code routines should move/probe safely and log data; offline Python should solve corrections. Account for probe length and the spindle not being concentric with the C axis.
+- Known unrelated dirty/untracked files remain in the worktree, mainly older Probe Basic/sim/runtime files. Do not treat them as part of the locked XYZBC SSI maintenance baseline unless explicitly requested.
