@@ -32,8 +32,8 @@ setp hm2_7i95.0.ssi.01.abs.scale -2912.711111111111
 # Zeroed B/C SSI encoder values. The raw absolute pins remain unchanged.
 # B/C can start near the SSI single-turn wrap, so these paths add 360 deg when
 # the zeroed startup branch lands below -180 deg.
-setp b_ssi_zero.in1 -182.0335
-setp c_ssi_zero.in1 -178.9192
+setp b_ssi_zero.in1 -182.9921
+setp c_ssi_zero.in1 -180.8538
 setp b_ssi_wrap_add.in1 360.0
 setp b_ssi_wrap_low.in1 -180.0
 setp b_ssi_wrap_low.hyst 1.0

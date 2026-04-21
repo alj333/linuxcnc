@@ -2441,3 +2441,43 @@
   - startup only showed the usual `hm2_eth` `iptables` warning
   - the locked SSI maintenance baseline now includes:
     X/Y/Z homing, corrected B/C zero offsets, and the revised X/Y/Z/B/C limits
+
+# 2026-04-21 - B manual zero calibration
+
+- User manually calibrated the physical B axis and requested that the current pose become the new `B0`.
+- Checked the live SSI maintenance session and confirmed this required another B encoder-zero adjustment, not PID tuning.
+- Updated the locked SSI maintenance HAL B zero constant in `configs/5th_axis_xyzbc_ssi_maintenance/5th_axis_xyzbc_ssi_maintenance.hal`:
+  - final value: `b_ssi_zero.in1 = -182.9921`
+- Restarted LinuxCNC to load the new B zero reference.
+- Verified after restart that the current physical B pose now lands essentially on zero:
+  - `joint.3.pos-cmd = -0.000042`
+  - `joint.3.pos-fb = -0.000042`
+  - `joint.3.motor-pos-cmd = -0.000042`
+  - `joint.3.motor-pos-fb = -0.000042`
+  - `pid.b.error = 0`
+- Result: the manual-calibrated B position is now the effective `B0` reference in the locked SSI maintenance baseline.
+
+# 2026-04-21 - C manual zero calibration and end-of-day state
+
+- User manually calibrated the physical C axis and requested that the current pose become the new `C0`.
+- Checked the live SSI maintenance session and confirmed this required another C encoder-zero adjustment, not PID tuning.
+- Updated the locked SSI maintenance HAL C zero constant in `configs/5th_axis_xyzbc_ssi_maintenance/5th_axis_xyzbc_ssi_maintenance.hal`:
+  - final value: `c_ssi_zero.in1 = -180.8538`
+- Restarted LinuxCNC to load the new C zero reference.
+- Verified after restart that the current physical C pose now lands essentially on zero:
+  - `joint.4.pos-cmd = -0.000044`
+  - `joint.4.pos-fb = -0.000044`
+  - `joint.4.motor-pos-cmd = -0.000044`
+  - `joint.4.motor-pos-fb = -0.000044`
+  - `pid.c.error = 0`
+- Result: the manual-calibrated C position is now the effective `C0` reference in the locked SSI maintenance baseline.
+
+- End-of-day resume state:
+  - active branch: `head-head-kinematics-rnd-pushable`
+  - resume launcher: `configs/5th_axis_xyzbc_ssi_maintenance/launch_xyzbc_ssi_maintenance.sh`
+  - LinuxCNC was left running in the locked SSI maintenance config at end of session
+  - locked SSI maintenance baseline now includes:
+    X/Y/Z homing enabled, corrected B/C zero references, and the current X/Y/Z/B/C limits
+  - latest locked B/C zero constants:
+    `b_ssi_zero.in1 = -182.9921`
+    `c_ssi_zero.in1 = -180.8538`
