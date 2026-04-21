@@ -2392,3 +2392,52 @@
 - Next phase goal: calibrate B/C zero points and solve TCP/pivot offsets using the wireless touch probe and 30 mm sphere.
 - Calibration approach: G-code routines should move/probe safely and log data; offline Python should solve corrections. Account for probe length and the spindle not being concentric with the C axis.
 - Known unrelated dirty/untracked files remain in the worktree, mainly older Probe Basic/sim/runtime files. Do not treat them as part of the locked XYZBC SSI maintenance baseline unless explicitly requested.
+
+# 2026-04-21 - XYZ homing locked into SSI maintenance baseline
+
+- Relaunched `configs/5th_axis_xyzbc_ssi_maintenance/launch_xyzbc_ssi_maintenance.sh` after power loss and recovered the live maintenance session.
+- Verified live X/Y/Z home input wiring in the SSI maintenance config:
+  - `hm2_7i95.0.inmux.00.input-00 -> home-x -> joint.0.home-sw-in`
+  - `hm2_7i95.0.inmux.00.input-01 -> home-y -> joint.1.home-sw-in`
+  - `hm2_7i95.0.inmux.00.input-02 -> home-z -> joint.2.home-sw-in`
+- Confirmed live behavior during check:
+  - initial read showed X/Y/Z home inputs inactive
+  - subsequent live check showed all three asserted `TRUE` together at the HAL signal and joint home-switch pins
+- Enabled X/Y/Z homing in the locked SSI maintenance INI to match the working `configs/5th_axis/5th_axis.ini` baseline:
+  - X / `JOINT_0`: `HOME_OFFSET=-10`, `HOME_SEARCH_VEL=-20`, `HOME_LATCH_VEL=0.2`, `HOME_FINAL_VEL=10`, `HOME_USE_INDEX=YES`, `HOME_INDEX_NO_ENCODER_RESET=YES`, `HOME_SEQUENCE=1`
+  - Y / `JOINT_1`: `HOME_OFFSET=-10`, `HOME_SEARCH_VEL=-20`, `HOME_LATCH_VEL=0.2`, `HOME_FINAL_VEL=20`, `HOME_USE_INDEX=YES`, `HOME_INDEX_NO_ENCODER_RESET=YES`, `HOME_SEQUENCE=1`
+  - Z / `JOINT_2`: `HOME_OFFSET=10`, `HOME_SEARCH_VEL=20`, `HOME_LATCH_VEL=-0.2`, `HOME_FINAL_VEL=20`, `HOME_USE_INDEX=YES`, `HOME_INDEX_NO_ENCODER_RESET=YES`, `HOME_SEQUENCE=0`
+- No HAL changes were needed for X/Y/Z homing; the SSI maintenance HAL already had the `home-sw-in` and encoder `index-enable` links.
+- Restarted the SSI maintenance session after the INI edit so the new homing settings are now the active locked baseline.
+
+# 2026-04-21 - SSI maintenance baseline refined and restarted
+
+- Tightened the parked B/C zero reference in the locked SSI maintenance HAL by adjusting the SSI zero constants:
+  - `b_ssi_zero.in1 = -182.0335`
+  - `c_ssi_zero.in1 = -178.9192`
+- Verified after restart that the parked `B0 C0` state now lands essentially on zero:
+  - `joint.3.pos-cmd = 0`, `joint.3.pos-fb = 0`
+  - `joint.4.pos-cmd = 0`, `joint.4.pos-fb = 0`
+  - residual motor-space offsets were approximately `-0.00034` on B and `-0.00036` on C
+  - `pid.b.error = 0`, `pid.c.error = 0`
+- This confirmed the earlier `~0.130 / ~0.128` discrepancy at parked `B0 C0` was an encoder-zero issue, not a servo stiffness/tuning problem.
+
+- Updated the locked SSI maintenance travel limits to match the desired current machine envelope:
+  - X axis/joint: `-10` to `3350.01`
+  - Y axis/joint: `-10` to `1730.01`
+  - Z axis: `-900.01` to `0`
+  - Z joint: `-900.01` to `10`
+  - B axis/joint: `-100` to `100`
+  - C axis/joint: `-359` to `359`
+
+- CNC control power was later cycled while LinuxCNC was still running.
+- The stale pre-cycle session then showed the expected live-fault symptoms:
+  - HostMot2 read errors
+  - joint 4 following error
+- Shut that stale session down and relaunched `configs/5th_axis_xyzbc_ssi_maintenance/launch_xyzbc_ssi_maintenance.sh`.
+- Current status after the clean relaunch:
+  - Mesa at `10.10.10.10` is reachable
+  - AXIS, `halui`, `milltask`, and the SSI maintenance config are running again
+  - startup only showed the usual `hm2_eth` `iptables` warning
+  - the locked SSI maintenance baseline now includes:
+    X/Y/Z homing, corrected B/C zero offsets, and the revised X/Y/Z/B/C limits
