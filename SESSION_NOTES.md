@@ -2505,3 +2505,17 @@
   - `probe-mux`
   - `motion.probe-input`
 - User then manually triggered the touch probe and confirmed the signal flashes in Halshow, which verifies the live probe signal is reaching the SSI maintenance HAL path.
+
+# 2026-04-22 - Locked baseline and next UI direction
+
+- Current locked machine baseline remains `configs/5th_axis_xyzbc_ssi_maintenance/`.
+- This SSI maintenance config is now the source baseline for the next UI/config migration work.
+- Next configuration task:
+  - create a new config copied from the locked SSI maintenance baseline
+  - move probing and calibration work into a Probe Basic-based UI config
+- Operational UI direction for this machine:
+  - Probe Basic `Mill ATC metric` will be the production/operator-facing UI
+  - the current AXIS SSI maintenance config remains the locked maintenance fallback/baseline
+- Immediate next work planned from this point:
+  - perform mechanical alignment checks
+  - then begin TCPC calibration work using the Probe Basic-based calibration workflow
