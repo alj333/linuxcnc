@@ -11,6 +11,7 @@ loadrt comp names=b_ssi_wrap_low,c_ssi_wrap_low
 loadrt mult2 names=c_ssi_axis_scale
 loadrt not count=1
 loadrt and2 count=1
+loadrt or2 count=1
 loadrt hostmot2
 loadrt hm2_eth board_ip="10.10.10.10" config="num_encoders=3 num_pwmgens=0 num_stepgens=5 ssi_chan_0=crc%6unwarn%1bnerr%1babs%20ige ssi_chan_1=crc%6unwarn%1bnerr%1babs%20ige"
 
@@ -32,8 +33,8 @@ setp hm2_7i95.0.ssi.01.abs.scale -2912.711111111111
 # Zeroed B/C SSI encoder values. The raw absolute pins remain unchanged.
 # B/C can start near the SSI single-turn wrap, so these paths add 360 deg when
 # the zeroed startup branch lands below -180 deg.
-setp b_ssi_zero.in1 -182.9921
-setp c_ssi_zero.in1 -180.8538
+setp b_ssi_zero.in1 -182.9152
+setp c_ssi_zero.in1 -180.8703
 setp b_ssi_wrap_add.in1 360.0
 setp b_ssi_wrap_low.in1 -180.0
 setp b_ssi_wrap_low.hyst 1.0
@@ -78,6 +79,7 @@ addf c_ssi_wrap_mux servo-thread
 addf c_ssi_axis_scale servo-thread
 addf not.0 servo-thread
 addf and2.0 servo-thread
+addf or2.0 servo-thread
 addf hm2_7i95.0.write servo-thread
 
 # External I/O used during maintenance bring-up.
@@ -88,7 +90,11 @@ net home-z <= hm2_7i95.0.inmux.00.input-02
 net home-b <= hm2_7i95.0.inmux.00.input-04
 net home-c <= hm2_7i95.0.inmux.00.input-05
 net estop-ext <= hm2_7i95.0.inmux.00.input-06
+net t_probe-in hm2_7i95.0.inmux.00.input-09 => or2.0.in0
+net toolset-in hm2_7i95.0.inmux.00.input-08 => or2.0.in1
 net servo-alarm <= hm2_7i95.0.inmux.00.input-15
+net probe-mux <= or2.0.out
+net probe-mux => motion.probe-input hm2_7i95.0.ssr.00.out-02
 
 # Manual tool release. The physical button can only energize the drawbar
 # solenoid while LinuxCNC's spindle-on signal is false.

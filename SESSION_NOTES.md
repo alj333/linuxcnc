@@ -2481,3 +2481,27 @@
   - latest locked B/C zero constants:
     `b_ssi_zero.in1 = -182.9921`
     `c_ssi_zero.in1 = -180.8538`
+
+# 2026-04-22 - Rotary zero refinement and probe wiring
+
+- Fine-tuned the live parked rotary reference again so the current physical pose became the effective `B0 C0`.
+- Final locked SSI maintenance rotary zero constants in `configs/5th_axis_xyzbc_ssi_maintenance/5th_axis_xyzbc_ssi_maintenance.hal` are now:
+  - `b_ssi_zero.in1 = -182.9152`
+  - `c_ssi_zero.in1 = -180.8703`
+- Verified after the final restart that the parked rotary readback is essentially zero:
+  - `joint.3.pos-fb = -0.000046`
+  - `joint.4.pos-fb = -0.000023`
+  - `pid.b.error = 0`
+  - `pid.c.error = 0`
+
+- Ported the known-good probe wiring pattern from the machine-style `5th_axis` config into the locked SSI maintenance config.
+- Added `or2`-based probe mux wiring in `configs/5th_axis_xyzbc_ssi_maintenance/5th_axis_xyzbc_ssi_maintenance.hal`:
+  - `input-09` wired as `t_probe-in`
+  - `input-08` wired as `toolset-in`
+  - `probe-mux` wired to both `motion.probe-input` and `hm2_7i95.0.ssr.00.out-02`
+- Restarted LinuxCNC and verified the live HAL path exists:
+  - `t_probe-in`
+  - `toolset-in`
+  - `probe-mux`
+  - `motion.probe-input`
+- User then manually triggered the touch probe and confirmed the signal flashes in Halshow, which verifies the live probe signal is reaching the SSI maintenance HAL path.
