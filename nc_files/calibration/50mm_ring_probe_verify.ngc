@@ -1,0 +1,61 @@
+(50 mm ring verification after probe qualification)
+(Start above the left inside edge of the ring, roughly centered in Y, at safe Z)
+(Uses the Probe Basic UI probe tool number and probe parameters)
+
+G21 G17 G40 G49 G54 G64 P0.001 G80 G90 G94
+
+#<probe_tool_number> = #3014
+#<max_z_distance> = #3020
+#<max_xy_distance> = #3018
+#<xy_clearance> = #3019
+#<z_clearance> = #3021
+#<step_off_width> = #3023
+#<extra_probe_depth> = #3022
+#<probe_slow_fr> = #3015
+#<probe_fast_fr> = #3016
+#<edge_width> = #3024
+#<max_vel_slider> = #3017
+
+o<10> if [#<probe_tool_number> LE 0]
+  #<probe_tool_number> = #5400
+o<10> endif
+o<11> if [#<max_z_distance> LE 0]
+  #<max_z_distance> = 15.0
+o<11> endif
+o<12> if [#<max_xy_distance> LE 0]
+  #<max_xy_distance> = 35.0
+o<12> endif
+o<13> if [#<xy_clearance> LE 0]
+  #<xy_clearance> = 1.0
+o<13> endif
+o<14> if [#<z_clearance> LE 0]
+  #<z_clearance> = 2.0
+o<14> endif
+o<15> if [#<step_off_width> LE 0]
+  #<step_off_width> = 3.0
+o<15> endif
+o<16> if [#<probe_slow_fr> LE 0]
+  #<probe_slow_fr> = 50.0
+o<16> endif
+o<17> if [#<probe_fast_fr> LE 0]
+  #<probe_fast_fr> = 300.0
+o<17> endif
+o<18> if [#<edge_width> LE 0]
+  #<edge_width> = 5.0
+o<18> endif
+o<19> if [#<max_vel_slider> LE 0]
+  #<max_vel_slider> = 1000.0
+o<19> endif
+
+#<ring_diameter> = 50.0
+#<calibration_offset> = 0.0000
+#<x_hint> = 0.0
+#<y_hint> = 0.0
+#<diameter_hint> = 50.0
+#<probe_mode> = 1
+
+(DEBUG, RING_VERIFY_50MM start)
+o<probe_round_pocket> call [#<probe_tool_number>] [#<max_z_distance>] [#<max_xy_distance>] [#<xy_clearance>] [#<z_clearance>] [#<step_off_width>] [#<extra_probe_depth>] [#<probe_slow_fr>] [#<probe_fast_fr>] [#<calibration_offset>] [#<x_hint>] [#<y_hint>] [#<diameter_hint>] [#<edge_width>] [#<probe_mode>] [#<max_vel_slider>]
+(DEBUG, RING_VERIFY_50MM complete - record x/y diameter and averaged_diam from the Probe Basic widget)
+
+M2

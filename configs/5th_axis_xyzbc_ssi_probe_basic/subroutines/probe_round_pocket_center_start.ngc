@@ -2,12 +2,12 @@
 (version: 0.3)
 (date: 01/28/26)
 
-(Probe round pocket center measure x and y Diam, find xy center position)
-(Start probe position is over left side edge of pocket wall)
-(inside the step off width distance and within max z distance)
+(Probe round pocket center start measure x and y Diam, find xy center position)
+(Start probe position is rough center of pocket a safe distance below top edge)
+(no z move will be initiated in this routine. end position is hole center)
 (ensure all settings have been set properly according to help diagrams)
 
-o<probe_round_pocket> sub
+o<probe_round_pocket_center_start> sub
 
   (uses NGCGUI style arg spec)
   (number after "=" in comment is default value)
@@ -45,22 +45,8 @@ o<probe_round_pocket> sub
   (remove probe tip diam and cal offset from probed width calculations)
   #<probe_diameter_offset> = [#<probe_diameter> - [#<calibration_offset> * 2]]
 
-  #<z_probe_stack> = [#<z_clearance> + #<probe_diameter> + #<extra_probe_depth>]
-
-  (Call sub "probe_z_minus_sub" to Probe top of Workpiece)
-  o<probe_z_minus_sub> call [#3014][#3015][#3016][#3017][#3020][#3021][#3030]
-
-  (Probe X Positioning Move, Step Off Width)
-  G91
-  F[#<probe_traverse_fr>]
-  G38.3 X[#<step_off_width>]
-
-  (Probe X Positioning Move, to Probing Depth)
-  F[#<probe_fast_fr>]
-  G38.3 Z-[#<z_probe_stack>]
-
   (Call sub "probe_x_minus" to Probe x-)
-  o<probe_x_minus> call [#3014][#3015][#3016][#3017][#3018][#3019][#3032]
+  o<probe_x_minus> call [#3014][#3015][#3016][3017][#3018 + #3025 / 2][#3019][#3032]
 
   #<x_minus_probed> = #5061
 
@@ -75,7 +61,7 @@ o<probe_round_pocket> sub
   #1002 = #<x_center_probed>
   (DEBUG, EVAL[vcp.getWidget{"x_center_probed"}.setValue{#1002}])
 
-  (Probe Completion Move to Z Clearance Plane, and X Zero)
+  (Probe Completion Move to X Zero)
   G90
   F[#<probe_traverse_fr>]
   G38.3 X[#<x_center_probed>]
@@ -96,7 +82,7 @@ o<probe_round_pocket> sub
   #1004 = #<y_center_probed>
   (DEBUG, EVAL[vcp.getWidget{"y_center_probed"}.setValue{#1004}])
 
-  (Probe Completion Move to Z Clearance Plane, Y Zero)
+  (Probe Completion Move to Y Zero)
   G90
   F[#<probe_traverse_fr>]
   G38.3 Y[#<y_center_probed>]
@@ -163,9 +149,6 @@ o<probe_round_pocket> sub
   G90
   F[#<probe_traverse_fr>]
   G38.3 Y[#<y_center_probed>]
-  G91
-  F[#<probe_traverse_fr>]
-  G38.3 Z[#<z_probe_stack>]
 
   (probe mode rules for WCO or probe position measuring only)
   o110 if [#<probe_mode> EQ 0]
@@ -177,6 +160,6 @@ o<probe_round_pocket> sub
   (Reinstate Feedrate Override)
   M50 P1
 
-o<probe_round_pocket> endsub
+o<probe_round_pocket_center_start> endsub
 
 M2 (end program)
