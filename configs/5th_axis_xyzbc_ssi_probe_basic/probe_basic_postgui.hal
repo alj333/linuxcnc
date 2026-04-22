@@ -1,0 +1,22 @@
+# Probe Basic postgui integration for the XYZBC SSI calibration config.
+
+loadrt time
+
+addf time.0 servo-thread
+
+net pdnt.program.is-paused => time.0.pause
+net pdnt.program-is-running => time.0.start
+net cycle-seconds qtpyvcp.timerseconds.in <= time.0.seconds
+net cycle-minutes qtpyvcp.timerminutes.in <= time.0.minutes
+net cycle-hours qtpyvcp.timerhours.in <= time.0.hours
+
+# Probe Basic manual tool change dialog.
+net tool-change-request => qtpyvcp_manualtoolchange.change
+net tool-change-confirmed <= qtpyvcp_manualtoolchange.changed
+net tool-number => qtpyvcp_manualtoolchange.number
+
+# Drive the Probe Basic probe indicator from the existing machine probe net.
+net probe-mux => qtpyvcp.probe-led.on
+
+# No real spindle RPM feedback is wired on this test rig yet.
+# Connect a real spindle speed net to qtpyvcp.spindle-encoder-rpm.in later.

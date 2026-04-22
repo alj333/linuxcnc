@@ -2519,3 +2519,38 @@
 - Immediate next work planned from this point:
   - perform mechanical alignment checks
   - then begin TCPC calibration work using the Probe Basic-based calibration workflow
+
+# 2026-04-22 - Probe Basic calibration config created from the locked SSI baseline
+
+- Created a new config directory: `configs/5th_axis_xyzbc_ssi_probe_basic/`.
+- The new config is copied from the locked `configs/5th_axis_xyzbc_ssi_maintenance/` machine baseline, then converted to Probe Basic while preserving the validated machine core:
+  - same `XYZBC` trivkins machine layout
+  - same X/Y/Z homing values
+  - same X/Y/Z/B/C limits
+  - same B/C SSI zero constants and wrap-normalized feedback path
+  - same probe wiring into `motion.probe-input`
+  - same pendant and manual tool-release machine HAL behavior
+- Added the Probe Basic support layer locally in the new config:
+  - `DISPLAY = probe_basic`
+  - local `custom_config.yml`
+  - local `probe_basic_postgui.hal`
+  - local `pbsplash.png`
+  - local `python/`, `subroutines/`, `remap_subs/`, `user_buttons/`, `user_dro_display/`, and `user_tabs/`
+  - dedicated launcher: `configs/5th_axis_xyzbc_ssi_probe_basic/launch_xyzbc_ssi_probe_basic.sh`
+- Adjusted the new config HAL to export Probe Basic manual-tool-change nets:
+  - `tool-change-request`
+  - `tool-change-confirmed`
+  - `tool-number`
+- First Probe Basic launch failed because `probe_basic_postgui.hal` tried to `loadrt not` even though the machine HAL already had a `not` component loaded for the spindle/tool-release interlock.
+- Fixed the postgui file by removing that duplicate realtime load and driving the cycle timer from the existing `pdnt.program-is-running` signal instead.
+- Relaunched the new Probe Basic config and verified from the LinuxCNC and QtPyVCP logs that:
+  - LinuxCNC reached `DISPLAY = probe_basic`
+  - QtPyVCP loaded the Probe Basic UI and postgui HAL
+  - the VTK backplot initialized
+- Verified live HAL wiring in the running Probe Basic session:
+  - `motion.probe-input <== probe-mux`
+  - `probe-mux ==> hm2_7i95.0.ssr.00.out-02 ==> motion.probe-input <== or2.0.out ==> qtpyvcp.probe-led.on`
+- Current role split is now explicit:
+  - `configs/5th_axis_xyzbc_ssi_maintenance/` remains the locked AXIS maintenance fallback
+  - `configs/5th_axis_xyzbc_ssi_probe_basic/` is the active Probe Basic calibration/probing config for the next TCPC phase
+- TCPC/TWP remaps are still not enabled in this new config yet; this build is the UI and probing/calibration migration step before the TCPC integration pass.
