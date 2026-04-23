@@ -2554,3 +2554,23 @@
   - `configs/5th_axis_xyzbc_ssi_maintenance/` remains the locked AXIS maintenance fallback
   - `configs/5th_axis_xyzbc_ssi_probe_basic/` is the active Probe Basic calibration/probing config for the next TCPC phase
 - TCPC/TWP remaps are still not enabled in this new config yet; this build is the UI and probing/calibration migration step before the TCPC integration pass.
+
+# 2026-04-23 - Probe Basic SSI operating baseline updates
+
+- Probe Basic probe calibration value `0.096025` is now operationally locked in through the Probe Basic settings layer and startup sync path.
+- The SSI Probe Basic config now has live spindle output wiring matching the older machine config pattern:
+  - spindle enable wired to `hm2_7i95.0.ssr.00.out-00`
+  - spindle PWM command wired to `hm2_7i95.0.pwmgen.00`
+  - `spindle.0.at-speed` is still forced true because real spindle RPM feedback is not yet wired
+- Flood/M8 in the SSI Probe Basic config now drives spindle air on `hm2_7i95.0.ssr.00.out-03`.
+- Verified at the machine that the spindle output path works and that flood air works.
+- Important launch behavior for this config:
+  - Probe Basic/LinuxCNC must be fully shut down before relaunch
+  - duplicate desktop-side sessions will stack and cause UI lock/slow behavior if the previous session is not completely cleared first
+- For a short 3-axis task, the current SSI Probe Basic config was temporarily raised from the earlier slow calibration-safe limits.
+- Current loaded 3-axis motion settings in `configs/5th_axis_xyzbc_ssi_probe_basic/5th_axis_xyzbc_ssi_probe_basic.ini` are now:
+  - `[TRAJ] MAX_LINEAR_VELOCITY = 240` (`60%` of the original `5th_axis` `400`)
+  - X: `MAX_VELOCITY = 150`, `MAX_ACCELERATION = 300`
+  - Y: `MAX_VELOCITY = 150`, `MAX_ACCELERATION = 300`
+  - Z: `MAX_VELOCITY = 150`, `MAX_ACCELERATION = 300`
+- After a clean restart, LinuxCNC reported the Probe Basic SSI session back in `ON/IDLE` with live `max_velocity = 240.0`.
