@@ -6,8 +6,10 @@ loadrt [KINS]KINEMATICS
 loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
 loadrt pid names=pid.x,pid.y,pid.z,pid.b,pid.c
 loadrt sum2 names=b_ssi_zero,c_ssi_zero,b_ssi_wrap_add,c_ssi_wrap_add
-loadrt mux2 names=b_ssi_wrap_mux,c_ssi_wrap_mux
-loadrt comp names=b_ssi_wrap_low,c_ssi_wrap_low
+loadrt mux2 names=b_ssi_wrap_mux,c_ssi_wrap_mux,spindle_cal_midhigh_or_high,spindle_cal_lowmid_or_upper,spindle_cal_select
+loadrt comp names=b_ssi_wrap_low,c_ssi_wrap_low,spindle_cal_low,spindle_cal_mid,spindle_cal_high
+loadrt scale names=spindle_cmd_low,spindle_cmd_lowmid,spindle_cmd_midhigh,spindle_cmd_high
+loadrt limit1 names=spindle_target_limit,spindle_cmd_limit
 loadrt mult2 names=c_ssi_axis_scale
 loadrt not count=1
 loadrt and2 count=1
@@ -77,6 +79,18 @@ addf c_ssi_wrap_add servo-thread
 addf c_ssi_wrap_low servo-thread
 addf c_ssi_wrap_mux servo-thread
 addf c_ssi_axis_scale servo-thread
+addf spindle_cmd_low servo-thread
+addf spindle_cmd_lowmid servo-thread
+addf spindle_cmd_midhigh servo-thread
+addf spindle_cmd_high servo-thread
+addf spindle_cal_high servo-thread
+addf spindle_cal_mid servo-thread
+addf spindle_cal_midhigh_or_high servo-thread
+addf spindle_cal_low servo-thread
+addf spindle_cal_lowmid_or_upper servo-thread
+addf spindle_cal_select servo-thread
+addf spindle_target_limit servo-thread
+addf spindle_cmd_limit servo-thread
 addf not.0 servo-thread
 addf and2.0 servo-thread
 addf or2.0 servo-thread
@@ -107,7 +121,44 @@ net tool-release <= and2.0.out => hm2_7i95.0.ssr.00.out-05
 
 # Spindle output wiring copied from the original 5th_axis config. Real spindle
 # RPM feedback is still not wired in this SSI Probe Basic config.
-net spindle-vel-cmd-rpm-abs <= spindle.0.speed-out-abs
+net spindle-vel-request-rpm-abs <= spindle.0.speed-out-abs => spindle_target_limit.in
+setp spindle_target_limit.min 0
+setp spindle_target_limit.max [SPINDLE_0]MAX_RPM
+net spindle-vel-target-rpm-abs <= spindle_target_limit.out
+net spindle-vel-target-rpm-abs => spindle_cmd_low.in
+net spindle-vel-target-rpm-abs => spindle_cmd_lowmid.in
+net spindle-vel-target-rpm-abs => spindle_cmd_midhigh.in
+net spindle-vel-target-rpm-abs => spindle_cmd_high.in
+net spindle-vel-target-rpm-abs => spindle_cal_low.in0
+net spindle-vel-target-rpm-abs => spindle_cal_mid.in0
+net spindle-vel-target-rpm-abs => spindle_cal_high.in0
+setp spindle_cal_low.in1 [SPINDLE_0]CAL_LOW_BREAK_RPM
+setp spindle_cal_low.hyst [SPINDLE_0]CAL_BREAK_HYST
+setp spindle_cal_mid.in1 [SPINDLE_0]CAL_MID_BREAK_RPM
+setp spindle_cal_mid.hyst [SPINDLE_0]CAL_BREAK_HYST
+setp spindle_cal_high.in1 [SPINDLE_0]CAL_HIGH_BREAK_RPM
+setp spindle_cal_high.hyst [SPINDLE_0]CAL_BREAK_HYST
+setp spindle_cmd_low.gain [SPINDLE_0]CAL_LOW_GAIN
+setp spindle_cmd_low.offset [SPINDLE_0]CAL_LOW_OFFSET
+setp spindle_cmd_lowmid.gain [SPINDLE_0]CAL_LOWMID_GAIN
+setp spindle_cmd_lowmid.offset [SPINDLE_0]CAL_LOWMID_OFFSET
+setp spindle_cmd_midhigh.gain [SPINDLE_0]CAL_MIDHIGH_GAIN
+setp spindle_cmd_midhigh.offset [SPINDLE_0]CAL_MIDHIGH_OFFSET
+setp spindle_cmd_high.gain [SPINDLE_0]CAL_HIGH_GAIN
+setp spindle_cmd_high.offset [SPINDLE_0]CAL_HIGH_OFFSET
+net spindle-vel-cmd-rpm-low <= spindle_cmd_low.out => spindle_cal_select.in1
+net spindle-vel-cmd-rpm-lowmid <= spindle_cmd_lowmid.out => spindle_cal_lowmid_or_upper.in1
+net spindle-vel-cmd-rpm-midhigh <= spindle_cmd_midhigh.out => spindle_cal_midhigh_or_high.in1
+net spindle-vel-cmd-rpm-high <= spindle_cmd_high.out => spindle_cal_midhigh_or_high.in0
+net spindle-vel-target-below-high <= spindle_cal_high.out => spindle_cal_midhigh_or_high.sel
+net spindle-vel-cmd-rpm-midhigh-or-high <= spindle_cal_midhigh_or_high.out => spindle_cal_lowmid_or_upper.in0
+net spindle-vel-target-below-mid <= spindle_cal_mid.out => spindle_cal_lowmid_or_upper.sel
+net spindle-vel-cmd-rpm-lowmid-or-upper <= spindle_cal_lowmid_or_upper.out => spindle_cal_select.in0
+net spindle-vel-target-below-low <= spindle_cal_low.out => spindle_cal_select.sel
+setp spindle_cmd_limit.min 0
+setp spindle_cmd_limit.max [SPINDLE_0]CAL_MAX_COMMAND_RPM
+net spindle-vel-cmd-rpm-corrected <= spindle_cal_select.out => spindle_cmd_limit.in
+net spindle-vel-cmd-rpm-abs <= spindle_cmd_limit.out
 setp hm2_7i95.0.pwmgen.00.output-type [SPINDLE_0]OUTPUT_TYPE
 setp hm2_7i95.0.pwmgen.00.scale [SPINDLE_0]OUTPUT_SCALE
 setp hm2_7i95.0.pwmgen.pwm_frequency [SPINDLE_0]PWM_FREQUENCY

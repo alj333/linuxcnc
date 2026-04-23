@@ -2574,3 +2574,24 @@
   - Y: `MAX_VELOCITY = 150`, `MAX_ACCELERATION = 300`
   - Z: `MAX_VELOCITY = 150`, `MAX_ACCELERATION = 300`
 - After a clean restart, LinuxCNC reported the Probe Basic SSI session back in `ON/IDLE` with live `max_velocity = 240.0`.
+
+# 2026-04-23 - Probe Basic SSI spindle calibration and RPM cap
+
+- The Probe Basic SSI spindle path remains open-loop analog/PWM control. There is still no real spindle RPM feedback wired into LinuxCNC.
+- Spindle speed behavior was checked against external tach readings and did not match a simple linear scale:
+  - earlier checks showed `S1000 -> 1350`, `S10000 -> 3920`, and `S15000 -> 12000`
+  - after the first software correction pass, follow-up checks showed approximately `1070`, `2440`, `5160`, `8700` across the tested range
+- Because the spindle response was clearly non-linear, the direct `spindle.0.speed-out-abs -> pwmgen` mapping in `configs/5th_axis_xyzbc_ssi_probe_basic/5th_axis_xyzbc_ssi_probe_basic.hal` was replaced with a piecewise open-loop correction block built from HAL `scale`, `comp`, `mux2`, and `limit1` components.
+- The current machine-specific spindle correction is now parameterized in `configs/5th_axis_xyzbc_ssi_probe_basic/5th_axis_xyzbc_ssi_probe_basic.ini` under `[SPINDLE_0]`:
+  - `CAL_LOW_BREAK_RPM = 1070`
+  - `CAL_MID_BREAK_RPM = 2440`
+  - `CAL_HIGH_BREAK_RPM = 5160`
+  - `CAL_LOW_GAIN = 0.6922810661`
+  - `CAL_LOWMID_GAIN = 4.4069119534`
+  - `CAL_MIDHIGH_GAIN = 1.6576906607`
+  - `CAL_HIGH_GAIN = 0.6992224644`
+  - with matching offsets and a corrected-command clamp of `CAL_MAX_COMMAND_RPM = 15000`
+- Added an explicit requested-speed clamp ahead of the spindle correction map:
+  - `[SPINDLE_0] MAX_RPM = 10000`
+  - live HAL verification showed `spindle_target_limit.max = 10000`
+- Operationally, the spindle should now be treated as capped at `10000 RPM` in this Probe Basic SSI config until further tach-based tuning or real spindle feedback is added.
