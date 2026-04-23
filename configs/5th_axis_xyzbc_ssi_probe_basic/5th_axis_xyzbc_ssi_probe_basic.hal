@@ -13,7 +13,7 @@ loadrt not count=1
 loadrt and2 count=1
 loadrt or2 count=1
 loadrt hostmot2
-loadrt hm2_eth board_ip="10.10.10.10" config="num_encoders=3 num_pwmgens=0 num_stepgens=5 ssi_chan_0=crc%6unwarn%1bnerr%1babs%20ige ssi_chan_1=crc%6unwarn%1bnerr%1babs%20ige"
+loadrt hm2_eth board_ip="10.10.10.10" config="num_encoders=3 num_pwmgens=1 num_stepgens=5 ssi_chan_0=crc%6unwarn%1bnerr%1babs%20ige ssi_chan_1=crc%6unwarn%1bnerr%1babs%20ige"
 
 setp hm2_7i95.0.watchdog.timeout_ns 5000000
 setp hm2_7i95.0.dpll.01.timer-us -350
@@ -83,6 +83,8 @@ addf or2.0 servo-thread
 addf hm2_7i95.0.write servo-thread
 
 # External I/O used during maintenance bring-up.
+net spindle-enable => hm2_7i95.0.ssr.00.out-00
+net coolant-flood <= iocontrol.0.coolant-flood => hm2_7i95.0.ssr.00.out-03
 net machine-is-enabled => hm2_7i95.0.ssr.00.out-04
 net home-x <= hm2_7i95.0.inmux.00.input-00
 net home-y <= hm2_7i95.0.inmux.00.input-01
@@ -102,6 +104,17 @@ net spindle-enable <= spindle.0.on => not.0.in
 net spindle-is-off <= not.0.out => and2.0.in1
 net tool-change-button hm2_7i95.0.inmux.00.input-16 => and2.0.in0
 net tool-release <= and2.0.out => hm2_7i95.0.ssr.00.out-05
+
+# Spindle output wiring copied from the original 5th_axis config. Real spindle
+# RPM feedback is still not wired in this SSI Probe Basic config.
+net spindle-vel-cmd-rpm-abs <= spindle.0.speed-out-abs
+setp hm2_7i95.0.pwmgen.00.output-type [SPINDLE_0]OUTPUT_TYPE
+setp hm2_7i95.0.pwmgen.00.scale [SPINDLE_0]OUTPUT_SCALE
+setp hm2_7i95.0.pwmgen.pwm_frequency [SPINDLE_0]PWM_FREQUENCY
+net spindle-vel-cmd-rpm-abs => hm2_7i95.0.pwmgen.00.value
+net spindle-enable => hm2_7i95.0.pwmgen.00.enable
+net spindle-at-speed => spindle.0.at-speed
+sets spindle-at-speed true
 
 # X axis.
 setp hm2_7i95.0.stepgen.00.direction.invert_output true
