@@ -34,11 +34,13 @@ inspect residuals before using the data for TCPC offsets.
 1. Add a vector-only dry-run program that indexes B/C and makes short non-probing
    vector moves in `X/Y/Z`: `nc_files/calibration/b_axis_vector_dry_run_b0_c0.ngc`.
 2. Verify vector signs visually at small B angles, with no sphere contact.
-3. Add a raw-contact sphere probing routine using slow feeds only.
-4. Log raw machine-space trigger points plus commanded `B/C`, probe diameter,
+3. Validate the first real contact with a current-pose top-touch program:
+   `nc_files/calibration/b_axis_vector_top_touch_current_pose.ngc`.
+4. Add a raw-contact sphere probing routine using slow feeds only.
+5. Log raw machine-space trigger points plus commanded `B/C`, probe diameter,
    calibration offset, and feed settings.
-5. Fit sphere centers offline from raw contacts; do not write WCS offsets.
-6. Use repeated measurements and consistent approach direction to separate rotary
+6. Fit sphere centers offline from raw contacts; do not write WCS offsets.
+7. Use repeated measurements and consistent approach direction to separate rotary
    geometry from rack/screw local error.
 
 ## Initial B Pose Set

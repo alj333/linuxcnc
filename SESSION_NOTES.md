@@ -2733,6 +2733,16 @@
   - returns to the operator's starting `XYZ` before each vector check
   - uses short `3.0 mm` vector moves at `150 mm/min` and rotary indexing at
     `200 mm/min`
+- Operator completed the vector dry run and reported that the small vector moves
+  looked correct.
+- Added `nc_files/calibration/b_axis_vector_top_touch_current_pose.ngc` for the
+  first B-axis contact validation.
+- The top-touch test is deliberately current-pose only:
+  - it does not auto-index `B/C`
+  - it does not write WCS offsets
+  - it makes one slow `G38.2` touch along local `W`
+  - it returns to the operator's starting `XYZ`
+  - it logs to `b-axis-vector-results.csv`
 - Next implementation should start with a vector dry-run:
   - define local `W` as the probe/tool vector at commanded `B/C`
   - define local `U/V` perpendicular side-probe vectors

@@ -1,0 +1,125 @@
+(B-axis vector top-touch test at the current B/C pose)
+(No WCS changes. No rotary indexing. One slow G38.2 vector touch.)
+(Use this before any full B-axis sphere sweep.)
+
+(Operator setup:)
+(1. Manually set the intended B/C pose, normally B+15 C0 first.)
+(2. Jog so the probe is roughly centered on the sphere along the stylus.)
+(3. Start 3 to 8 mm clear from the sphere, opposite the probe vector.)
+
+(Does not issue G49; leave active tool-length state unchanged.)
+G21 G17 G40 G64 P0.001 G80 G90 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, B_VECTOR_TOP_TOUCH preview only - probe move skipped)
+  M2
+o<preview_guard> endif
+
+#<probe_tool_number> = #3014
+o<10> if [#<probe_tool_number> LE 0]
+  #<probe_tool_number> = #5400
+o<10> endif
+
+o<11> if [#5400 NE #<probe_tool_number>]
+  (abort, Specified probe tool is not in spindle)
+o<11> endif
+
+#<probe_diameter> = #5410
+o<12> if [#<probe_diameter> LE 0]
+  (abort, Probe diameter is not set)
+o<12> endif
+
+#<calibration_offset> = #3032
+#<sphere_radius> = 15.0
+#<probe_radius> = [#<probe_diameter> / 2.0]
+#<effective_probe_radius> = [#<probe_radius> - #<calibration_offset>]
+#<contact_stack> = [#<sphere_radius> + #<effective_probe_radius>]
+
+#<probe_slow_fr> = 50.0
+#<probe_traverse_fr> = 150.0
+#<top_search> = 12.0
+#<retract_clear> = 3.0
+
+#<b_pose> = #<_abs_b>
+#<c_pose> = #<_abs_c>
+
+(W points along the probe vector toward the table at this B/C pose.)
+#<w_x> = [SIN[#<b_pose>] * COS[#<c_pose>]]
+#<w_y> = [SIN[#<b_pose>] * SIN[#<c_pose>]]
+#<w_z> = [-COS[#<b_pose>]]
+
+#122 = [#<w_x> * #<top_search>]
+#123 = [#<w_y> * #<top_search>]
+#124 = [#<w_z> * #<top_search>]
+#125 = [-#<w_x> * #<retract_clear>]
+#126 = [-#<w_y> * #<retract_clear>]
+#127 = [-#<w_z> * #<retract_clear>]
+
+#<start_x> = #<_x>
+#<start_y> = #<_y>
+#<start_z> = #<_z>
+
+#<x_rel_to_abs> = [#<_abs_x> - #<_x>]
+#<y_rel_to_abs> = [#<_abs_y> - #<_y>]
+#<z_rel_to_abs> = [#<_abs_z> - #<_z>]
+
+(DEBUG, B_VECTOR_TOP_TOUCH start)
+(DEBUG, B_VECTOR_TOP_TOUCH B=#<b_pose> C=#<c_pose>)
+(DEBUG, B_VECTOR_TOP_TOUCH W=#<w_x>,#<w_y>,#<w_z>)
+
+G91
+F#<probe_slow_fr>
+G38.2 X#122 Y#123 Z#124
+
+o<20> if [#5070 EQ 0]
+  G90
+  F#<probe_traverse_fr>
+  G1 X#<start_x> Y#<start_y> Z#<start_z>
+  (abort, Vector top touch did not record point data)
+o<20> endif
+
+#<touch_x> = #5061
+#<touch_y> = #5062
+#<touch_z> = #5063
+
+#<center_x> = [#<touch_x> + [#<w_x> * #<contact_stack>]]
+#<center_y> = [#<touch_y> + [#<w_y> * #<contact_stack>]]
+#<center_z> = [#<touch_z> + [#<w_z> * #<contact_stack>]]
+
+#<touch_abs_x> = [#<touch_x> + #<x_rel_to_abs>]
+#<touch_abs_y> = [#<touch_y> + #<y_rel_to_abs>]
+#<touch_abs_z> = [#<touch_z> + #<z_rel_to_abs>]
+
+#<center_abs_x> = [#<center_x> + #<x_rel_to_abs>]
+#<center_abs_y> = [#<center_y> + #<y_rel_to_abs>]
+#<center_abs_z> = [#<center_z> + #<z_rel_to_abs>]
+
+G91
+F#<probe_traverse_fr>
+G1 X#125 Y#126 Z#127
+
+G90
+F#<probe_traverse_fr>
+G1 X#<start_x> Y#<start_y> Z#<start_z>
+
+#110 = #<b_pose>
+#111 = #<c_pose>
+#112 = #<probe_tool_number>
+#113 = #<calibration_offset>
+#114 = #<touch_abs_x>
+#115 = #<touch_abs_y>
+#116 = #<touch_abs_z>
+#117 = #<center_abs_x>
+#118 = #<center_abs_y>
+#119 = #<center_abs_z>
+#120 = #<probe_slow_fr>
+#121 = #<top_search>
+
+(LOGAPPEND,b-axis-vector-results.csv)
+(LOG,#110,#111,#112,#113,#114,#115,#116,#117,#118,#119,#120,#121)
+(LOGCLOSE)
+
+(DEBUG, B_VECTOR_TOP_TOUCH touch #114 #115 #116)
+(DEBUG, B_VECTOR_TOP_TOUCH center #117 #118 #119)
+(DEBUG, B_VECTOR_TOP_TOUCH complete)
+M2
