@@ -152,6 +152,16 @@ B-axis vector probing rule:
 - First run a short non-contact vector dry-run to verify signs and clearance.
 - Then log raw contact points and fit sphere center offline before using the
   data in TCPC geometry.
+- Current B-axis vector routine:
+  `nc_files/calibration/b_axis_vector_sphere_current_pose.ngc`.
+- Current B-axis vector logs:
+  - `configs/5th_axis_xyzbc_ssi_probe_basic/b-axis-vector-raw-points.csv`
+  - `configs/5th_axis_xyzbc_ssi_probe_basic/b-axis-vector-sphere-results.csv`
+- End-of-day status on 2026-04-26:
+  - `B+15 C0` repeated tightly after manual local `U` correction
+  - `B-15 C0` repeated tightly after manual local `U/V` correction
+  - before collecting `B+30/B-30`, update the routine to perform the first-pass
+    local `U/V` centering correction and second pass automatically
 
 ## Step 5: Mixed-Pose Cross Check
 

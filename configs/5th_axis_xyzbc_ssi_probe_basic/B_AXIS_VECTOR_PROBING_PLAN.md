@@ -9,6 +9,8 @@ that machine Z remains the probe/tool vector after the head tilts.
 - The `B0` C-axis sweep is repeatable enough for the practical `0.10 mm`
   target.
 - Latest automatic C sweep uses side probing at `sphere_center_z + 1.5 mm`.
+- Current-pose vector sphere probing has been validated at `B+15 C0` and
+  `B-15 C0` after manual local centering corrections.
 - Linear-axis rack/screw errors are known possible contributors and must not be
   hidden inside rotary geometry offsets.
 
@@ -41,9 +43,29 @@ inspect residuals before using the data for TCPC offsets.
    `nc_files/calibration/b_axis_vector_sphere_current_pose.ngc`.
 5. Log raw machine-space trigger points plus commanded `B/C`, probe diameter,
    calibration offset, and feed settings.
-6. Fit sphere centers offline from raw contacts; do not write WCS offsets.
-7. Use repeated measurements and consistent approach direction to separate rotary
+6. Add an automatic two-pass current-pose routine before wider B data:
+   pass 1 measures, computes local `U/V` centering error, shifts internally,
+   then pass 2 repeats and becomes the accepted result.
+7. Fit sphere centers offline from raw contacts; do not write WCS offsets.
+8. Use repeated measurements and consistent approach direction to separate rotary
    geometry from rack/screw local error.
+
+## Two-Pass Centering Requirement
+
+The first `B+15 C0` and `B-15 C0` runs showed that the operator can be close
+visually while still starting off the tilted `W` centerline. Manual local
+corrections fixed the data, so the routine should automate that step.
+
+Required behavior:
+
+- Keep it current-pose only; do not auto-index `B/C`.
+- Do not write WCS offsets.
+- Use the full U-pair midpoint error for local `U` correction.
+- Use the full V-pair midpoint error for local `V` correction.
+- Do not halve the correction by averaging the U and V midpoint estimates.
+- Abort if either local correction is greater than about `2.0 mm`.
+- Abort if either corrected diameter is outside about `29.5-30.5 mm`.
+- Log both passes and mark pass 2 as the accepted result.
 
 ## Initial B Pose Set
 

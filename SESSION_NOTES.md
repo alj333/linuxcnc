@@ -2780,3 +2780,62 @@
   - then log raw trigger points and fit sphere centers offline
 - Initial B data should start conservatively at `B0`, `B+15`, `B-15`, `B+30`, `B-30`, closing `B0`, all at `C0`, before widening the tilt range.
 - Do not enable TCPC/TWP until vector signs, raw contact data, and fit residuals are understood.
+
+# 2026-04-26 - End-of-day B-axis vector checkpoint
+
+- Operator is stopping for the day and intends to leave the current Probe
+  Basic/LinuxCNC session running. No shutdown or machine command was issued by
+  Codex.
+- Current live context if power is lost:
+  - active calibration config remains
+    `configs/5th_axis_xyzbc_ssi_probe_basic/`
+  - current probe calibration offset remains `0.134533`
+  - B-axis vector probing has been validated at `B+15 C0` and `B-15 C0`
+  - TCPC/TWP is still not enabled
+  - current-pose vector sphere routine ends at top clearance, not at the
+    original start position
+- `B+15 C0` accepted repeat pair:
+  - pass 2 center `X=226.451909 Y=352.893271 Z=-291.112385`
+  - pass 3 center `X=226.451756 Y=352.892855 Z=-291.111817`
+  - pass 3 minus pass 2 center delta
+    `dX=-0.000153 dY=-0.000416 dZ=+0.000568`
+  - corrected diameters repeated at about `U=30.107 mm`,
+    `V=30.207-30.209 mm`
+- `B-15 C0` data collected after the `B+15` repeat:
+  - the full five-contact sphere routine was run directly at `B-15 C0` instead
+    of the top-touch-only check; it completed cleanly
+  - first `B-15 C0` pass center:
+    `X=386.227701 Y=352.617855 Z=-291.477656`
+  - first `B-15 C0` corrected diameters:
+    `U=30.198675 mm`, `V=30.207167 mm`
+  - first-pass local centering errors from side-pair midpoints:
+    `U=-0.185417 mm`, `V=+0.202918 mm`
+  - operator jogged approximately `X=-0.18`, `Y=+0.20`, `Z=+0.05` and reran
+    the full current-pose routine
+  - corrected `B-15 C0` pass center:
+    `X=386.140321 Y=352.717855 Z=-291.445826`
+  - corrected `B-15 C0` diameters:
+    `U=30.202008 mm`, `V=30.210500 mm`
+  - corrected local centering error is about `U=+0.001458 mm`,
+    `V=+0.001459 mm`
+- Important algorithm note:
+  - the current single-pass result center in
+    `b-axis-vector-sphere-results.csv` is a rough center from averaging U/V
+    pair midpoints
+  - the automatic two-pass routine should use the full U-pair midpoint error for
+    local `U` and the full V-pair midpoint error for local `V`; do not halve the
+    correction by averaging the pair midpoints
+- Next safe implementation step:
+  - add a new filename for a current-pose automatic two-pass vector sphere
+    routine so Probe Basic reloads it cleanly
+  - pass 1 should probe the five contacts, compute local `U/V` centering error,
+    sanity-check the move, shift the start/clearance position internally, then
+    run pass 2 automatically
+  - do not write WCS offsets
+  - do not auto-index `B/C` yet
+  - keep probe moves at `50 mm/min` and transfers at `150 mm/min`
+  - abort if either local correction is more than about `2.0 mm`
+  - abort if either corrected diameter is outside about `29.5-30.5 mm`
+  - log both pass 1 and pass 2, and treat pass 2 as the accepted result
+- After the two-pass routine is implemented and validated, continue the B-axis
+  pose set with `B+30 C0`, `B-30 C0`, and closing `B0 C0`.
