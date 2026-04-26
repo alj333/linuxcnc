@@ -2758,6 +2758,21 @@
   - keeps probing at `50 mm/min` and transfer moves at `150 mm/min`
   - logs raw points to `b-axis-vector-raw-points.csv`
   - logs a rough current-pose center to `b-axis-vector-sphere-results.csv`
+- `B+15 C0` five-contact routine status:
+  - first pass confirmed the operator's concern: top-derived center was about
+    `1.66 mm` off in local `U`
+  - after jogging `+U` by about `1.66 mm`, the second and third passes repeated
+    tightly
+  - accepted repeat pair from passes 2 and 3:
+    - pass 2 center `X=226.451909 Y=352.893271 Z=-291.112385`
+    - pass 3 center `X=226.451756 Y=352.892855 Z=-291.111817`
+    - pass 3 minus pass 2 center delta
+      `dX=-0.000153 dY=-0.000416 dZ=+0.000568`
+    - corrected diameters repeated at about `U=30.107 mm`,
+      `V=30.207-30.209 mm`
+  - current-pose repeatability is good enough to proceed to `B-15 C0`, but the
+    initial centering must be corrected manually or by a future auto-centering
+    pass before trusting a full B sweep.
 - Next implementation should start with a vector dry-run:
   - define local `W` as the probe/tool vector at commanded `B/C`
   - define local `U/V` perpendicular side-probe vectors
