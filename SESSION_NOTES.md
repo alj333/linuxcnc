@@ -2595,3 +2595,25 @@
   - `[SPINDLE_0] MAX_RPM = 10000`
   - live HAL verification showed `spindle_target_limit.max = 10000`
 - Operationally, the spindle should now be treated as capped at `10000 RPM` in this Probe Basic SSI config until further tach-based tuning or real spindle feedback is added.
+
+# 2026-04-26 - Resume context
+
+- Current active operator/config baseline remains `configs/5th_axis_xyzbc_ssi_probe_basic/`.
+- Current locked fallback baseline remains `configs/5th_axis_xyzbc_ssi_maintenance/`.
+- Latest pushed machine-config commit is `4eb66d790a` (`Calibrate SSI Probe Basic spindle map`).
+- Current Probe Basic SSI baseline includes:
+  - X/Y/Z homing enabled
+  - B/C SSI-based rotary feedback path
+  - probe wiring live through `motion.probe-input`
+  - spindle enable/PWM wiring live
+  - flood/M8 driving spindle air
+  - open-loop spindle calibration map with requested spindle cap at `10000 RPM`
+  - temporary faster 3-axis motion limits for short 3-axis work:
+    - `[TRAJ] MAX_LINEAR_VELOCITY = 240`
+    - X/Y/Z `MAX_VELOCITY = 150`
+    - X/Y/Z `MAX_ACCELERATION = 300`
+- Probe Basic/LinuxCNC should still be fully shut down before relaunch to avoid duplicate desktop-side sessions and UI lock/slow behavior.
+- Current operator intent is to leave Probe Basic running in the SSI Probe Basic config; do not shut it down unless explicitly requested.
+- Current next intent from the operator session:
+  - refresh Codex context
+  - then update the local Codex program/environment before continuing machine work
