@@ -2617,3 +2617,116 @@
 - Current next intent from the operator session:
   - refresh Codex context
   - then update the local Codex program/environment before continuing machine work
+
+# 2026-04-26 - TCPC calibration target clarified
+
+- Machine context:
+  - large steel CNC machine
+  - no temperature compensation yet; that is a future project
+  - most 5-axis work target is vacuum-formed part cutout
+- Practical TCPC acceptance target is about `0.10 mm`.
+- Calibration strategy should avoid overfitting below the current thermal/mechanical envelope.
+- Prioritize repeatable safe TCPC behavior across practical B/C poses over single-digit micron fixed-tip results.
+- Small mechanical errors, backlash, and compliance are expected and will be refined in future work.
+- Current TCPC calibration should focus on the dominant rotary/tool geometry and avoid using geometry offsets to mask small mechanical imperfections.
+
+# 2026-04-26 - Probe calibration offset updated
+
+- User repeated the 50.001 mm calibration-ring probe calibration multiple times.
+- Current consistent probe calibration offset is `0.134533`.
+- This supersedes the earlier `0.096025` probe calibration value for the active TCPC calibration session.
+- Before sphere-center capture, ensure Probe Basic shows calibration offset `0.134533` and press `UPDATE PROBE PARAMS` so `#3032` matches the accepted value.
+- For calibration probing tasks, use `50 mm/min` slow probe, `100 mm/min` fast probe, and keep traverse/transfer moves at or below `300 mm/min` while setting up and testing.
+- Probe Basic has no native sphere calibration workflow. The 30 mm sphere cycle is custom and should only borrow Probe Basic setup values that explicitly map to the custom cycle.
+
+# 2026-04-26 - 30 mm sphere test pass
+
+- First loose-sphere `B0 C0` test pass completed successfully as a motion-validation run only.
+- Logged test result:
+  - relative center `X=-2.007917 Y=-1.207917 Z=104.777029`
+  - absolute center `X=306.333197 Y=352.762646 Z=-280.900367`
+  - measured side diameters `X=29.709767 Y=29.704766`
+  - top contact `Z=122.642496`
+- The large Probe Basic production clearance was confirmed to be inappropriate for the sphere cycle: startup values included `xy_clearance=20`, causing a `20 mm` retract and up to `40 mm` slow re-probe distance on each side.
+- `nc_files/calibration/30mm_sphere_measure_current_pose.ngc` now caps sphere-cycle `xy_clearance` at `2.0 mm` while leaving normal Probe Basic saved settings unchanged.
+- After the test pass, LinuxCNC returned to `G54` because the config startup modal includes `G54`. The operator has saved the old project offsets and is willing to use `G54` as the calibration WCS for the current session if it reduces workflow friction.
+- Keep the sphere wrapper WCS-neutral: do not force `G54` or `G55` in the file; use whichever WCS the operator deliberately sets before the run.
+
+# 2026-04-26 - Secured B0 C0 sphere baseline
+
+- Three secured `B0 C0` sphere runs completed after the loose motion-validation pass.
+- Secured-run baseline average:
+  - absolute center `X=306.368475 Y=352.795840 Z=-280.750222`
+  - measured side diameters `X=29.771711 Y=29.674210`
+- Secured-run repeatability range:
+  - absolute center `X=0.001667 Y=0.001667 Z=0.000900`
+  - measured side diameters `X=0.004999 Y=0.002500`
+- This is comfortably inside the practical `0.10 mm` TCPC target and is good enough as the first `B0 C0` baseline for the C-axis sweep.
+
+# 2026-04-26 - C sweep started
+
+- First `B0 C90` sphere run completed.
+- Result:
+  - absolute center `X=278.915280 Y=326.726812 Z=-280.758967`
+  - measured side diameters `X=29.766434 Y=29.691433`
+- Delta from secured `B0 C0` baseline average:
+  - `dX=-27.453195 dY=-26.069028 dZ=-0.008745`
+- This is the first C-axis geometry signal; continue with `B0 C180`, `B0 C270`, then repeat `B0 C0`.
+- `B0 C180` sphere run completed.
+- Result:
+  - absolute center `X=305.047781 Y=299.355562 Z=-280.737367`
+  - measured side diameters `X=29.767267 Y=29.698099`
+- Delta from secured `B0 C0` baseline average:
+  - `dX=-1.320694 dY=-53.440278 dZ=+0.012855`
+- `B0 C270` sphere run completed.
+- Result:
+  - absolute center `X=332.451531 Y=325.422646 Z=-280.749100`
+  - measured side diameters `X=29.606434 Y=29.683100`
+- Delta from secured `B0 C0` baseline average:
+  - `dX=+26.083056 dY=-27.373194 dZ=+0.001122`
+- Note: C270 X side diameter is about `0.16 mm` lower than the other C-sweep side diameters. After the closing `B0 C0` repeat, consider repeating C270 once to distinguish measurement/contact error from geometry.
+- Closing `B0 C0` sphere run completed after the C sweep.
+- Result:
+  - absolute center `X=306.377781 Y=352.791396 Z=-280.769167`
+  - measured side diameters `X=29.773100 Y=29.681433`
+- Delta from secured `B0 C0` baseline average:
+  - `dX=+0.009306 dY=-0.004444 dZ=-0.018945`
+- C sweep closure is good enough for the current `0.10 mm` TCPC target.
+- Updated `probe_sphere_center.ngc` to probe sphere sides at `sphere_center_z + 1.5 mm` instead of `+3.0 mm`. Reload the program before the next run.
+- Added `nc_files/calibration/30mm_sphere_c_sweep_b0_auto.ngc` for an automatic `B0 C0/C90/C180/C270/C0` sweep.
+- The auto sweep uses measured X/Y hints from the first sweep and does not assume machine alignment is correct.
+- The auto sweep is WCS-neutral, indexes B/C at `F300`, caps probe traverse at `300`, and appends each pose to `sphere-center-results.csv`.
+- After the first auto sweep, operator confirmed the extra `25 mm` lift before C indexing is not required. `#<index_retract_z>` in the auto sweep was changed to `0.0`; the routine now relies on the sphere subroutine's normal top-clearance position.
+
+# 2026-04-26 - Auto C sweep with +1.5 mm side height
+
+- First automatic `B0 C0/C90/C180/C270/C0` sweep completed using side probe height `sphere_center_z + 1.5`.
+- Auto-sweep baseline row:
+  - `B0 C0`: `X=306.364864 Y=352.810563 Z=-280.754300`, diameters `X=30.165601 Y=30.068100`
+- Auto-sweep deltas from the first auto `B0 C0` row:
+  - `B0 C90`: `dX=-27.449584 dY=-26.058751 dZ=+0.019933`, diameters `X=30.150600 Y=30.077266`
+  - `B0 C180`: `dX=-1.301666 dY=-53.438751 dZ=+0.034867`, diameters `X=30.168100 Y=30.081433`
+  - `B0 C270`: `dX=+26.081667 dY=-27.362084 dZ=+0.012300`, diameters `X=30.010600 Y=30.070600`
+  - closing `B0 C0`: `dX=+0.008750 dY=+0.005833 dZ=+0.000566`, diameters `X=30.163100 Y=30.064766`
+- Closure is good in X/Y/Z for the current practical target.
+
+# 2026-04-26 - Linear-axis error caution
+
+- Operator noted that at least one linear axis uses a rack drive and may have tight/loose points; Y/Z ball-screw behavior may also contribute local position error.
+- Treat rack/screw pitch, backlash, straightness, and local tight spots as separate machine-error sources from TCPC rotary geometry.
+- Do not overfit C/B pivot offsets to cancel local linear-axis error from one table position.
+- For current TCPC work, use repeated measurements at the same physical sphere location and consistent approach directions where possible.
+- Later machine-alignment work should add dedicated probing routines for bidirectional repeatability, local pitch/rack error, squareness, backlash, and rotary runout.
+
+# 2026-04-26 - B-axis vector probing preparation
+
+- Operator confirmed the hard part for the head-head machine: at nonzero `B`, probing must move relative to the tilted head/probe vector, not fixed machine `Z`.
+- The existing sphere center routine should be treated as `B0`-only for geometry data. It is not valid as the final B-axis calibration routine because it assumes machine-aligned top/side probing.
+- Added `configs/5th_axis_xyzbc_ssi_probe_basic/B_AXIS_VECTOR_PROBING_PLAN.md`.
+- Next implementation should start with a vector dry-run:
+  - define local `W` as the probe/tool vector at commanded `B/C`
+  - define local `U/V` perpendicular side-probe vectors
+  - verify signs with short non-contact vector moves before any probing
+  - then log raw trigger points and fit sphere centers offline
+- Initial B data should start conservatively at `B0`, `B+15`, `B-15`, `B+30`, `B-30`, closing `B0`, all at `C0`, before widening the tilt range.
+- Do not enable TCPC/TWP until vector signs, raw contact data, and fit residuals are understood.

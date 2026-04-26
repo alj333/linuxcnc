@@ -1,0 +1,166 @@
+(30 mm sphere automatic C sweep at B0)
+(Sequence: B0 C0, B0 C90, B0 C180, B0 C270, B0 C0)
+(WCS-neutral: use the active calibration WCS deliberately set by the operator)
+(Uses measured X/Y hints from the first C sweep to avoid manual re-centering)
+(Requires probe roughly safe above the sphere before Cycle Start)
+(Appends each pose result to sphere-center-results.csv in the active config dir)
+
+G21 G17 G40 G49 G64 P0.001 G80 G90 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, SPHERE_C_SWEEP_B0 preview only - probe calls skipped)
+  M2
+o<preview_guard> endif
+
+#<probe_tool_number> = #3014
+#<calibration_offset> = #3032
+#<max_z_distance> = #3020
+#<max_xy_distance> = #3018
+#<xy_clearance> = #3019
+#<z_clearance> = #3021
+#<step_off_width> = #3023
+#<probe_slow_fr> = #3015
+#<probe_fast_fr> = #3016
+#<probe_traverse_fr> = #3017
+
+o<10> if [#<probe_tool_number> LE 0]
+  #<probe_tool_number> = #5400
+o<10> endif
+o<11> if [#<max_z_distance> LE 0]
+  #<max_z_distance> = 100.0
+o<11> endif
+o<12> if [#<max_xy_distance> LE 0]
+  #<max_xy_distance> = 30.0
+o<12> endif
+o<13> if [#<xy_clearance> LE 0]
+  #<xy_clearance> = 2.0
+o<13> endif
+o<14> if [#<xy_clearance> GT 2.0]
+  #<xy_clearance> = 2.0
+o<14> endif
+o<15> if [#<z_clearance> LE 0]
+  #<z_clearance> = 5.0
+o<15> endif
+o<16> if [#<step_off_width> LE 0]
+  #<step_off_width> = 8.0
+o<16> endif
+o<17> if [#<step_off_width> GT 8.0]
+  #<step_off_width> = 8.0
+o<17> endif
+o<18> if [#<probe_slow_fr> LE 0]
+  #<probe_slow_fr> = 50.0
+o<18> endif
+o<19> if [#<probe_fast_fr> LE 0]
+  #<probe_fast_fr> = 100.0
+o<19> endif
+o<20> if [#<probe_traverse_fr> LE 0]
+  #<probe_traverse_fr> = 300.0
+o<20> endif
+o<21> if [#<probe_traverse_fr> GT 300.0]
+  #<probe_traverse_fr> = 300.0
+o<21> endif
+
+#<sphere_diameter> = 30.0
+#<index_retract_z> = 0.0
+#<rotary_index_fr> = 300.0
+
+(Hints are active-WCS coordinates from measured first-sweep centers.)
+(C0 hint updated from the first +1.5 mm side-height run.)
+#<c0_x_hint> = -59.496066
+#<c0_y_hint> = 37.143092
+#<c90_x_hint> = -86.953983
+#<c90_y_hint> = 11.055591
+#<c180_x_hint> = -60.821482
+#<c180_y_hint> = -16.315659
+#<c270_x_hint> = -33.417732
+#<c270_y_hint> = 9.751425
+
+#100 = #<probe_tool_number>
+#101 = #<sphere_diameter>
+#102 = #<calibration_offset>
+#103 = #<max_z_distance>
+#104 = #<max_xy_distance>
+#105 = #<xy_clearance>
+#106 = #<z_clearance>
+#107 = #<step_off_width>
+#108 = #<probe_slow_fr>
+#109 = #<probe_fast_fr>
+#112 = #<probe_traverse_fr>
+
+(B0 C0)
+G90
+F#<probe_traverse_fr>
+G1 Z[#<_z> + #<index_retract_z>]
+F#<rotary_index_fr>
+G1 B0 C0
+F#<probe_traverse_fr>
+G1 X#<c0_x_hint> Y#<c0_y_hint>
+#110 = #<c0_x_hint>
+#111 = #<c0_y_hint>
+(DEBUG, SPHERE_C_SWEEP_B0 start B0 C0)
+(LOGAPPEND,sphere-center-results.csv)
+o<probe_sphere_center> call [#100] [#101] [#102] [#103] [#104] [#105] [#106] [#107] [#108] [#109] [#110] [#111] [#112]
+(LOGCLOSE)
+
+(B0 C90)
+G90
+F#<probe_traverse_fr>
+G1 Z[#<_z> + #<index_retract_z>]
+F#<rotary_index_fr>
+G1 B0 C90
+F#<probe_traverse_fr>
+G1 X#<c90_x_hint> Y#<c90_y_hint>
+#110 = #<c90_x_hint>
+#111 = #<c90_y_hint>
+(DEBUG, SPHERE_C_SWEEP_B0 start B0 C90)
+(LOGAPPEND,sphere-center-results.csv)
+o<probe_sphere_center> call [#100] [#101] [#102] [#103] [#104] [#105] [#106] [#107] [#108] [#109] [#110] [#111] [#112]
+(LOGCLOSE)
+
+(B0 C180)
+G90
+F#<probe_traverse_fr>
+G1 Z[#<_z> + #<index_retract_z>]
+F#<rotary_index_fr>
+G1 B0 C180
+F#<probe_traverse_fr>
+G1 X#<c180_x_hint> Y#<c180_y_hint>
+#110 = #<c180_x_hint>
+#111 = #<c180_y_hint>
+(DEBUG, SPHERE_C_SWEEP_B0 start B0 C180)
+(LOGAPPEND,sphere-center-results.csv)
+o<probe_sphere_center> call [#100] [#101] [#102] [#103] [#104] [#105] [#106] [#107] [#108] [#109] [#110] [#111] [#112]
+(LOGCLOSE)
+
+(B0 C270)
+G90
+F#<probe_traverse_fr>
+G1 Z[#<_z> + #<index_retract_z>]
+F#<rotary_index_fr>
+G1 B0 C270
+F#<probe_traverse_fr>
+G1 X#<c270_x_hint> Y#<c270_y_hint>
+#110 = #<c270_x_hint>
+#111 = #<c270_y_hint>
+(DEBUG, SPHERE_C_SWEEP_B0 start B0 C270)
+(LOGAPPEND,sphere-center-results.csv)
+o<probe_sphere_center> call [#100] [#101] [#102] [#103] [#104] [#105] [#106] [#107] [#108] [#109] [#110] [#111] [#112]
+(LOGCLOSE)
+
+(Closing B0 C0)
+G90
+F#<probe_traverse_fr>
+G1 Z[#<_z> + #<index_retract_z>]
+F#<rotary_index_fr>
+G1 B0 C0
+F#<probe_traverse_fr>
+G1 X#<c0_x_hint> Y#<c0_y_hint>
+#110 = #<c0_x_hint>
+#111 = #<c0_y_hint>
+(DEBUG, SPHERE_C_SWEEP_B0 start closing B0 C0)
+(LOGAPPEND,sphere-center-results.csv)
+o<probe_sphere_center> call [#100] [#101] [#102] [#103] [#104] [#105] [#106] [#107] [#108] [#109] [#110] [#111] [#112]
+(LOGCLOSE)
+
+(DEBUG, SPHERE_C_SWEEP_B0 complete)
+M2

@@ -2,9 +2,13 @@
 (Before running: manually set the rotary pose, jog to a safe Z above the sphere,)
 (and jog so the probe is roughly over the sphere center in X/Y)
 (This cycle does not change WCO and does not auto-index the rotaries)
-(Uses the Probe Basic UI probe tool number, probe distances, and calibration offset)
+(Custom sphere cycle; Probe Basic has no native sphere calibration workflow)
+(Uses only basic Probe Basic setup values: probe tool, feeds, distances, and)
+(calibration offset. Do not assume Probe Basic's pocket/boss setup maps directly)
+(to sphere geometry.)
+(Appends results to sphere-center-results.csv in the active config directory)
 
-G21 G17 G40 G49 G54 G64 P0.001 G80 G90 G94
+G21 G17 G40 G49 G64 P0.001 G80 G90 G94
 
 #<probe_tool_number> = #3014
 #<calibration_offset> = #3032
@@ -15,6 +19,7 @@ G21 G17 G40 G49 G54 G64 P0.001 G80 G90 G94
 #<step_off_width> = #3023
 #<probe_slow_fr> = #3015
 #<probe_fast_fr> = #3016
+#<probe_traverse_fr> = #3017
 
 o<10> if [#<probe_tool_number> LE 0]
   #<probe_tool_number> = #5400
@@ -26,28 +31,56 @@ o<12> if [#<max_xy_distance> LE 0]
   #<max_xy_distance> = 30.0
 o<12> endif
 o<13> if [#<xy_clearance> LE 0]
-  #<xy_clearance> = 1.0
+  #<xy_clearance> = 2.0
 o<13> endif
+o<21> if [#<xy_clearance> GT 2.0]
+  #<xy_clearance> = 2.0
+o<21> endif
 o<14> if [#<z_clearance> LE 0]
   #<z_clearance> = 2.0
 o<14> endif
 o<15> if [#<step_off_width> LE 0]
-  #<step_off_width> = 3.0
+  #<step_off_width> = 8.0
 o<15> endif
+o<20> if [#<step_off_width> GT 8.0]
+  #<step_off_width> = 8.0
+o<20> endif
 o<16> if [#<probe_slow_fr> LE 0]
   #<probe_slow_fr> = 50.0
 o<16> endif
 o<17> if [#<probe_fast_fr> LE 0]
-  #<probe_fast_fr> = 300.0
+  #<probe_fast_fr> = 100.0
 o<17> endif
+o<18> if [#<probe_traverse_fr> LE 0]
+  #<probe_traverse_fr> = 300.0
+o<18> endif
+o<19> if [#<probe_traverse_fr> GT 300.0]
+  #<probe_traverse_fr> = 300.0
+o<19> endif
 
 #<sphere_diameter> = 30.0
 
 #<x_hint> = #<_x>
 #<y_hint> = #<_y>
 
+#100 = #<probe_tool_number>
+#101 = #<sphere_diameter>
+#102 = #<calibration_offset>
+#103 = #<max_z_distance>
+#104 = #<max_xy_distance>
+#105 = #<xy_clearance>
+#106 = #<z_clearance>
+#107 = #<step_off_width>
+#108 = #<probe_slow_fr>
+#109 = #<probe_fast_fr>
+#110 = #<x_hint>
+#111 = #<y_hint>
+#112 = #<probe_traverse_fr>
+
 (DEBUG, SPHERE_MEASURE_30MM start pose_abs_b=#<_abs_b> pose_abs_c=#<_abs_c> x_hint=#<x_hint> y_hint=#<y_hint>)
-o<probe_sphere_center> call [#<probe_tool_number>] [#<sphere_diameter>] [#<calibration_offset>] [#<max_z_distance>] [#<max_xy_distance>] [#<xy_clearance>] [#<z_clearance>] [#<step_off_width>] [#<probe_slow_fr>] [#<probe_fast_fr>] [#<x_hint>] [#<y_hint>]
+(LOGAPPEND,sphere-center-results.csv)
+o<probe_sphere_center> call [#100] [#101] [#102] [#103] [#104] [#105] [#106] [#107] [#108] [#109] [#110] [#111] [#112]
+(LOGCLOSE)
 (DEBUG, SPHERE_MEASURE_30MM complete - copy SPHERE_RESULT lines into the calibration log)
 
 M2

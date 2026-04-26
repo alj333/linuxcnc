@@ -13,8 +13,18 @@ Use this worksheet with the Probe Basic calibration config:
 - Fix the `50 mm` ring and `30 mm` sphere rigidly to the table and leave them there for the whole session.
 - Use the same probe stylus, probe feedrates, and probing strategy for the whole dataset.
 - In Probe Basic, set the probe tool number and probe parameters in the UI, then press `UPDATE PROBE PARAMS` once after startup so the values are mirrored into `#3014..#3036`.
+- Current wireless probe tool is `T3`; set Probe Basic probe tool number to `3` before pressing `UPDATE PROBE PARAMS`.
+- Current accepted probe calibration offset from repeated ring calibration runs on 2026-04-26 is `0.134533`.
+- Keep calibration probe feedrates slow for this work: use `50 mm/min` slow probe, `100 mm/min` fast probe, and keep traverse/transfer moves at or below `300 mm/min`.
+- Probe Basic does not provide a native sphere calibration workflow. The 30 mm sphere routine is a custom wrapper that only reuses Probe Basic's basic setup values where they map cleanly: probe tool, feeds, max distances, clearances, and calibration offset.
 - Do not edit WCS/WCO during the sphere data collection pass. Keep one coordinate system active for the whole session.
+- The calibration wrappers preserve the active WCS. Use a deliberate calibration WCS for the whole session. On 2026-04-26 the operator allowed use of `G54` after saving the project offsets externally.
+- This config's startup modal includes `G54`, so after restart or program end, verify the active WCS before each run.
 - Before every sphere run, manually jog to a safe clearance position above the sphere at the target `B/C` pose. The current sphere cycle does not auto-index rotaries on purpose.
+- The sphere cycle appends numeric results to `sphere-center-results.csv` in this config directory.
+- Practical TCPC target for this large steel machine is about `0.10 mm`; do not chase thermal drift below the machine's current no-temperature-compensation envelope.
+- Most intended 5-axis work is vacuum-formed part cutout, so prioritize repeatable safe TCPC behavior over ultra-fine mold-finishing accuracy.
+- Small mechanical errors, backlash, and compliance are expected. Treat those as future refinement work, not as blockers for the first TCPC geometry fit.
 
 ## Step 1: Ring Qualification
 
@@ -71,6 +81,7 @@ Before each run:
 What the sphere program logs:
 
 - `B/C` pose
+- probe tool number and calibration offset used by the run
 - relative center `X/Y/Z`
 - absolute machine center `X/Y/Z`
 - equator diameters measured in `X` and `Y`
@@ -106,25 +117,41 @@ What to look for:
 Purpose:
 
 - isolate `B` tilt-axis geometry with `C` fixed
+- for the head-head machine, collect this with a B-aware vector routine, not
+  the `B0` machine-Z sphere routine
 
 Recommended first-pass pose list:
 
-- `B-45 C0`
 - `B0 C0`
-- `B+45 C0`
+- `B+15 C0`
+- `B-15 C0`
+- `B+30 C0`
+- `B-30 C0`
 - repeat `B0 C0`
 
 Recommended second-pass widening if needed:
 
-- `B-60 C0`
-- `B-30 C0`
 - `B0 C0`
-- `B+30 C0`
+- `B+45 C0`
+- `B-45 C0`
 - `B+60 C0`
+- `B-60 C0`
 
 What to look for:
 
 - center movement versus `B` angle is the key signal for tilt-axis pivot location errors
+- raw contact residuals and repeatability must be checked before fitting B-axis
+  geometry, because local rack/screw error and alignment error can otherwise be
+  mistaken for rotary pivot error
+
+B-axis vector probing rule:
+
+- At nonzero `B`, the probe/stylus vector is no longer machine `Z`.
+- Use a local head frame: `W` along the probe vector, and `U/V` perpendicular
+  side-probe vectors.
+- First run a short non-contact vector dry-run to verify signs and clearance.
+- Then log raw contact points and fit sphere center offline before using the
+  data in TCPC geometry.
 
 ## Step 5: Mixed-Pose Cross Check
 
@@ -147,6 +174,30 @@ Recommended pose list:
 Use the CSV template:
 
 - `configs/5th_axis_xyzbc_ssi_probe_basic/sphere_center_log_template.csv`
+
+Current raw sphere CSV:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/sphere-center-results.csv`
+
+Setup note:
+
+- The custom 30 mm sphere wrapper caps `xy_clearance` at `2.0 mm` for this routine only. Probe Basic's normal large mold-work clearance can remain unchanged.
+
+Initial loose-sphere motion test at `B0 C0`:
+
+- relative center `X=-2.007917 Y=-1.207917 Z=104.777029`
+- absolute center `X=306.333197 Y=352.762646 Z=-280.900367`
+- side diameters `X=29.709767 Y=29.704766`
+- top contact `Z=122.642496`
+- use this as motion-validation only, not TCPC fit data
+
+Secured `B0 C0` baseline from three repeat runs:
+
+- average absolute center `X=306.368475 Y=352.795840 Z=-280.750222`
+- absolute center repeatability range `X=0.001667 Y=0.001667 Z=0.000900`
+- average side diameters `X=29.771711 Y=29.674210`
+- side-diameter repeatability range `X=0.004999 Y=0.002500`
+- use this average as the initial baseline for C/B sweep deltas
 
 Record for every sphere run:
 
@@ -176,4 +227,5 @@ Those deltas are the values you fit against when solving the rotary geometry.
 3. Collect the `C` sweep.
 4. Collect the `B` sweep.
 5. Fit geometry from the absolute center deltas.
-6. Only after that start the TCPC/TWP integration pass.
+6. Accept the first TCPC fit when fixed-tip error is repeatable around `0.10 mm` across the practical pose set.
+7. Only after that start the TWP integration pass.

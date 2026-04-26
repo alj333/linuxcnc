@@ -2,7 +2,7 @@
 (Start above the left inside edge of the ring, roughly centered in Y, at safe Z)
 (This cycle does not write a work offset. It is for qualifying the probe only.)
 
-G21 G17 G40 G49 G54 G64 P0.001 G80 G90 G94
+G21 G17 G40 G49 G64 P0.001 G80 G90 G94
 
 #<probe_tool_number> = #3014
 #<max_z_distance> = #3020
@@ -39,14 +39,27 @@ o<16> if [#<probe_slow_fr> LE 0]
   #<probe_slow_fr> = 50.0
 o<16> endif
 o<17> if [#<probe_fast_fr> LE 0]
-  #<probe_fast_fr> = 300.0
+  #<probe_fast_fr> = 100.0
 o<17> endif
 o<18> if [#<edge_width> LE 0]
   #<edge_width> = 5.0
 o<18> endif
 o<19> if [#<max_vel_slider> LE 0]
-  #<max_vel_slider> = 1000.0
+  #<max_vel_slider> = 300.0
 o<19> endif
+o<20> if [#<probe_traverse_fr> LE 0]
+  #<probe_traverse_fr> = 300.0
+o<20> endif
+o<21> if [#<probe_traverse_fr> GT 300.0]
+  #<probe_traverse_fr> = 300.0
+o<21> endif
+o<22> if [#<max_vel_slider> GT 300.0]
+  #<max_vel_slider> = 300.0
+o<22> endif
+
+#3015 = #<probe_slow_fr>
+#3016 = #<probe_fast_fr>
+#3017 = #<probe_traverse_fr>
 
 #<ring_diameter> = 50.0
 #<x_hint> = 0.0
