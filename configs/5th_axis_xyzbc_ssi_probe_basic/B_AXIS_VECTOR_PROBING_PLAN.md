@@ -37,6 +37,8 @@ inspect residuals before using the data for TCPC offsets.
 3. Validate the first real contact with a current-pose top-touch program:
    `nc_files/calibration/b_axis_vector_top_touch_current_pose.ngc`.
 4. Add a raw-contact sphere probing routine using slow feeds only.
+   First current-pose routine:
+   `nc_files/calibration/b_axis_vector_sphere_current_pose.ngc`.
 5. Log raw machine-space trigger points plus commanded `B/C`, probe diameter,
    calibration offset, and feed settings.
 6. Fit sphere centers offline from raw contacts; do not write WCS offsets.

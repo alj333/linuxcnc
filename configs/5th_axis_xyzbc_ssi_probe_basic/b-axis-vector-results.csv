@@ -1,1 +1,2 @@
 abs_b_deg,abs_c_deg,probe_tool_number,calibration_offset,touch_abs_x_mm,touch_abs_y_mm,touch_abs_z_mm,est_center_abs_x_mm,est_center_abs_y_mm,est_center_abs_z_mm,probe_feed_mm_min,search_mm
+15.000000,0.000000,3.000000,0.134533,220.246198,352.916396,-274.362493,224.870121,352.916396,-291.619209,50.000000,12.000000

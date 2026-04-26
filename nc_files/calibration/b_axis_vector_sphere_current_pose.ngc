@@ -1,0 +1,354 @@
+(B-axis vector sphere measurement at the current B/C pose)
+(No WCS changes. No rotary indexing. Slow vector contacts only.)
+(Run first at B+15 C0 after the top-touch test has been validated.)
+
+(Operator setup:)
+(1. Manually set the intended B/C pose.)
+(2. Start 3 to 8 mm clear from the sphere along the opposite stylus vector.)
+(3. Keep hand on feed hold for the first run.)
+
+(Point IDs in b-axis-vector-raw-points.csv:)
+(1=top along W, 2=-U side, 3=+U side, 4=-V side, 5=+V side)
+
+(Does not issue G49; leave active tool-length state unchanged.)
+G21 G17 G40 G64 P0.001 G80 G90 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, B_VECTOR_SPHERE preview only - probe moves skipped)
+  M2
+o<preview_guard> endif
+
+#<probe_tool_number> = #3014
+o<10> if [#<probe_tool_number> LE 0]
+  #<probe_tool_number> = #5400
+o<10> endif
+
+o<11> if [#5400 NE #<probe_tool_number>]
+  (abort, Specified probe tool is not in spindle)
+o<11> endif
+
+#<probe_diameter> = #5410
+o<12> if [#<probe_diameter> LE 0]
+  (abort, Probe diameter is not set)
+o<12> endif
+
+#<calibration_offset> = #3032
+#<sphere_radius> = 15.0
+#<probe_radius> = [#<probe_diameter> / 2.0]
+#<effective_probe_radius> = [#<probe_radius> - #<calibration_offset>]
+#<contact_stack> = [#<sphere_radius> + #<effective_probe_radius>]
+
+#<probe_fr> = 50.0
+#<traverse_fr> = 150.0
+#<top_search> = 12.0
+#<top_clear> = 5.0
+#<side_step> = 4.0
+#<side_search> = 6.0
+#<retract_clear> = 3.0
+
+#<b_pose> = #<_abs_b>
+#<c_pose> = #<_abs_c>
+
+(W points along the probe vector toward the table at this B/C pose.)
+#<w_x> = [SIN[#<b_pose>] * COS[#<c_pose>]]
+#<w_y> = [SIN[#<b_pose>] * SIN[#<c_pose>]]
+#<w_z> = [-COS[#<b_pose>]]
+
+(U is perpendicular to W in the tilt plane.)
+#<u_x> = [COS[#<b_pose>] * COS[#<c_pose>]]
+#<u_y> = [COS[#<b_pose>] * SIN[#<c_pose>]]
+#<u_z> = [SIN[#<b_pose>]]
+
+(V is perpendicular to W and U.)
+#<v_x> = [-SIN[#<c_pose>]]
+#<v_y> = [COS[#<c_pose>]]
+#<v_z> = 0.0
+
+#<start_x> = #<_x>
+#<start_y> = #<_y>
+#<start_z> = #<_z>
+
+#<x_rel_to_abs> = [#<_abs_x> - #<_x>]
+#<y_rel_to_abs> = [#<_abs_y> - #<_y>]
+#<z_rel_to_abs> = [#<_abs_z> - #<_z>]
+
+(DEBUG, B_VECTOR_SPHERE start B=#<b_pose> C=#<c_pose>)
+(DEBUG, B_VECTOR_SPHERE W=#<w_x>,#<w_y>,#<w_z>)
+(DEBUG, B_VECTOR_SPHERE U=#<u_x>,#<u_y>,#<u_z>)
+(DEBUG, B_VECTOR_SPHERE V=#<v_x>,#<v_y>,#<v_z>)
+
+(Top touch along W.)
+#122 = [#<w_x> * #<top_search>]
+#123 = [#<w_y> * #<top_search>]
+#124 = [#<w_z> * #<top_search>]
+G91
+F#<probe_fr>
+G38.2 X#122 Y#123 Z#124
+
+o<20> if [#5070 EQ 0]
+  G90
+  F#<traverse_fr>
+  G1 X#<start_x> Y#<start_y> Z#<start_z>
+  (abort, Top vector touch did not record point data)
+o<20> endif
+
+#<top_x> = #5061
+#<top_y> = #5062
+#<top_z> = #5063
+#<top_abs_x> = [#<top_x> + #<x_rel_to_abs>]
+#<top_abs_y> = [#<top_y> + #<y_rel_to_abs>]
+#<top_abs_z> = [#<top_z> + #<z_rel_to_abs>]
+
+#<top_center_x> = [#<top_x> + [#<w_x> * #<contact_stack>]]
+#<top_center_y> = [#<top_y> + [#<w_y> * #<contact_stack>]]
+#<top_center_z> = [#<top_z> + [#<w_z> * #<contact_stack>]]
+
+#<clear_stack> = [#<contact_stack> + #<top_clear>]
+#<side_clear_w> = #<clear_stack>
+#<top_clear_x> = [#<top_center_x> - [#<w_x> * #<clear_stack>]]
+#<top_clear_y> = [#<top_center_y> - [#<w_y> * #<clear_stack>]]
+#<top_clear_z> = [#<top_center_z> - [#<w_z> * #<clear_stack>]]
+
+G90
+F#<traverse_fr>
+G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+#<side_offset> = [#<contact_stack> + #<side_step>]
+
+(Probe from -U side toward +U.)
+#<um_start_x> = [#<top_center_x> - [#<u_x> * #<side_offset>]]
+#<um_start_y> = [#<top_center_y> - [#<u_y> * #<side_offset>]]
+#<um_start_z> = [#<top_center_z> - [#<u_z> * #<side_offset>]]
+#<um_clear_x> = [#<um_start_x> - [#<w_x> * #<side_clear_w>]]
+#<um_clear_y> = [#<um_start_y> - [#<w_y> * #<side_clear_w>]]
+#<um_clear_z> = [#<um_start_z> - [#<w_z> * #<side_clear_w>]]
+G90
+F#<traverse_fr>
+G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+G1 X#<um_start_x> Y#<um_start_y> Z#<um_start_z>
+#122 = [#<u_x> * #<side_search>]
+#123 = [#<u_y> * #<side_search>]
+#124 = [#<u_z> * #<side_search>]
+G91
+F#<probe_fr>
+G38.2 X#122 Y#123 Z#124
+o<30> if [#5070 EQ 0]
+  F#<traverse_fr>
+  G1 X[-#122] Y[-#123] Z[-#124]
+  G90
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  (abort, -U side touch did not record point data)
+o<30> endif
+#<um_x> = #5061
+#<um_y> = #5062
+#<um_z> = #5063
+#125 = [-#<u_x> * #<retract_clear>]
+#126 = [-#<u_y> * #<retract_clear>]
+#127 = [-#<u_z> * #<retract_clear>]
+G91
+F#<traverse_fr>
+G1 X#125 Y#126 Z#127
+G90
+G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+
+(Probe from +U side toward -U.)
+#<up_start_x> = [#<top_center_x> + [#<u_x> * #<side_offset>]]
+#<up_start_y> = [#<top_center_y> + [#<u_y> * #<side_offset>]]
+#<up_start_z> = [#<top_center_z> + [#<u_z> * #<side_offset>]]
+#<up_clear_x> = [#<up_start_x> - [#<w_x> * #<side_clear_w>]]
+#<up_clear_y> = [#<up_start_y> - [#<w_y> * #<side_clear_w>]]
+#<up_clear_z> = [#<up_start_z> - [#<w_z> * #<side_clear_w>]]
+G90
+F#<traverse_fr>
+G1 X#<up_clear_x> Y#<up_clear_y> Z#<up_clear_z>
+G1 X#<up_start_x> Y#<up_start_y> Z#<up_start_z>
+#122 = [-#<u_x> * #<side_search>]
+#123 = [-#<u_y> * #<side_search>]
+#124 = [-#<u_z> * #<side_search>]
+G91
+F#<probe_fr>
+G38.2 X#122 Y#123 Z#124
+o<40> if [#5070 EQ 0]
+  F#<traverse_fr>
+  G1 X[-#122] Y[-#123] Z[-#124]
+  G90
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  (abort, +U side touch did not record point data)
+o<40> endif
+#<up_x> = #5061
+#<up_y> = #5062
+#<up_z> = #5063
+#125 = [#<u_x> * #<retract_clear>]
+#126 = [#<u_y> * #<retract_clear>]
+#127 = [#<u_z> * #<retract_clear>]
+G91
+F#<traverse_fr>
+G1 X#125 Y#126 Z#127
+G90
+G1 X#<up_clear_x> Y#<up_clear_y> Z#<up_clear_z>
+
+(Probe from -V side toward +V.)
+#<vm_start_x> = [#<top_center_x> - [#<v_x> * #<side_offset>]]
+#<vm_start_y> = [#<top_center_y> - [#<v_y> * #<side_offset>]]
+#<vm_start_z> = [#<top_center_z> - [#<v_z> * #<side_offset>]]
+#<vm_clear_x> = [#<vm_start_x> - [#<w_x> * #<side_clear_w>]]
+#<vm_clear_y> = [#<vm_start_y> - [#<w_y> * #<side_clear_w>]]
+#<vm_clear_z> = [#<vm_start_z> - [#<w_z> * #<side_clear_w>]]
+G90
+F#<traverse_fr>
+G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+G1 X#<vm_start_x> Y#<vm_start_y> Z#<vm_start_z>
+#122 = [#<v_x> * #<side_search>]
+#123 = [#<v_y> * #<side_search>]
+#124 = [#<v_z> * #<side_search>]
+G91
+F#<probe_fr>
+G38.2 X#122 Y#123 Z#124
+o<50> if [#5070 EQ 0]
+  F#<traverse_fr>
+  G1 X[-#122] Y[-#123] Z[-#124]
+  G90
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  (abort, -V side touch did not record point data)
+o<50> endif
+#<vm_x> = #5061
+#<vm_y> = #5062
+#<vm_z> = #5063
+#125 = [-#<v_x> * #<retract_clear>]
+#126 = [-#<v_y> * #<retract_clear>]
+#127 = [-#<v_z> * #<retract_clear>]
+G91
+F#<traverse_fr>
+G1 X#125 Y#126 Z#127
+G90
+G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+
+(Probe from +V side toward -V.)
+#<vp_start_x> = [#<top_center_x> + [#<v_x> * #<side_offset>]]
+#<vp_start_y> = [#<top_center_y> + [#<v_y> * #<side_offset>]]
+#<vp_start_z> = [#<top_center_z> + [#<v_z> * #<side_offset>]]
+#<vp_clear_x> = [#<vp_start_x> - [#<w_x> * #<side_clear_w>]]
+#<vp_clear_y> = [#<vp_start_y> - [#<w_y> * #<side_clear_w>]]
+#<vp_clear_z> = [#<vp_start_z> - [#<w_z> * #<side_clear_w>]]
+G90
+F#<traverse_fr>
+G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+G1 X#<vp_start_x> Y#<vp_start_y> Z#<vp_start_z>
+#122 = [-#<v_x> * #<side_search>]
+#123 = [-#<v_y> * #<side_search>]
+#124 = [-#<v_z> * #<side_search>]
+G91
+F#<probe_fr>
+G38.2 X#122 Y#123 Z#124
+o<60> if [#5070 EQ 0]
+  F#<traverse_fr>
+  G1 X[-#122] Y[-#123] Z[-#124]
+  G90
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  (abort, +V side touch did not record point data)
+o<60> endif
+#<vp_x> = #5061
+#<vp_y> = #5062
+#<vp_z> = #5063
+#125 = [#<v_x> * #<retract_clear>]
+#126 = [#<v_y> * #<retract_clear>]
+#127 = [#<v_z> * #<retract_clear>]
+G91
+F#<traverse_fr>
+G1 X#125 Y#126 Z#127
+G90
+G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+
+(Return to the top clearance position before logging.)
+G90
+F#<traverse_fr>
+G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+#<um_abs_x> = [#<um_x> + #<x_rel_to_abs>]
+#<um_abs_y> = [#<um_y> + #<y_rel_to_abs>]
+#<um_abs_z> = [#<um_z> + #<z_rel_to_abs>]
+#<up_abs_x> = [#<up_x> + #<x_rel_to_abs>]
+#<up_abs_y> = [#<up_y> + #<y_rel_to_abs>]
+#<up_abs_z> = [#<up_z> + #<z_rel_to_abs>]
+#<vm_abs_x> = [#<vm_x> + #<x_rel_to_abs>]
+#<vm_abs_y> = [#<vm_y> + #<y_rel_to_abs>]
+#<vm_abs_z> = [#<vm_z> + #<z_rel_to_abs>]
+#<vp_abs_x> = [#<vp_x> + #<x_rel_to_abs>]
+#<vp_abs_y> = [#<vp_y> + #<y_rel_to_abs>]
+#<vp_abs_z> = [#<vp_z> + #<z_rel_to_abs>]
+
+#<uc_x> = [[#<um_abs_x> + #<up_abs_x>] / 2.0]
+#<uc_y> = [[#<um_abs_y> + #<up_abs_y>] / 2.0]
+#<uc_z> = [[#<um_abs_z> + #<up_abs_z>] / 2.0]
+#<vc_x> = [[#<vm_abs_x> + #<vp_abs_x>] / 2.0]
+#<vc_y> = [[#<vm_abs_y> + #<vp_abs_y>] / 2.0]
+#<vc_z> = [[#<vm_abs_z> + #<vp_abs_z>] / 2.0]
+
+#<center_abs_x> = [[#<uc_x> + #<vc_x>] / 2.0]
+#<center_abs_y> = [[#<uc_y> + #<vc_y>] / 2.0]
+#<center_abs_z> = [[#<uc_z> + #<vc_z>] / 2.0]
+
+#<u_dx> = [#<up_abs_x> - #<um_abs_x>]
+#<u_dy> = [#<up_abs_y> - #<um_abs_y>]
+#<u_dz> = [#<up_abs_z> - #<um_abs_z>]
+#<v_dx> = [#<vp_abs_x> - #<vm_abs_x>]
+#<v_dy> = [#<vp_abs_y> - #<vm_abs_y>]
+#<v_dz> = [#<vp_abs_z> - #<vm_abs_z>]
+
+#<u_span> = [[#<u_dx> * #<u_x>] + [#<u_dy> * #<u_y>] + [#<u_dz> * #<u_z>]]
+#<v_span> = [[#<v_dx> * #<v_x>] + [#<v_dy> * #<v_y>] + [#<v_dz> * #<v_z>]]
+#<u_corr_diam> = [#<u_span> - [2.0 * #<effective_probe_radius>]]
+#<v_corr_diam> = [#<v_span> - [2.0 * #<effective_probe_radius>]]
+
+(Log raw touch points.)
+(LOGAPPEND,b-axis-vector-raw-points.csv)
+#110 = #<b_pose>
+#111 = #<c_pose>
+#112 = 1.0
+#113 = #<top_abs_x>
+#114 = #<top_abs_y>
+#115 = #<top_abs_z>
+(LOG,#110,#111,#112,#113,#114,#115)
+#112 = 2.0
+#113 = #<um_abs_x>
+#114 = #<um_abs_y>
+#115 = #<um_abs_z>
+(LOG,#110,#111,#112,#113,#114,#115)
+#112 = 3.0
+#113 = #<up_abs_x>
+#114 = #<up_abs_y>
+#115 = #<up_abs_z>
+(LOG,#110,#111,#112,#113,#114,#115)
+#112 = 4.0
+#113 = #<vm_abs_x>
+#114 = #<vm_abs_y>
+#115 = #<vm_abs_z>
+(LOG,#110,#111,#112,#113,#114,#115)
+#112 = 5.0
+#113 = #<vp_abs_x>
+#114 = #<vp_abs_y>
+#115 = #<vp_abs_z>
+(LOG,#110,#111,#112,#113,#114,#115)
+(LOGCLOSE)
+
+(Log rough current-pose center estimate.)
+(LOGAPPEND,b-axis-vector-sphere-results.csv)
+#110 = #<b_pose>
+#111 = #<c_pose>
+#112 = #<probe_tool_number>
+#113 = #<calibration_offset>
+#114 = #<center_abs_x>
+#115 = #<center_abs_y>
+#116 = #<center_abs_z>
+#117 = #<u_span>
+#118 = #<v_span>
+#119 = #<u_corr_diam>
+#120 = #<v_corr_diam>
+(LOG,#110,#111,#112,#113,#114,#115,#116,#117,#118,#119,#120)
+(LOGCLOSE)
+
+(DEBUG, B_VECTOR_SPHERE center #114 #115 #116)
+(DEBUG, B_VECTOR_SPHERE raw_span_u=#117 raw_span_v=#118)
+(DEBUG, B_VECTOR_SPHERE corr_diam_u=#119 corr_diam_v=#120)
+(DEBUG, B_VECTOR_SPHERE complete)
+M2

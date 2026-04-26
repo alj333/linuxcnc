@@ -2743,6 +2743,21 @@
   - it makes one slow `G38.2` touch along local `W`
   - it returns to the operator's starting `XYZ`
   - it logs to `b-axis-vector-results.csv`
+- First `B+15 C0` vector top-touch test completed and looked correct to the
+  operator.
+- Logged top-touch result:
+  - touch point `X=220.246198 Y=352.916396 Z=-274.362493`
+  - estimated center from W/top contact
+    `X=224.870121 Y=352.916396 Z=-291.619209`
+- Added `nc_files/calibration/b_axis_vector_sphere_current_pose.ngc` for the
+  first current-pose five-contact vector sphere measurement.
+- The five-contact routine:
+  - does not auto-index `B/C`
+  - does not write WCS offsets
+  - probes top along `W`, then side contacts from `-U/+U` and `-V/+V`
+  - keeps probing at `50 mm/min` and transfer moves at `150 mm/min`
+  - logs raw points to `b-axis-vector-raw-points.csv`
+  - logs a rough current-pose center to `b-axis-vector-sphere-results.csv`
 - Next implementation should start with a vector dry-run:
   - define local `W` as the probe/tool vector at commanded `B/C`
   - define local `U/V` perpendicular side-probe vectors
