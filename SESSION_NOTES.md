@@ -2723,6 +2723,16 @@
 - Operator confirmed the hard part for the head-head machine: at nonzero `B`, probing must move relative to the tilted head/probe vector, not fixed machine `Z`.
 - The existing sphere center routine should be treated as `B0`-only for geometry data. It is not valid as the final B-axis calibration routine because it assumes machine-aligned top/side probing.
 - Added `configs/5th_axis_xyzbc_ssi_probe_basic/B_AXIS_VECTOR_PROBING_PLAN.md`.
+- Added `nc_files/calibration/b_axis_vector_dry_run_b0_c0.ngc` as the first
+  non-contact B-axis vector sign check.
+- The dry run:
+  - makes no probe moves
+  - writes no WCS offsets
+  - indexes only `B0`, `B+15`, `B-15`, `B+30`, `B-30`, closing `B0`, all at
+    `C0`
+  - returns to the operator's starting `XYZ` before each vector check
+  - uses short `3.0 mm` vector moves at `150 mm/min` and rotary indexing at
+    `200 mm/min`
 - Next implementation should start with a vector dry-run:
   - define local `W` as the probe/tool vector at commanded `B/C`
   - define local `U/V` perpendicular side-probe vectors

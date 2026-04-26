@@ -1,0 +1,82 @@
+(B-axis vector dry run for head-head probing)
+(No probing. No WCS changes. No contact moves.)
+(Start from a safe open-air position clear of the sphere, table, and fixtures.)
+(Sequence: B0 C0, B+15 C0, B-15 C0, B+30 C0, B-30 C0, B0 C0)
+(The program returns to the starting XYZ before each vector check.)
+
+(Does not issue G49; leave active tool-length state unchanged.)
+G21 G17 G40 G64 P0.001 G80 G90 G94
+
+#<vector_step> = 3.0
+#<linear_fr> = 150.0
+#<rotary_fr> = 200.0
+
+#100 = #<_x>
+#101 = #<_y>
+#102 = #<_z>
+#103 = #<vector_step>
+#104 = #<linear_fr>
+#105 = #<rotary_fr>
+
+o<b_vector_pose> sub
+  #<b_pose> = #1
+  #<c_pose> = #2
+
+  G90
+  F#104
+  G1 X#100 Y#101 Z#102
+  F#105
+  G1 B#<b_pose> C#<c_pose>
+
+  (W points along the probe vector toward the table at this B/C pose.)
+  #<w_x> = [SIN[#<b_pose>] * COS[#<c_pose>]]
+  #<w_y> = [SIN[#<b_pose>] * SIN[#<c_pose>]]
+  #<w_z> = [-COS[#<b_pose>]]
+
+  (U is perpendicular to W in the tilt plane.)
+  #<u_x> = [COS[#<b_pose>] * COS[#<c_pose>]]
+  #<u_y> = [COS[#<b_pose>] * SIN[#<c_pose>]]
+  #<u_z> = [SIN[#<b_pose>]]
+
+  (V is perpendicular to W and U; at C0 this is machine +Y.)
+  #<v_x> = [-SIN[#<c_pose>]]
+  #<v_y> = [COS[#<c_pose>]]
+  #<v_z> = 0.0
+
+  (DEBUG, B_VECTOR_DRY_RUN pose_b=#<b_pose> pose_c=#<c_pose>)
+  (DEBUG, W=#<w_x>,#<w_y>,#<w_z> U=#<u_x>,#<u_y>,#<u_z> V=#<v_x>,#<v_y>,#<v_z>)
+
+  G91
+  F#104
+
+  (Move away from the probe vector, then return.)
+  G1 X[-#<w_x> * #103] Y[-#<w_y> * #103] Z[-#<w_z> * #103]
+  G1 X[#<w_x> * #103] Y[#<w_y> * #103] Z[#<w_z> * #103]
+
+  (Move in +U, then return.)
+  G1 X[#<u_x> * #103] Y[#<u_y> * #103] Z[#<u_z> * #103]
+  G1 X[-#<u_x> * #103] Y[-#<u_y> * #103] Z[-#<u_z> * #103]
+
+  (Move in +V, then return.)
+  G1 X[#<v_x> * #103] Y[#<v_y> * #103] Z[#<v_z> * #103]
+  G1 X[-#<v_x> * #103] Y[-#<v_y> * #103] Z[-#<v_z> * #103]
+
+  G90
+o<b_vector_pose> endsub
+
+(Run conservative B-only vector checks at C0.)
+o<b_vector_pose> call [0.0] [0.0]
+o<b_vector_pose> call [15.0] [0.0]
+o<b_vector_pose> call [-15.0] [0.0]
+o<b_vector_pose> call [30.0] [0.0]
+o<b_vector_pose> call [-30.0] [0.0]
+o<b_vector_pose> call [0.0] [0.0]
+
+G90
+F#104
+G1 X#100 Y#101 Z#102
+F#105
+G1 B0 C0
+
+(DEBUG, B_VECTOR_DRY_RUN complete)
+M2

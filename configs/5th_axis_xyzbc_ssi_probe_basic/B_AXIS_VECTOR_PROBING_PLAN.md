@@ -32,7 +32,7 @@ inspect residuals before using the data for TCPC offsets.
 ## First Safe Implementation
 
 1. Add a vector-only dry-run program that indexes B/C and makes short non-probing
-   vector moves in `X/Y/Z`.
+   vector moves in `X/Y/Z`: `nc_files/calibration/b_axis_vector_dry_run_b0_c0.ngc`.
 2. Verify vector signs visually at small B angles, with no sphere contact.
 3. Add a raw-contact sphere probing routine using slow feeds only.
 4. Log raw machine-space trigger points plus commanded `B/C`, probe diameter,
