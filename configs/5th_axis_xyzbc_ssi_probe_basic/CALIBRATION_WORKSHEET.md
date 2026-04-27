@@ -166,6 +166,11 @@ B-axis vector probing rule:
   - `B-15 C0` repeated tightly after manual local `U/V` correction
   - before collecting `B+30/B-30`, validate the two-pass routine at a known
     pose, then use it for the remaining B-axis data
+- 2026-04-27 update:
+  - two-pass routine validated at `B+15 C0`
+  - pass 2 accepted center
+    `X=226.486276 Y=352.897855 Z=-291.117802`
+  - next B-axis pose can be `B+30 C0` after verifying the DRO
 
 ## Step 5: Mixed-Pose Cross Check
 

@@ -1,1 +1,3 @@
 abs_b_deg,abs_c_deg,pass_num,accepted,probe_tool_number,calibration_offset,center_abs_x_mm,center_abs_y_mm,center_abs_z_mm,u_center_error_mm,v_center_error_mm,u_raw_span_mm,v_raw_span_mm,u_corr_diam_mm,v_corr_diam_mm
+15.000000,0.000000,1.000000,0.000000,3.000000,0.134533,225.707563,353.656813,-291.478044,1.692917,-1.519167,35.701276,35.782267,29.970342,30.051333
+15.000000,0.000000,2.000000,1.000000,3.000000,0.134533,226.486276,352.897855,-291.117802,-0.002083,0.001250,35.826275,35.941434,30.095341,30.210500

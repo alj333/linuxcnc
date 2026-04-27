@@ -71,6 +71,13 @@ Required behavior:
 - Validate the two-pass routine at `B-15 C0` or `B+15 C0` before using it at
   `B+30 C0`.
 
+Validation status:
+
+- The two-pass routine has been validated at `B+15 C0`.
+- Pass 1 corrected `U=+1.692917 mm`, `V=-1.519167 mm`.
+- Pass 2 residual centering error was `U=-0.002083 mm`, `V=+0.001250 mm`.
+- Next pose may be `B+30 C0`, but verify the DRO pose before running.
+
 ## Initial B Pose Set
 
 Start conservative:

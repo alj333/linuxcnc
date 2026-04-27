@@ -2871,3 +2871,27 @@
   - use Single Block for the first validation run
   - if pass 1 correction and pass 2 result look sane, then continue to
     `B+30 C0` with the two-pass routine
+
+# 2026-04-27 - B-axis two-pass validation run
+
+- First live validation of
+  `nc_files/calibration/b_axis_vector_sphere_2pass_current_pose.ngc` completed.
+- Important: the validation log shows the run was at `B+15 C0`, not `B-15 C0`.
+- Pass 1 result:
+  - center `X=225.707563 Y=353.656813 Z=-291.478044`
+  - local centering correction requested by the routine:
+    `U=+1.692917 mm`, `V=-1.519167 mm`
+  - corrected diameters `U=29.970342 mm`, `V=30.051333 mm`
+  - both correction and diameter sanity checks passed
+- Pass 2 accepted result after automatic internal recenter:
+  - center `X=226.486276 Y=352.897855 Z=-291.117802`
+  - remaining local centering error `U=-0.002083 mm`, `V=+0.001250 mm`
+  - corrected diameters `U=30.095341 mm`, `V=30.210500 mm`
+- Difference from the prior accepted manual `B+15 C0` repeat:
+  - `dX=+0.034520 dY=+0.005000 dZ=-0.005985`
+  - `dU_diam=-0.011667 dV_diam=+0.003333`
+- Conclusion:
+  - automatic two-pass centering is validated at `B+15 C0`
+  - it is safe to continue to `B+30 C0` with the two-pass routine, using Single
+    Block for the first `B+30` run
+  - verify DRO pose before the next run so `B+15` and `B-15` are not confused
