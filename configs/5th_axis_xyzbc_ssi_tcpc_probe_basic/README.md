@@ -1,0 +1,166 @@
+# 5th Axis XYZBC SSI TCPC Probe Basic Config
+
+This is a separate real-machine TCPC test config. It is not the maintenance or
+setup config.
+
+Current status:
+
+- uses `headheadkins coordinates=XYZBC kinstype=B`
+- reuses the proven Mesa/SSI motion HAL from
+  `configs/5th_axis_xyzbc_ssi_probe_basic`
+- reuses the existing Probe Basic UI, subroutines, XHC HAL, shutdown HAL, and
+  tool table from the trivkins Probe Basic config
+- uses its own LinuxCNC parameter file so test WCS changes do not write back to
+  the normal Probe Basic parameter file
+- starts with TCPC enabled so there is no live kinematics jump when testing
+- `G43.4` is accepted only while TCPC is already enabled; `G49.1` is blocked in
+  this test config until a safe live transition strategy is implemented
+- `headheadtwp.tcpc_enabled` gates `headheadkins.tcpc-enable`
+- unwraps the single-turn C SSI feedback to the nearest commanded C angle with
+  `rotaryunwrap` before feeding joint 4
+- requires homing before motion with `NO_FORCE_HOMING = 0`
+- adds TCPC/TWP indicators to Probe Basic:
+  - compact single-LED `TCPC OFF` / `TCPC ON` / `TCPC TWP` status in the
+    user-button area
+  - detailed `TCPC STATUS` user tab showing state, angles, tool vector, and
+    tool offset pins
+
+## Pause Status - 2026-04-27 10:50 +07
+
+TCPC work was paused so the machine can be prepared for later 3-axis work.
+
+Runtime state before pausing:
+
+- the TCPC Probe Basic config launched successfully after the HAL load-order
+  fix and the compact UI indicator fix
+- `headheadtwp.tcpc_enabled = FALSE`
+- `headheadtwp.motion_enabled = FALSE`
+- no fitted starting geometry had been applied live at the pause point
+- live `headheadkins` geometry remained at the provisional startup values:
+  - `nominal-c-to-b = X0.000000 Y0.000000 Z-270.000000`
+  - `nominal-b-to-tool = X2.000000 Y-22.000000 Z-305.517000`
+  - `b-zero-offset = 0.000000`
+  - `c-zero-offset = 0.000000`
+  - all `cal-c-to-b` and `cal-b-to-tool` corrections `0.000000`
+- `motion.tooloffset.z` was present but `0.000000` and is not currently wired
+  into `headheadkins`
+
+For normal 3-axis work, do not use this TCPC config. Close it and launch one of
+the existing `trivkins` maintenance/setup configs.
+
+`G55` is locked out for staff 3-axis setup work as of 2026-04-27. Do not use,
+probe, overwrite, or otherwise modify `G55` from TCPC calibration or validation
+work until the operator explicitly releases it.
+
+## Runtime Update - 2026-04-27 18:55 +07
+
+Slow no-cut TCPC visual checks passed for:
+
+- `B2/B0` at `C0`
+- `B5/B0` at `C0`
+- `B2/B0` at `C90`
+- `B2/B0` at `C180`
+
+The attempted positive C quadrant continuation exposed a C feedback wrap issue:
+with the physical C axis just over `+180 deg`, the single-turn SSI path reported
+about `-178 deg`. LinuxCNC then saw a near-360 degree joint-4 following error
+even though the servo drive had no alarm.
+
+Fix applied in this TCPC config only:
+
+- added realtime HAL component `rotaryunwrap`
+- rewired C feedback as:
+  `c_ssi_axis_scale.out -> c_ssi_unwrap.wrapped -> c_ssi_unwrap.unwrapped -> c-pos-fb`
+- `c_ssi_unwrap.command` follows `c-pos-cmd`
+- `c_ssi_unwrap.wrap-period = 360.0`
+
+This is command-referenced continuous feedback, not persistent multi-turn
+absolute position. Restart this test config with C at a known safe side of the
+wrap, preferably C0. If LinuxCNC is restarted while physical C is beyond the
+single-turn wrap, verify the displayed C convention before commanding C motion.
+
+After restart at C0, verified:
+
+- `rotaryunwrap` loaded
+- `c_ssi_unwrap.correction = 0`
+- `c_ssi_unwrap.unwrapped` is writing `c-pos-fb`
+- `joint.4.motor-pos-fb` matches the unwrapped SSI feedback near C0
+- `headheadtwp.tcpc_enabled = TRUE`
+
+Validation completed after homing all axes:
+
+```ngc
+G21 G90 G94
+F50
+G1 C170
+G1 C185
+G1 C170
+G1 C0
+```
+
+Result: passed. The C axis crossed the `+180/-180` single-turn SSI wrap without
+a joint-4 following error, returned to C0, and `c_ssi_unwrap.correction`
+returned to `0`.
+
+Follow-up quadrant validation also passed at slow no-cut feed:
+
+- `C270`, `B2`, `B0`, `C0`
+- TCPC correction direction was visually correct in all four quadrants:
+  `C0`, `C90`, `C180`, and `C270`
+- final live state at `19:14 +07`: idle, in position, TCPC enabled, C near
+  zero, `c_ssi_unwrap.correction = 0`, unwrap error about `0.00015 deg`
+
+## First Visual Starting Geometry
+
+The following values were derived from the saved C-sweep and curated B-vector
+data as a first visual TCPC starting point. They are now the startup geometry in
+`5th_axis_xyzbc_ssi_tcpc_probe_basic.hal`, but they are not final cutting data.
+
+Direct-vector convention for the current `headheadkins` model:
+
+```hal
+setp headheadkins.nominal-c-to-b.x 0.010934
+setp headheadkins.nominal-c-to-b.y 0.000000
+setp headheadkins.nominal-c-to-b.z -270.000000
+setp headheadkins.nominal-b-to-tool.x -0.668710
+setp headheadkins.nominal-b-to-tool.y -26.721365
+setp headheadkins.nominal-b-to-tool.z -308.980001
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset 0.000000
+```
+
+Fit references:
+
+- last complete `B0` C-sweep circle center:
+  `X=305.680751 Y=326.095031`, radius `26.751963 mm`, residual about
+  `+/-0.022 mm`
+- curated `C0` B-sweep X/Z circle center:
+  `X=305.669816 Z=-589.742446`, radius `308.963734 mm`, residual within about
+  `0.020 mm`
+
+These values are only for slow no-cut fixed-tip visual validation. The fit still
+needs sign-convention verification, repeat B0/C0 checks after the machine work,
+and final handling of tool length before production TCPC use.
+
+Important limitations:
+
+- first-pass visual validation geometry values are loaded in
+  `5th_axis_xyzbc_ssi_tcpc_probe_basic.hal`
+- no final TCPC offsets have been fitted from the real sphere data yet
+- first slow no-cut real-machine B/C direction validation has passed in all C
+  quadrants, including the C wrap crossing after `rotaryunwrap`
+- live `G43.4/G49.1` TCPC switching is intentionally disabled for safety
+- do not use this config for cutting until fixed-tip and moving TCP checks pass
+
+Launch:
+
+```bash
+/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/launch_xyzbc_ssi_tcpc_probe_basic.sh
+```
+
+First validation path:
+
+1. Launch and confirm the machine starts with `TCPC ON` and without enabling TWP.
+2. Home all axes.
+3. Run only no-cut, slow fixed-tip validation moves.
+4. Do not use `G49.1`; close/restart the config to leave TCPC testing.

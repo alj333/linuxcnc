@@ -1,0 +1,3 @@
+# Reuse the proven Probe Basic postgui wiring from the trivkins setup.
+
+source ../5th_axis_xyzbc_ssi_probe_basic/probe_basic_postgui.hal

@@ -1,0 +1,42 @@
+component rotaryunwrap "Unwrap wrapped rotary feedback to the nearest commanded angle";
+
+description
+"""
+Converts a wrapped rotary feedback angle into a continuous angle by adding or
+subtracting whole periods until the feedback is nearest the commanded angle.
+
+This is useful for single-turn absolute encoder feedback on rotary joints where
+the encoder reports equivalent angles such as +181 degrees as -179 degrees, but
+LinuxCNC joint following-error checks need continuous feedback near the current
+commanded joint position.
+""";
+
+pin in float wrapped "Wrapped feedback angle in degrees";
+pin in float command "Continuous commanded angle in degrees";
+pin out float unwrapped "Feedback angle shifted by whole periods near command";
+pin out float correction "Applied whole-period correction in degrees";
+pin out float error "command minus unwrapped";
+
+param rw float wrap_period = 360.0 "Rotary wrap period in degrees";
+
+function _;
+
+license "GPL";
+author "OpenAI";
+
+include "rtapi_math.h";
+;;
+
+FUNCTION(_) {
+    double p = wrap_period;
+    double turns;
+
+    if (p <= 0.001) {
+        p = 360.0;
+    }
+
+    turns = floor(((double)command - (double)wrapped) / p + 0.5);
+    correction = turns * p;
+    unwrapped = wrapped + correction;
+    error = command - unwrapped;
+}

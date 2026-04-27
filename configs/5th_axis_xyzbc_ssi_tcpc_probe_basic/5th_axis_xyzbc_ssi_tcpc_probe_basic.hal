@@ -1,0 +1,87 @@
+# TCPC test overlay for the real XYZBC SSI Probe Basic machine config.
+#
+# The INI loads the proven Mesa/SSI motion HAL first as a separate HALFILE.
+# Keep this overlay free of "source" commands so twopass handles [KINS]/[EMCMOT]
+# substitutions in the base HAL correctly.
+# Do not use this for normal maintenance/setup until fixed-tip validation is
+# complete on the real machine.
+
+# First visual TCPC starting geometry from the saved C-sweep and B-vector
+# candidate fit. Use for slow no-cut validation only; not final cutting data.
+#
+# TCPC test convention: commanded B+ is clockwise looking at the front of the
+# head. The reused maintenance HAL currently labels the opposite physical
+# direction as positive, so this TCPC overlay also flips the B SSI feedback
+# scale and zero offset after the base HAL loads.
+loadrt rotaryunwrap names=c_ssi_unwrap
+
+setp c_ssi_unwrap.wrap-period 360.0
+setp hm2_7i95.0.ssi.00.abs.scale 2912.711111111111
+setp b_ssi_zero.in1 182.9152
+
+setp headheadkins.nominal-c-to-b.x 0.010934
+setp headheadkins.nominal-c-to-b.y 0.0
+setp headheadkins.nominal-c-to-b.z -270.0
+setp headheadkins.nominal-b-to-tool.x -0.668710
+setp headheadkins.nominal-b-to-tool.y -26.721365
+setp headheadkins.nominal-b-to-tool.z -308.980001
+setp headheadkins.cal-c-to-b.x 0.0
+setp headheadkins.cal-c-to-b.y 0.0
+setp headheadkins.cal-c-to-b.z 0.0
+setp headheadkins.cal-b-to-tool.x 0.0
+setp headheadkins.cal-b-to-tool.y 0.0
+setp headheadkins.cal-b-to-tool.z 0.0
+setp headheadkins.b-zero-offset 0.0
+setp headheadkins.c-zero-offset 0.0
+
+# Start TCPC/TWP fail-safe: G68.2 is rejected until G43.4 has been run.
+loadusr -Wn headheadtwp python3 ./python/headhead_twp_state_safe.py
+
+# Snapshot the current commanded joint pose for the TWP state component.
+net x-pos-cmd => headheadtwp.current_joint_x
+net y-pos-cmd => headheadtwp.current_joint_y
+net z-pos-cmd => headheadtwp.current_joint_z
+net b-pos-cmd => headheadtwp.current_joint_b
+net c-pos-cmd => headheadtwp.current_joint_c
+
+# C uses a single-turn absolute SSI encoder. The base SSI HAL normalizes the
+# startup angle, but that still jumps at the +/-180 deg encoder wrap. For TCPC
+# quadrant testing the joint feedback must remain continuous, so unwrap the
+# signed SSI feedback to the nearest commanded C angle before feeding joint.4.
+unlinkp c_ssi_axis_scale.out
+net c-ssi-wrapped-signed c_ssi_axis_scale.out => c_ssi_unwrap.wrapped
+net c-pos-cmd => c_ssi_unwrap.command
+net c-pos-fb <= c_ssi_unwrap.unwrapped
+addf c_ssi_unwrap servo-thread
+
+net headhead-joint-0-homed joint.0.homed => headheadtwp.joint_0_homed
+net headhead-joint-1-homed joint.1.homed => headheadtwp.joint_1_homed
+net headhead-joint-2-homed joint.2.homed => headheadtwp.joint_2_homed
+net headhead-joint-3-homed joint.3.homed => headheadtwp.joint_3_homed
+net headhead-joint-4-homed joint.4.homed => headheadtwp.joint_4_homed
+
+# Keep the TWP state geometry in sync with headheadkins.
+setp headheadtwp.nominal_c_to_b_x 0.010934
+setp headheadtwp.nominal_c_to_b_y 0.0
+setp headheadtwp.nominal_c_to_b_z -270.0
+setp headheadtwp.nominal_b_to_tool_x -0.668710
+setp headheadtwp.nominal_b_to_tool_y -26.721365
+setp headheadtwp.nominal_b_to_tool_z -308.980001
+setp headheadtwp.cal_c_to_b_x 0.0
+setp headheadtwp.cal_c_to_b_y 0.0
+setp headheadtwp.cal_c_to_b_z 0.0
+setp headheadtwp.cal_b_to_tool_x 0.0
+setp headheadtwp.cal_b_to_tool_y 0.0
+setp headheadtwp.cal_b_to_tool_z 0.0
+setp headheadtwp.b_zero_offset 0.0
+setp headheadtwp.c_zero_offset 0.0
+setp headheadtwp.requested_normal_rotation 0.0
+
+# Feed the kinematics layer from the stored TWP state only after G68.2 enables
+# TWP motion. With TWP off, ordinary headheadkins TCPC math is still active.
+net headhead-tcpc-enabled headheadtwp.tcpc_enabled => headheadkins.tcpc-enable
+net headhead-twp-motion-enabled headheadtwp.motion_enabled => headheadkins.twp-mode
+net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
+net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c
+net headhead-twp-normal-rotation headheadtwp.twp_normal_rotation => headheadkins.twp-normal-rotation
+net machine-is-enabled => headheadtwp.machine_is_enabled

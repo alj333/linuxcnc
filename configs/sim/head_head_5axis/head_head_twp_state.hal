@@ -32,6 +32,7 @@ setp headheadtwp.c_zero_offset 0.0
 setp headheadtwp.requested_normal_rotation 0.0
 
 # Feed the kinematics layer from the stored TWP state when motion mode is enabled.
+net headhead-tcpc-enabled headheadtwp.tcpc_enabled => headheadkins.tcpc-enable
 net headhead-twp-motion-enabled headheadtwp.motion_enabled => headheadkins.twp-mode
 net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
 net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c

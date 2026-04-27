@@ -3,6 +3,7 @@
 """Prototype TWP state component for the head-head XYZBC simulation."""
 
 import math
+import os
 import time
 
 import hal
@@ -14,6 +15,11 @@ STATE_DEFINED = 2
 STATE_ACTIVE = 3
 
 POLL_SEC = 0.05
+
+
+def default_tcpc_enabled():
+    value = os.environ.get("HEADHEAD_TWP_DEFAULT_TCPC", "1").strip().lower()
+    return value not in ("0", "false", "no", "off")
 
 
 def rotate_y(angle_deg, vec):
@@ -62,9 +68,10 @@ class HeadHeadTwpState:
         self.twp_bc = (0.0, 0.0)
         self.normal_rotation = 0.0
         self.motion_enabled = False
-        # Match current head-head shop practice: TCPC starts enabled unless an
-        # operator or program explicitly turns it off.
-        self.tcpc_enabled = True
+        # Sim configs keep the historical TCPC-on default. Real-machine test
+        # configs can start fail-safe with HEADHEAD_TWP_DEFAULT_TCPC=0.
+        self.default_tcpc_enabled = default_tcpc_enabled()
+        self.tcpc_enabled = self.default_tcpc_enabled
 
     def _pin_bit_in(self, name):
         self.comp.newpin(name, hal.HAL_BIT, hal.HAL_IN)
@@ -229,8 +236,8 @@ class HeadHeadTwpState:
 
     def _clear_for_machine_reset(self):
         self._clear_state()
-        # Reset to the current shop-default startup mode after estop/off.
-        self.tcpc_enabled = True
+        # Reset to the configured startup mode after estop/off.
+        self.tcpc_enabled = self.default_tcpc_enabled
 
     def _update_state_machine(self):
         if self._falling_edge("machine_is_enabled"):

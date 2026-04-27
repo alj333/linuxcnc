@@ -20,6 +20,9 @@ Use this worksheet with the Probe Basic calibration config:
 - Do not edit WCS/WCO during the sphere data collection pass. Keep one coordinate system active for the whole session.
 - The calibration wrappers preserve the active WCS. Use a deliberate calibration WCS for the whole session. On 2026-04-26 the operator allowed use of `G54` after saving the project offsets externally.
 - This config's startup modal includes `G54`, so after restart or program end, verify the active WCS before each run.
+- `G55` is reserved for staff 3-axis setup work as of 2026-04-27. Do not use,
+  probe, overwrite, or adjust `G55` for calibration until the operator releases
+  it.
 - Before every sphere run, manually jog to a safe clearance position above the sphere at the target `B/C` pose. The current sphere cycle does not auto-index rotaries on purpose.
 - The sphere cycle appends numeric results to `sphere-center-results.csv` in this config directory.
 - Practical TCPC target for this large steel machine is about `0.10 mm`; do not chase thermal drift below the machine's current no-temperature-compensation envelope.
@@ -186,6 +189,16 @@ B-axis vector probing rule:
     setup is stable again
   - next scope is offline TCPC candidate fitting from the accepted C-sweep and
     curated B-vector data; see `TCPC_FIT_NEXT_SCOPE.md`
+  - TCPC visual validation later confirmed B correction direction at `C0`,
+    `C90`, and `C180`; the attempted positive C quadrant continuation exposed
+    the single-turn C SSI wrap at physical `C180`
+  - the TCPC test config now uses `rotaryunwrap` to feed joint 4 continuous C
+    feedback nearest the commanded C angle
+  - `C170 -> C185 -> C170 -> C0` unwrap validation passed at `F50`, then the
+    `C270` quadrant check passed with correct `B2/B0` TCPC correction direction
+  - slow no-cut TCPC correction direction has now been visually confirmed in
+    all four C quadrants; next TCPC work should be fixed-tip deviation checks,
+    not more direction-only checks
 
 ## Step 5: Mixed-Pose Cross Check
 

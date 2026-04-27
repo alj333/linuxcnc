@@ -53,6 +53,7 @@ struct haldata {
     hal_float_t *tool_vector_y;
     hal_float_t *tool_vector_z;
 
+    hal_bit_t *tcpc_enable;
     hal_bit_t *twp_mode;
     hal_float_t *twp_motion_origin_x;
     hal_float_t *twp_motion_origin_y;
@@ -325,9 +326,15 @@ static int headheadKinematicsForward(const double *joints,
     tool_offset_world(joints[JB], joints[JC], offset);
     update_debug_pins(joints[JB], joints[JC]);
 
-    world_xyz[0] = joints[JX] + offset[0];
-    world_xyz[1] = joints[JY] + offset[1];
-    world_xyz[2] = joints[JZ] + offset[2];
+    if (pinb(haldata->tcpc_enable) || pinb(haldata->twp_mode)) {
+        world_xyz[0] = joints[JX] + offset[0];
+        world_xyz[1] = joints[JY] + offset[1];
+        world_xyz[2] = joints[JZ] + offset[2];
+    } else {
+        world_xyz[0] = joints[JX];
+        world_xyz[1] = joints[JY];
+        world_xyz[2] = joints[JZ];
+    }
 
     if (pinb(haldata->twp_mode)) {
         twp_world_to_local(world_xyz, local_xyz);
@@ -376,12 +383,14 @@ static int headheadKinematicsInverse(const EmcPose *pos,
         mapped.c = pinv(haldata->twp_c_angle);
     }
 
-    tool_offset_world(mapped.b, mapped.c, offset);
     update_debug_pins(mapped.b, mapped.c);
 
-    mapped.tran.x = mapped.tran.x - offset[0];
-    mapped.tran.y = mapped.tran.y - offset[1];
-    mapped.tran.z = mapped.tran.z - offset[2];
+    if (pinb(haldata->tcpc_enable) || pinb(haldata->twp_mode)) {
+        tool_offset_world(mapped.b, mapped.c, offset);
+        mapped.tran.x = mapped.tran.x - offset[0];
+        mapped.tran.y = mapped.tran.y - offset[1];
+        mapped.tran.z = mapped.tran.z - offset[2];
+    }
 
     position_to_mapped_joints(headhead_max_joints, &mapped, joints);
     return 0;
@@ -448,6 +457,8 @@ static int init_geometry_pins(void)
     result = new_hal_float_pin(&haldata->tool_vector_z, HAL_OUT, "tool-vector.z");
     if (result < 0) return result;
 
+    result = new_hal_bit_pin(&haldata->tcpc_enable, HAL_IN, "tcpc-enable");
+    if (result < 0) return result;
     result = new_hal_bit_pin(&haldata->twp_mode, HAL_IN, "twp-mode");
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->twp_motion_origin_x, HAL_IN, "twp-motion-origin.x");
@@ -489,6 +500,7 @@ static int init_geometry_pins(void)
     *haldata->tool_vector_y = 0.0;
     *haldata->tool_vector_z = -1.0;
 
+    *haldata->tcpc_enable = 1;
     *haldata->twp_mode = 0;
     *haldata->twp_motion_origin_x = 0.0;
     *haldata->twp_motion_origin_y = 0.0;
