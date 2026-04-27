@@ -174,7 +174,18 @@ B-axis vector probing rule:
     `X=151.969455 Y=352.913688 Z=-321.714304`
   - `B-30 C0` pass 2 accepted center
     `X=460.527766 Y=352.638896 Z=-322.390804`
-  - next B-axis pose is closing `B0 C0` after verifying the DRO
+  - closing `B0 C0` pass 2 accepted center
+    `X=306.338526 Y=352.821813 Z=-280.762445`
+  - closing `B0 C0` has a caveat: staff started epoxy prep on a mold on the
+    machine and the start was bumped, so do not treat this as the final thermal
+    or setup-stability reference without a later repeat
+  - one extra full `B0 C0` two-pass repeat was logged after the bumped start;
+    keep it in the raw CSV record but exclude it from the first fit candidate
+    because the run was unintended and the machine environment was disturbed
+  - machine probing is paused until the mold/epoxy work is clear and the sphere
+    setup is stable again
+  - next scope is offline TCPC candidate fitting from the accepted C-sweep and
+    curated B-vector data; see `TCPC_FIT_NEXT_SCOPE.md`
 
 ## Step 5: Mixed-Pose Cross Check
 

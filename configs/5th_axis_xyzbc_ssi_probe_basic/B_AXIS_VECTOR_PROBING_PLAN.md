@@ -9,8 +9,11 @@ that machine Z remains the probe/tool vector after the head tilts.
 - The `B0` C-axis sweep is repeatable enough for the practical `0.10 mm`
   target.
 - Latest automatic C sweep uses side probing at `sphere_center_z + 1.5 mm`.
-- Current-pose vector sphere probing has been validated at `B+15 C0` and
-  `B-15 C0` after manual local centering corrections.
+- Current-pose vector sphere probing has been validated manually at
+  `B+15 C0` and `B-15 C0`; the automatic two-pass routine is validated at
+  `B+15 C0`, `B+30 C0`, `B-30 C0`, and closing `B0 C0`.
+- The latest closing `B0 C0` accepted result is usable with a caveat because
+  epoxy preparation started on a mold on the machine and the start was bumped.
 - Linear-axis rack/screw errors are known possible contributors and must not be
   hidden inside rotary geometry offsets.
 
@@ -76,7 +79,16 @@ Validation status:
 - The two-pass routine has been validated at `B+15 C0`.
 - Pass 1 corrected `U=+1.692917 mm`, `V=-1.519167 mm`.
 - Pass 2 residual centering error was `U=-0.002083 mm`, `V=+0.001250 mm`.
-- Next pose may be `B+30 C0`, but verify the DRO pose before running.
+- `B+30 C0` pass 2 accepted center:
+  `X=151.969455 Y=352.913688 Z=-321.714304`.
+- `B-30 C0` pass 2 accepted center:
+  `X=460.527766 Y=352.638896 Z=-322.390804`.
+- Closing `B0 C0` pass 2 accepted center:
+  `X=306.338526 Y=352.821813 Z=-280.762445`.
+- One later full `B0 C0` two-pass repeat exists after the bumped start. Preserve
+  it as raw data, but do not use it in the first TCPC fit candidate.
+- Machine probing is paused until the mold/epoxy work is clear and the sphere
+  setup is stable again.
 
 ## Initial B Pose Set
 
@@ -90,6 +102,18 @@ Start conservative:
 - closing `B0 C0`
 
 Only widen to `B+45/B-45` after vector signs and clearance are verified.
+
+## Next Scope
+
+- Build the first offline TCPC fit candidate from accepted rows only.
+- Use `tcpc-fit-input-candidates.csv` as the controlled input list, not the raw
+  logs directly.
+- Treat `B-15 C0` as lower-confidence because it came from a corrected
+  single-pass run, not the automatic two-pass routine.
+- Repeat closing `B0 C0` and preferably `B-15 C0` with the two-pass routine
+  after the machine environment is stable.
+- Do not write INI/HAL kinematics offsets until the fit report and residuals are
+  reviewed.
 
 ## Safety Rules
 

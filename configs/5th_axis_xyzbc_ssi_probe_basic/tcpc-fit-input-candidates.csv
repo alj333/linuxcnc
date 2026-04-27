@@ -1,0 +1,7 @@
+pose_label,abs_b_deg,abs_c_deg,center_abs_x_mm,center_abs_y_mm,center_abs_z_mm,source,status,notes
+B0_C0_closing_two_pass,0,0,306.338526,352.821813,-280.762445,b-axis-vector-2pass-results.csv,usable_with_caveat,"closing B0; start bumped; epoxy work began; compare latest auto B0 dX=-0.035088 dY=+0.005417 dZ=-0.008711"
+B+15_C0_two_pass,15,0,226.486276,352.897855,-291.117802,b-axis-vector-2pass-results.csv,usable,"validated two-pass; residual U=-0.002083 V=+0.001250"
+B-15_C0_single_pass_corrected,-15,0,386.140321,352.717855,-291.445826,b-axis-vector-sphere-results.csv,usable_with_source_caveat,"corrected single-pass; not from two-pass routine; residual U=+0.001458 V=+0.001459"
+B+30_C0_two_pass,30,0,151.969455,352.913688,-321.714304,b-axis-vector-2pass-results.csv,usable,"residual U=-0.004583 V=-0.004583"
+B-30_C0_two_pass,-30,0,460.527766,352.638896,-322.390804,b-axis-vector-2pass-results.csv,usable,"residual U=+0.001667 V=-0.003333"
+C0_B0_auto_latest,0,0,306.373614,352.816396,-280.753734,sphere-center-results.csv,reference,"latest closing B0 from C sweep"

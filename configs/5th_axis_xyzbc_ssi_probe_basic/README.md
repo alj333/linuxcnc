@@ -32,6 +32,9 @@ Important limitation:
 - TCPC/TWP remaps are not enabled yet
 - use this build to continue probing and calibration work before the TCPC
   integration pass
+- current TCPC fit preparation notes are in `TCPC_FIT_NEXT_SCOPE.md`; use the
+  curated `tcpc-fit-input-candidates.csv` rows for the first offline fit instead
+  of fitting every raw log row
 
 Launch:
 
