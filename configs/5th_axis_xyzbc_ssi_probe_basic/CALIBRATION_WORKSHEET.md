@@ -172,7 +172,9 @@ B-axis vector probing rule:
     `X=226.486276 Y=352.897855 Z=-291.117802`
   - `B+30 C0` pass 2 accepted center
     `X=151.969455 Y=352.913688 Z=-321.714304`
-  - next B-axis pose can be `B-30 C0` after verifying the DRO
+  - `B-30 C0` pass 2 accepted center
+    `X=460.527766 Y=352.638896 Z=-322.390804`
+  - next B-axis pose is closing `B0 C0` after verifying the DRO
 
 ## Step 5: Mixed-Pose Cross Check
 
