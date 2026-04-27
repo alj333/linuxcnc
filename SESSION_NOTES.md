@@ -2895,3 +2895,25 @@
   - it is safe to continue to `B+30 C0` with the two-pass routine, using Single
     Block for the first `B+30` run
   - verify DRO pose before the next run so `B+15` and `B-15` are not confused
+
+# 2026-04-27 - B+30 C0 two-pass data
+
+- Ran `nc_files/calibration/b_axis_vector_sphere_2pass_current_pose.ngc` at
+  `B+30 C0`.
+- Pass 1 result:
+  - center `X=151.728385 Y=352.906605 Z=-321.872175`
+  - local centering correction `U=+0.580000 mm`, `V=+0.018750 mm`
+  - corrected diameters `U=30.272369 mm`, `V=30.192167 mm`
+  - correction and diameter sanity checks passed
+- Pass 2 accepted result:
+  - center `X=151.969455 Y=352.913688 Z=-321.714304`
+  - remaining local centering error `U=-0.004583 mm`, `V=-0.004583 mm`
+  - corrected diameters `U=30.276536 mm`, `V=30.208833 mm`
+- Current accepted B-axis vector centers:
+  - `B+15 C0`: `X=226.486276 Y=352.897855 Z=-291.117802`
+  - `B+30 C0`: `X=151.969455 Y=352.913688 Z=-321.714304`
+- Next live step:
+  - move to `B-30 C0`
+  - verify DRO before Cycle Start
+  - use the same two-pass current-pose routine with Single Block for the first
+    `B-30` run
