@@ -164,3 +164,34 @@ First validation path:
 2. Home all axes.
 3. Run only no-cut, slow fixed-tip validation moves.
 4. Do not use `G49.1`; close/restart the config to leave TCPC testing.
+
+## Runtime Update - 2026-04-27 20:11 +07
+
+Automated small-pose fixed-tip validation completed with:
+
+- `nc_files/calibration/tcpc_small_pose_vector_sphere_auto.ngc`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-small-pose-vector-2pass-results.csv`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-small-pose-vector-2pass-raw-points.csv`
+
+The program ran with TCPC enabled from startup and completed:
+
+- `B0 C0` baseline
+- `B+2 C0`
+- `B-2 C0`
+- `B+2 C+10`
+- `B+2 C-10`
+- closing `B0 C0`
+
+Accepted pass-2 center drift from the first accepted `B0 C0` baseline:
+
+- `B+2 C0`: `0.095684 mm`
+- `B-2 C0`: `0.031309 mm`
+- `B+2 C+10`: `0.114722 mm`
+- `B+2 C-10`: `0.132373 mm`
+- closing `B0 C0`: `0.047793 mm`
+
+Result: first real fixed-tip validation is close to the practical `0.10 mm`
+target. Do not over-fit from this single run; the closing baseline repeat moved
+about `0.048 mm`, and corrected sphere diameters still show probe calibration
+or effective-diameter error. TCPC work is paused for the day so X/Y backlash and
+commanded-distance verification can be characterized next.

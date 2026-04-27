@@ -199,6 +199,16 @@ B-axis vector probing rule:
   - slow no-cut TCPC correction direction has now been visually confirmed in
     all four C quadrants; next TCPC work should be fixed-tip deviation checks,
     not more direction-only checks
+  - first automated small-pose fixed-tip TCPC validation completed on
+    2026-04-27 with
+    `nc_files/calibration/tcpc_small_pose_vector_sphere_auto.ngc`
+  - accepted pass-2 fixed-tip drift from the first `B0 C0` baseline was about
+    `0.096 mm` at `B+2 C0`, `0.031 mm` at `B-2 C0`, `0.115 mm` at
+    `B+2 C+10`, `0.132 mm` at `B+2 C-10`, and `0.048 mm` on the closing
+    `B0 C0` repeat
+  - this is close enough to the practical `0.10 mm` target to pause TCPC
+    geometry work and characterize X/Y reversal backlash and commanded-distance
+    accuracy before further fitting; see `XY_BACKLASH_DISTANCE_NEXT_SCOPE.md`
 
 ## Step 5: Mixed-Pose Cross Check
 

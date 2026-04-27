@@ -1,10 +1,10 @@
 # TCPC Fit Next Scope
 
-Status: paused on 2026-04-27. Staff started epoxy preparation on a mold on the
+Status: TCPC direction and first small-pose fixed-tip validation completed on
+2026-04-27. Earlier in the day staff started epoxy preparation on a mold on the
 machine, and the start was bumped near the end of the B-axis session. TCPC work
-was then paused again at `10:50 +07` so the machine can be prepared for later
-3-axis work. Do not continue probing or treat new readings as clean calibration
-data until the mold work is clear and the sphere setup is stable again.
+was paused at `10:50 +07` for 3-axis work, then resumed in the dedicated TCPC
+test config after the machine was stable again.
 
 `G55` is reserved for staff 3-axis setup work from this point. Do not select,
 probe, overwrite, or use `G55` for TCPC calibration/validation until the
@@ -146,3 +146,55 @@ Before collecting more machine data:
 - C unwrap and all-quadrant TCPC direction checks passed on 2026-04-27; next
   TCPC validation should move from direction/sanity checks to fixed-tip
   deviation checks, still at slow no-cut feeds
+
+## Small-Pose TCPC Fixed-Tip Validation - 2026-04-27
+
+Program:
+
+- `nc_files/calibration/tcpc_small_pose_vector_sphere_auto.ngc`
+
+Logs:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-small-pose-vector-2pass-results.csv`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-small-pose-vector-2pass-raw-points.csv`
+
+Setup/state:
+
+- TCPC test config was running with startup TCPC enabled.
+- Probe tool `T3` was loaded after the first attempted start exposed missing
+  Probe Basic probe diameter state.
+- The program now falls back to the known wireless probe diameter
+  `6.000000 mm` and calibration offset `0.134533 mm` if LinuxCNC parameter
+  state is missing or invalid.
+- Program feeds remain conservative: probe `F50`, linear transfer `F150`,
+  rotary index `F100`. During the live run the operator increased feed override
+  because this was a monitored test pass.
+
+Accepted pass-2 centers, compared to the first accepted `B0 C0` baseline
+`X=305.346532 Y=326.053808 Z=-859.724433`:
+
+| Pose | dX mm | dY mm | dZ mm | 3D drift mm |
+| --- | ---: | ---: | ---: | ---: |
+| `B0 C0` baseline | +0.000000 | +0.000000 | +0.000000 | 0.000000 |
+| `B+2 C0` | +0.095283 | -0.004150 | -0.007699 | 0.095684 |
+| `B-2 C0` | +0.020950 | +0.016521 | -0.016383 | 0.031309 |
+| `B+2 C+10` | +0.107496 | -0.039073 | -0.008895 | 0.114722 |
+| `B+2 C-10` | +0.116839 | +0.046881 | -0.040907 | 0.132373 |
+| closing `B0 C0` | +0.017500 | +0.013501 | -0.042375 | 0.047793 |
+
+Interpretation:
+
+- The first real fixed-tip result is close to the practical `0.10 mm` TCPC
+  target for this machine.
+- The combined `B+2/C+/-10` poses are the first useful geometry-refinement
+  signals, with worst case about `0.132 mm`.
+- Closing `B0 C0` moved about `0.048 mm`, so do not over-fit from this one run;
+  some of the measured drift may be probe/machine repeatability, local axis
+  error, sphere stability, or feed-override effects.
+- Corrected diameters still read high/variable, roughly `30.15-30.33 mm`, so
+  continue using center repeatability and pose deltas as the primary TCPC
+  metric until the probe diameter/calibration path is cleaned up.
+
+TCPC work is now paused for the day. The next machine-characterization scope is
+X/Y reversal backlash and X/Y commanded-distance verification; see
+`XY_BACKLASH_DISTANCE_NEXT_SCOPE.md`.
