@@ -2839,3 +2839,35 @@
   - log both pass 1 and pass 2, and treat pass 2 as the accepted result
 - After the two-pass routine is implemented and validated, continue the B-axis
   pose set with `B+30 C0`, `B-30 C0`, and closing `B0 C0`.
+
+# 2026-04-27 - B-axis two-pass routine prepared
+
+- Added `nc_files/calibration/b_axis_vector_sphere_2pass_current_pose.ngc`.
+- Added two-pass result logs:
+  - `configs/5th_axis_xyzbc_ssi_probe_basic/b-axis-vector-2pass-raw-points.csv`
+  - `configs/5th_axis_xyzbc_ssi_probe_basic/b-axis-vector-2pass-results.csv`
+- The two-pass routine is current-pose only:
+  - no WCS writes
+  - no `B/C` auto-indexing
+  - no `G49`; active tool-length state is left unchanged
+  - pass 1 probes top, `-U/+U`, and `-V/+V`
+  - pass 1 computes full local `U/V` midpoint errors
+  - pass 1 aborts before auto-correction if either local correction exceeds
+    `2.0 mm`
+  - pass 1 aborts before auto-correction if either corrected diameter is
+    outside `29.5-30.5 mm`
+  - pass 2 starts at top clearance above the corrected center and is marked as
+    accepted in the two-pass result CSV
+- Static checks completed:
+  - no G-code line over `80` characters
+  - `git diff --check` clean for the new routine and CSV headers
+  - a parser pass on a temporary verification copy completed successfully after
+    replacing live probe moves with feed moves and removing runtime abort guards
+- Next live validation step:
+  - do not go to `B+30 C0` yet
+  - validate the new two-pass routine at a known pose first, preferably current
+    `B-15 C0` if the machine has not been moved far
+  - start `3-8 mm` clear along the opposite stylus vector
+  - use Single Block for the first validation run
+  - if pass 1 correction and pass 2 result look sane, then continue to
+    `B+30 C0` with the two-pass routine

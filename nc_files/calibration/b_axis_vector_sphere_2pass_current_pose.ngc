@@ -1,0 +1,423 @@
+(B-axis vector sphere two-pass measurement at current B/C pose)
+(No WCS changes. No rotary indexing. Slow vector contacts only.)
+(Pass 1 measures and centers. Pass 2 is the accepted result.)
+
+(Operator setup:)
+(1. Manually set the intended B/C pose.)
+(2. Start 3 to 8 mm clear from the sphere along the opposite stylus vector.)
+(3. Keep hand on feed hold for the first validation run.)
+
+(Point IDs in b-axis-vector-2pass-raw-points.csv:)
+(1=top along W, 2=-U side, 3=+U side, 4=-V side, 5=+V side)
+
+(Does not issue G49; leave active tool-length state unchanged.)
+G21 G17 G40 G64 P0.001 G80 G90 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, B_VECTOR_SPHERE_2PASS preview only)
+  M2
+o<preview_guard> endif
+
+#500 = #3014
+o<10> if [#500 LE 0]
+  #500 = #5400
+o<10> endif
+
+o<11> if [#5400 NE #500]
+  (abort, Specified probe tool is not in spindle)
+o<11> endif
+
+#501 = #5410
+o<12> if [#501 LE 0]
+  (abort, Probe diameter is not set)
+o<12> endif
+
+#502 = #3032
+#503 = 15.0
+#504 = [[#501 / 2.0] - #502]
+#505 = [#503 + #504]
+
+#506 = 50.0
+#507 = 150.0
+#508 = 12.0
+#509 = 5.0
+#510 = 4.0
+#511 = 6.0
+#512 = 3.0
+#513 = [#505 + #509]
+#514 = [#505 + #510]
+
+#520 = #<_abs_b>
+#521 = #<_abs_c>
+
+(W points along the probe vector toward the table at this B/C pose.)
+#530 = [SIN[#520] * COS[#521]]
+#531 = [SIN[#520] * SIN[#521]]
+#532 = [-COS[#520]]
+
+(U is perpendicular to W in the tilt plane.)
+#533 = [COS[#520] * COS[#521]]
+#534 = [COS[#520] * SIN[#521]]
+#535 = [SIN[#520]]
+
+(V is perpendicular to W and U.)
+#536 = [-SIN[#521]]
+#537 = [COS[#521]]
+#538 = 0.0
+
+#540 = [#<_abs_x> - #<_x>]
+#541 = [#<_abs_y> - #<_y>]
+#542 = [#<_abs_z> - #<_z>]
+
+#550 = #<_x>
+#551 = #<_y>
+#552 = #<_z>
+
+o<vector_sphere_pass> sub
+  #<pass_id> = #1
+  #<start_x> = #2
+  #<start_y> = #3
+  #<start_z> = #4
+  #<accepted> = #5
+
+  (Move to the requested start position.)
+  G90
+  F#507
+  G1 X#<start_x> Y#<start_y> Z#<start_z>
+
+  (Top touch along W.)
+  #122 = [#530 * #508]
+  #123 = [#531 * #508]
+  #124 = [#532 * #508]
+  G91
+  F#506
+  G38.2 X#122 Y#123 Z#124
+
+  o<top_fail> if [#5070 EQ 0]
+    G90
+    F#507
+    G1 X#<start_x> Y#<start_y> Z#<start_z>
+    (abort, Top vector touch did not record point data)
+  o<top_fail> endif
+
+  #<top_x> = #5061
+  #<top_y> = #5062
+  #<top_z> = #5063
+  #<top_abs_x> = [#<top_x> + #540]
+  #<top_abs_y> = [#<top_y> + #541]
+  #<top_abs_z> = [#<top_z> + #542]
+
+  #<top_center_x> = [#<top_x> + [#530 * #505]]
+  #<top_center_y> = [#<top_y> + [#531 * #505]]
+  #<top_center_z> = [#<top_z> + [#532 * #505]]
+
+  #<top_clear_x> = [#<top_center_x> - [#530 * #513]]
+  #<top_clear_y> = [#<top_center_y> - [#531 * #513]]
+  #<top_clear_z> = [#<top_center_z> - [#532 * #513]]
+
+  G90
+  F#507
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  (Probe from -U side toward +U.)
+  #<um_start_x> = [#<top_center_x> - [#533 * #514]]
+  #<um_start_y> = [#<top_center_y> - [#534 * #514]]
+  #<um_start_z> = [#<top_center_z> - [#535 * #514]]
+  #<um_clear_x> = [#<um_start_x> - [#530 * #513]]
+  #<um_clear_y> = [#<um_start_y> - [#531 * #513]]
+  #<um_clear_z> = [#<um_start_z> - [#532 * #513]]
+  G90
+  F#507
+  G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+  G1 X#<um_start_x> Y#<um_start_y> Z#<um_start_z>
+  #122 = [#533 * #511]
+  #123 = [#534 * #511]
+  #124 = [#535 * #511]
+  G91
+  F#506
+  G38.2 X#122 Y#123 Z#124
+  o<um_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    (abort, -U side touch did not record point data)
+  o<um_fail> endif
+  #<um_x> = #5061
+  #<um_y> = #5062
+  #<um_z> = #5063
+  #125 = [-#533 * #512]
+  #126 = [-#534 * #512]
+  #127 = [-#535 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+
+  (Probe from +U side toward -U.)
+  #<up_start_x> = [#<top_center_x> + [#533 * #514]]
+  #<up_start_y> = [#<top_center_y> + [#534 * #514]]
+  #<up_start_z> = [#<top_center_z> + [#535 * #514]]
+  #<up_clear_x> = [#<up_start_x> - [#530 * #513]]
+  #<up_clear_y> = [#<up_start_y> - [#531 * #513]]
+  #<up_clear_z> = [#<up_start_z> - [#532 * #513]]
+  G90
+  F#507
+  G1 X#<up_clear_x> Y#<up_clear_y> Z#<up_clear_z>
+  G1 X#<up_start_x> Y#<up_start_y> Z#<up_start_z>
+  #122 = [-#533 * #511]
+  #123 = [-#534 * #511]
+  #124 = [-#535 * #511]
+  G91
+  F#506
+  G38.2 X#122 Y#123 Z#124
+  o<up_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    (abort, +U side touch did not record point data)
+  o<up_fail> endif
+  #<up_x> = #5061
+  #<up_y> = #5062
+  #<up_z> = #5063
+  #125 = [#533 * #512]
+  #126 = [#534 * #512]
+  #127 = [#535 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<up_clear_x> Y#<up_clear_y> Z#<up_clear_z>
+
+  (Probe from -V side toward +V.)
+  #<vm_start_x> = [#<top_center_x> - [#536 * #514]]
+  #<vm_start_y> = [#<top_center_y> - [#537 * #514]]
+  #<vm_start_z> = [#<top_center_z> - [#538 * #514]]
+  #<vm_clear_x> = [#<vm_start_x> - [#530 * #513]]
+  #<vm_clear_y> = [#<vm_start_y> - [#531 * #513]]
+  #<vm_clear_z> = [#<vm_start_z> - [#532 * #513]]
+  G90
+  F#507
+  G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+  G1 X#<vm_start_x> Y#<vm_start_y> Z#<vm_start_z>
+  #122 = [#536 * #511]
+  #123 = [#537 * #511]
+  #124 = [#538 * #511]
+  G91
+  F#506
+  G38.2 X#122 Y#123 Z#124
+  o<vm_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    (abort, -V side touch did not record point data)
+  o<vm_fail> endif
+  #<vm_x> = #5061
+  #<vm_y> = #5062
+  #<vm_z> = #5063
+  #125 = [-#536 * #512]
+  #126 = [-#537 * #512]
+  #127 = [-#538 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+
+  (Probe from +V side toward -V.)
+  #<vp_start_x> = [#<top_center_x> + [#536 * #514]]
+  #<vp_start_y> = [#<top_center_y> + [#537 * #514]]
+  #<vp_start_z> = [#<top_center_z> + [#538 * #514]]
+  #<vp_clear_x> = [#<vp_start_x> - [#530 * #513]]
+  #<vp_clear_y> = [#<vp_start_y> - [#531 * #513]]
+  #<vp_clear_z> = [#<vp_start_z> - [#532 * #513]]
+  G90
+  F#507
+  G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+  G1 X#<vp_start_x> Y#<vp_start_y> Z#<vp_start_z>
+  #122 = [-#536 * #511]
+  #123 = [-#537 * #511]
+  #124 = [-#538 * #511]
+  G91
+  F#506
+  G38.2 X#122 Y#123 Z#124
+  o<vp_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    (abort, +V side touch did not record point data)
+  o<vp_fail> endif
+  #<vp_x> = #5061
+  #<vp_y> = #5062
+  #<vp_z> = #5063
+  #125 = [#536 * #512]
+  #126 = [#537 * #512]
+  #127 = [#538 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+
+  (Return to top clearance before logging.)
+  G90
+  F#507
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  #<um_abs_x> = [#<um_x> + #540]
+  #<um_abs_y> = [#<um_y> + #541]
+  #<um_abs_z> = [#<um_z> + #542]
+  #<up_abs_x> = [#<up_x> + #540]
+  #<up_abs_y> = [#<up_y> + #541]
+  #<up_abs_z> = [#<up_z> + #542]
+  #<vm_abs_x> = [#<vm_x> + #540]
+  #<vm_abs_y> = [#<vm_y> + #541]
+  #<vm_abs_z> = [#<vm_z> + #542]
+  #<vp_abs_x> = [#<vp_x> + #540]
+  #<vp_abs_y> = [#<vp_y> + #541]
+  #<vp_abs_z> = [#<vp_z> + #542]
+
+  #<top_center_abs_x> = [#<top_center_x> + #540]
+  #<top_center_abs_y> = [#<top_center_y> + #541]
+  #<top_center_abs_z> = [#<top_center_z> + #542]
+
+  #<uc_x> = [[#<um_abs_x> + #<up_abs_x>] / 2.0]
+  #<uc_y> = [[#<um_abs_y> + #<up_abs_y>] / 2.0]
+  #<uc_z> = [[#<um_abs_z> + #<up_abs_z>] / 2.0]
+  #<vc_x> = [[#<vm_abs_x> + #<vp_abs_x>] / 2.0]
+  #<vc_y> = [[#<vm_abs_y> + #<vp_abs_y>] / 2.0]
+  #<vc_z> = [[#<vm_abs_z> + #<vp_abs_z>] / 2.0]
+
+  #<u_err_x> = [#<uc_x> - #<top_center_abs_x>]
+  #<u_err_y> = [#<uc_y> - #<top_center_abs_y>]
+  #<u_err_z> = [#<uc_z> - #<top_center_abs_z>]
+  #<v_err_x> = [#<vc_x> - #<top_center_abs_x>]
+  #<v_err_y> = [#<vc_y> - #<top_center_abs_y>]
+  #<v_err_z> = [#<vc_z> - #<top_center_abs_z>]
+
+  #600 = #<top_center_x>
+  #601 = #<top_center_y>
+  #602 = #<top_center_z>
+  #603 = [[#<uc_x> + #<vc_x>] / 2.0]
+  #604 = [[#<uc_y> + #<vc_y>] / 2.0]
+  #605 = [[#<uc_z> + #<vc_z>] / 2.0]
+  #606 = [[#<u_err_x> * #533] + [#<u_err_y> * #534] + [#<u_err_z> * #535]]
+  #607 = [[#<v_err_x> * #536] + [#<v_err_y> * #537] + [#<v_err_z> * #538]]
+
+  #<u_dx> = [#<up_abs_x> - #<um_abs_x>]
+  #<u_dy> = [#<up_abs_y> - #<um_abs_y>]
+  #<u_dz> = [#<up_abs_z> - #<um_abs_z>]
+  #<v_dx> = [#<vp_abs_x> - #<vm_abs_x>]
+  #<v_dy> = [#<vp_abs_y> - #<vm_abs_y>]
+  #<v_dz> = [#<vp_abs_z> - #<vm_abs_z>]
+
+  #608 = [[#<u_dx> * #533] + [#<u_dy> * #534] + [#<u_dz> * #535]]
+  #609 = [[#<v_dx> * #536] + [#<v_dy> * #537] + [#<v_dz> * #538]]
+  #610 = [#608 - [2.0 * #504]]
+  #611 = [#609 - [2.0 * #504]]
+
+  (Log raw touch points.)
+  (LOGAPPEND,b-axis-vector-2pass-raw-points.csv)
+  #110 = #520
+  #111 = #521
+  #112 = #<pass_id>
+  #113 = #<accepted>
+  #114 = 1.0
+  #115 = #<top_abs_x>
+  #116 = #<top_abs_y>
+  #117 = #<top_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  #114 = 2.0
+  #115 = #<um_abs_x>
+  #116 = #<um_abs_y>
+  #117 = #<um_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  #114 = 3.0
+  #115 = #<up_abs_x>
+  #116 = #<up_abs_y>
+  #117 = #<up_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  #114 = 4.0
+  #115 = #<vm_abs_x>
+  #116 = #<vm_abs_y>
+  #117 = #<vm_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  #114 = 5.0
+  #115 = #<vp_abs_x>
+  #116 = #<vp_abs_y>
+  #117 = #<vp_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  (LOGCLOSE)
+
+  (Log current pass result.)
+  (LOGAPPEND,b-axis-vector-2pass-results.csv)
+  #80 = #520
+  #81 = #521
+  #82 = #<pass_id>
+  #83 = #<accepted>
+  #84 = #500
+  #85 = #502
+  #86 = #603
+  #87 = #604
+  #88 = #605
+  #89 = #606
+  #90 = #607
+  #91 = #608
+  #92 = #609
+  #93 = #610
+  #94 = #611
+  (LOG,#80,#81,#82,#83,#84,#85,#86,#87,#88,#89,#90,#91,#92,#93,#94)
+  (LOGCLOSE)
+
+  (DEBUG, B_VECTOR_2PASS pass #<pass_id> accepted #<accepted>)
+  (DEBUG, B_VECTOR_2PASS center #603 #604 #605)
+  (DEBUG, B_VECTOR_2PASS err_u=#606 err_v=#607)
+  (DEBUG, B_VECTOR_2PASS diam_u=#610 diam_v=#611)
+
+o<vector_sphere_pass> endsub
+
+(Run first pass from the operator start point.)
+o<vector_sphere_pass> call [1.0] [#550] [#551] [#552] [0.0]
+
+(Pass 1 sanity checks before any automatic correction move.)
+o<safe_u_move> if [ABS[#606] GT 2.0]
+  (abort, Pass 1 U centering correction over 2 mm)
+o<safe_u_move> endif
+o<safe_v_move> if [ABS[#607] GT 2.0]
+  (abort, Pass 1 V centering correction over 2 mm)
+o<safe_v_move> endif
+o<safe_u_diam_low> if [#610 LT 29.5]
+  (abort, Pass 1 U corrected diameter below safe range)
+o<safe_u_diam_low> endif
+o<safe_u_diam_high> if [#610 GT 30.5]
+  (abort, Pass 1 U corrected diameter above safe range)
+o<safe_u_diam_high> endif
+o<safe_v_diam_low> if [#611 LT 29.5]
+  (abort, Pass 1 V corrected diameter below safe range)
+o<safe_v_diam_low> endif
+o<safe_v_diam_high> if [#611 GT 30.5]
+  (abort, Pass 1 V corrected diameter above safe range)
+o<safe_v_diam_high> endif
+
+(Build corrected center from full local U/V midpoint errors.)
+#620 = [[#606 * #533] + [#607 * #536]]
+#621 = [[#606 * #534] + [#607 * #537]]
+#622 = [[#606 * #535] + [#607 * #538]]
+#623 = [#600 + #620]
+#624 = [#601 + #621]
+#625 = [#602 + #622]
+
+(Start pass 2 at top clearance above the corrected center.)
+#626 = [#623 - [#530 * #513]]
+#627 = [#624 - [#531 * #513]]
+#628 = [#625 - [#532 * #513]]
+
+(DEBUG, B_VECTOR_2PASS correction #620 #621 #622)
+o<vector_sphere_pass> call [2.0] [#626] [#627] [#628] [1.0]
+
+(DEBUG, B_VECTOR_SPHERE_2PASS complete)
+M2

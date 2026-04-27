@@ -46,6 +46,8 @@ inspect residuals before using the data for TCPC offsets.
 6. Add an automatic two-pass current-pose routine before wider B data:
    pass 1 measures, computes local `U/V` centering error, shifts internally,
    then pass 2 repeats and becomes the accepted result.
+   Current two-pass routine:
+   `nc_files/calibration/b_axis_vector_sphere_2pass_current_pose.ngc`.
 7. Fit sphere centers offline from raw contacts; do not write WCS offsets.
 8. Use repeated measurements and consistent approach direction to separate rotary
    geometry from rack/screw local error.
@@ -66,6 +68,8 @@ Required behavior:
 - Abort if either local correction is greater than about `2.0 mm`.
 - Abort if either corrected diameter is outside about `29.5-30.5 mm`.
 - Log both passes and mark pass 2 as the accepted result.
+- Validate the two-pass routine at `B-15 C0` or `B+15 C0` before using it at
+  `B+30 C0`.
 
 ## Initial B Pose Set
 

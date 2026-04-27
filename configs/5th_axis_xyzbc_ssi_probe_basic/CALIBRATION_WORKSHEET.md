@@ -154,14 +154,18 @@ B-axis vector probing rule:
   data in TCPC geometry.
 - Current B-axis vector routine:
   `nc_files/calibration/b_axis_vector_sphere_current_pose.ngc`.
+- Current B-axis two-pass vector routine:
+  `nc_files/calibration/b_axis_vector_sphere_2pass_current_pose.ngc`.
 - Current B-axis vector logs:
   - `configs/5th_axis_xyzbc_ssi_probe_basic/b-axis-vector-raw-points.csv`
   - `configs/5th_axis_xyzbc_ssi_probe_basic/b-axis-vector-sphere-results.csv`
+  - `configs/5th_axis_xyzbc_ssi_probe_basic/b-axis-vector-2pass-raw-points.csv`
+  - `configs/5th_axis_xyzbc_ssi_probe_basic/b-axis-vector-2pass-results.csv`
 - End-of-day status on 2026-04-26:
   - `B+15 C0` repeated tightly after manual local `U` correction
   - `B-15 C0` repeated tightly after manual local `U/V` correction
-  - before collecting `B+30/B-30`, update the routine to perform the first-pass
-    local `U/V` centering correction and second pass automatically
+  - before collecting `B+30/B-30`, validate the two-pass routine at a known
+    pose, then use it for the remaining B-axis data
 
 ## Step 5: Mixed-Pose Cross Check
 
