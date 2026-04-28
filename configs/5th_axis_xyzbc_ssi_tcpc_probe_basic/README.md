@@ -199,3 +199,36 @@ Follow-up on 2026-04-28 found about `0.035-0.040 mm` X reversal lost motion and
 about `0.029 mm` Y reversal lost motion at the tested location.
 Commanded-distance verification is deferred until suitable tooling is available
 or a distance/scale problem is suspected.
+
+## Runtime Update - 2026-04-28 Small-Pose Repeat
+
+Repeat automated small-pose fixed-tip validation completed with the table mold
+present and B kept well inside the operator-requested `+/-50 deg` limit.
+
+Program/feed state:
+
+- `nc_files/calibration/tcpc_small_pose_vector_sphere_auto.ngc`
+- probe `F50`
+- linear positioning `F400`
+- rotary index `F100`
+- startup TCPC enabled
+
+Accepted pass-2 center drift from the first accepted `B0 C0` baseline:
+
+- `B+2 C0`: `0.093955 mm`
+- `B-2 C0`: `0.016757 mm`
+- `B+2 C+10`: `0.106861 mm`
+- `B+2 C-10`: `0.111113 mm`
+- closing `B0 C0`: `0.002118 mm`
+
+Result: the current geometry is inside the `0.2 mm` practical TCPC target for
+this small-pose set. The excellent closing repeat means the remaining pattern
+is useful diagnostic data rather than obvious sphere/probe drift.
+
+Current candidate causes for the remaining X-heavy error are B effective
+radius, B zero/alignment, local X mechanics, and B-to-spindle centerline offset.
+Legacy configs contain old `5axiskins` fractional `x-offset` values, and the
+simulation notes record a previous spindle-center error of about `2 mm`, but
+those old values should not be copied directly into `headheadkins`. The current
+active lateral representation is `headheadkins.nominal-b-to-tool.x = -0.668710`;
+adjust only after a wider B/C validation set confirms which term is dominant.

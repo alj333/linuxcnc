@@ -49,7 +49,7 @@ o<probe_cal_offset_default> endif
 #505 = [#503 + #504]
 
 #506 = 50.0           (probe feed)
-#507 = 150.0          (linear transfer feed)
+#507 = 400.0          (linear positioning feed)
 #508 = 12.0           (top probe vector length)
 #509 = 5.0            (top clearance past sphere+probe)
 #510 = 4.0            (side start clearance past sphere+probe)

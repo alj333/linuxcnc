@@ -213,6 +213,25 @@ B-axis vector probing rule:
     motion and about `0.029 mm` Y lost motion at the tested location;
     commanded-distance verification was deferred because suitable tooling was
     not available
+  - 2026-04-28 repeat automated small-pose fixed-tip TCPC validation completed
+    with the table mold present and B kept inside the current `+/-50 deg`
+    clearance limit
+  - program feeds for that run were probe `F50`, linear positioning `F400`,
+    and rotary index `F100`
+  - accepted pass-2 drift from the first `B0 C0` baseline was about
+    `0.094 mm` at `B+2 C0`, `0.017 mm` at `B-2 C0`, `0.107 mm` at
+    `B+2 C+10`, `0.111 mm` at `B+2 C-10`, and `0.002 mm` on the closing
+    `B0 C0` repeat
+  - this is inside the current `0.2 mm` practical TCPC target; do not adjust
+    offsets blindly from this small pose set
+  - a known possible B-axis assembly issue is spindle centerline offset from
+    the B rotation center; legacy configs show prior fractional `5axiskins`
+    `x-offset` corrections, but those values are not directly portable to
+    current `headheadkins`
+  - treat current `headheadkins.nominal-b-to-tool.x = -0.668710` as the active
+    first-pass representation of that lateral B-to-spindle offset, but note
+    that the current X-heavy residual is also sensitive to B effective radius
+    / `nominal-b-to-tool.z`, B zero, and head alignment
 
 ## Step 5: Mixed-Pose Cross Check
 
