@@ -273,6 +273,16 @@ B-axis vector probing rule:
     command/feedback, and `tcpc-symmetric-pose-vector-rotary-ssi-state.csv`
     records direct SSI absolute/zeroed/rawcount values plus microdegree
     following-error fields
+  - the first run with high-resolution rotary logging completed the starting
+    `B0 C0` and all four tilted poses, then stopped on a transient non-probe
+    move trip before the final closing `B0 C0`
+  - accepted tilted-pose drift from that run's starting `B0 C0` was about
+    `0.119 mm` at `B+5 C+20`, `0.089 mm` at `B+5 C-20`, `0.114 mm` at
+    `B-5 C+20`, and `0.091 mm` at `B-5 C-20`
+  - direct SSI B feedback stayed within a few hundred microdegrees at the
+    measured poses, far too small to explain a `~0.1 mm` TCP shift at a
+    `309 mm` lever arm; this argues against B output-angle drift as the main
+    cause of the mixed-pose pattern
 
 ## Step 5: Mixed-Pose Cross Check
 

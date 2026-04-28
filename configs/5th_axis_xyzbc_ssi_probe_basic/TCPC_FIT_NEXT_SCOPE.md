@@ -461,6 +461,32 @@ Repeat interpretation:
   run was tiny, so if this is B-related it is more likely mechanical
   backlash/approach or compensation state than servo following error.
 
+High-resolution rotary-state rerun:
+
+- The updated program was rerun after adding LinuxCNC joint and direct SSI
+  logging. It completed the starting `B0 C0` and all four tilted poses, then
+  stopped on a transient `Probe tripped during non-probe move` during the
+  return toward final closing `B0 C0`. The probe input was false after the
+  stop, so this is treated as another transient/wireless probe trip. No final
+  closing `B0 C0` was logged for this third run.
+- Run 3 starting `B0 C0` accepted center:
+  `X=305.545620 Y=326.051919 Z=-859.736703`.
+- Run 3 accepted tilted-pose drift from its own starting `B0 C0`:
+  `0.118766 mm` at `B+5 C+20`, `0.089465 mm` at `B+5 C-20`,
+  `0.114091 mm` at `B-5 C+20`, and `0.090701 mm` at `B-5 C-20`.
+- Run 3 repeated run 2 closely in absolute coordinates for the shared accepted
+  rows: about `0.016-0.019 mm` 3D run-to-run delta.
+- Direct SSI rotary logging does not show B-axis output-angle movement large
+  enough to explain the `~0.1 mm` TCP pattern. B feedback at `B0` was about
+  `-13.7 microdegrees`; at `B+5` it was about `+5.000139 deg`; at `B-5` it was
+  between about `-5.000139 deg` and `-4.999796 deg`. The observed B readback
+  variation is only about `0.00034 deg`, which is roughly `0.002 mm` at a
+  `309 mm` lever arm.
+- Since the SSI encoders are direct to the rotary axis output on this build,
+  the remaining `~0.09-0.12 mm` pose pattern is more likely TCPC geometry,
+  head/spindle assembly compliance or alignment, local linear-axis effects, or
+  thermal/setup drift than actual B-axis output-angle drift.
+
 Recommended next TCPC check:
 
 - keep the mold/table clearance constraint and stay within `B +/-50 deg`
@@ -475,6 +501,9 @@ Recommended next TCPC check:
   measure the sphere after approaching B0 from `B+5`, then after approaching
   from `B-5`, repeated enough times to check whether the center splits mainly
   in X by roughly the B-backlash lever-arm amount
+- use the new rotary SSI logs in that approach-repeat test. If B SSI readback
+  stays within a few hundred microdegrees while the sphere center splits by
+  about `0.1 mm`, the error is not B output-angle drift.
 - if later stable-temperature repeats show closing drift near `0.1 mm`, focus
   on thermal/return-path repeatability and rotary/linear backlash before
   changing TCPC offsets
