@@ -209,6 +209,10 @@ B-axis vector probing rule:
   - this is close enough to the practical `0.10 mm` target to pause TCPC
     geometry work and characterize X/Y reversal backlash and commanded-distance
     accuracy before further fitting; see `XY_BACKLASH_DISTANCE_NEXT_SCOPE.md`
+  - 2026-04-28 first X/Y backlash pass measured about `0.035-0.040 mm` X lost
+    motion and about `0.029 mm` Y lost motion at the tested location;
+    commanded-distance verification was deferred because suitable tooling was
+    not available
 
 ## Step 5: Mixed-Pose Cross Check
 

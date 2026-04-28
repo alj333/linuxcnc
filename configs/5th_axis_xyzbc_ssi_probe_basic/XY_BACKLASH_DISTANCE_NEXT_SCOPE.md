@@ -1,6 +1,8 @@
 # X/Y Backlash And Distance Verification Next Scope
 
-Status: planned after TCPC small-pose validation on 2026-04-27.
+Status: first X/Y reversal backlash pass completed on 2026-04-28. Commanded
+distance verification is deferred until suitable tooling is available or a
+distance/scale problem is suspected.
 
 Purpose:
 
@@ -88,6 +90,44 @@ Record:
 
 Use repeated same-direction moves to identify scale/distance error. Use
 reversal moves to identify backlash and compliance.
+
+## First Backlash Results - 2026-04-28
+
+Tooling/context:
+
+- Dial indicator setup was available for reversal lost-motion checks.
+- Suitable tooling for commanded-distance verification was not available, so
+  distance verification is deferred.
+- Values below are recorded using the operator's side labels from the live
+  setup. Do not reinterpret sign conventions without checking the indicator
+  mounting direction.
+
+Measured X lost motion at the tested machine location:
+
+| Side / direction label | Runs mm | Average mm |
+| --- | --- | ---: |
+| X pos side | `0.030, 0.035, 0.034` | `0.033` |
+| X neg side | `0.045, 0.034, 0.035` | `0.038` |
+
+Measured Y lost motion at the tested machine location:
+
+| Direction group | Runs mm | Average mm |
+| --- | --- | ---: |
+| Y group 1 | `0.029, 0.031, 0.028` | `0.029` |
+| Y group 2 | `0.027, 0.029, 0.031` | `0.029` |
+
+Interpretation:
+
+- X/Y reversal lost motion is repeatable and likely contributes materially to
+  the TCPC fixed-tip error floor.
+- Practical working values from this pass are about `0.035-0.040 mm` for X and
+  about `0.029 mm` for Y at this location.
+- This is a significant part of the `0.10 mm` practical TCPC target and should
+  be considered before attempting tighter TCPC geometry fitting.
+- Do not enable backlash compensation from this one location alone. If
+  compensation is considered later, repeat at several machine positions first.
+- Because distance verification was skipped, do not change axis scale or
+  encoder scale from this data.
 
 ## Acceptance And Next Decision
 

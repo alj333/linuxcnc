@@ -195,6 +195,8 @@ Interpretation:
   continue using center repeatability and pose deltas as the primary TCPC
   metric until the probe diameter/calibration path is cleaned up.
 
-TCPC work is now paused for the day. The next machine-characterization scope is
-X/Y reversal backlash and X/Y commanded-distance verification; see
+TCPC work is now paused. First X/Y reversal backlash checks on 2026-04-28 found
+about `0.035-0.040 mm` X lost motion and about `0.029 mm` Y lost motion at the
+tested location. Commanded-distance verification is deferred until suitable
+tooling is available or a distance/scale problem is suspected. See
 `XY_BACKLASH_DISTANCE_NEXT_SCOPE.md`.

@@ -193,5 +193,9 @@ Accepted pass-2 center drift from the first accepted `B0 C0` baseline:
 Result: first real fixed-tip validation is close to the practical `0.10 mm`
 target. Do not over-fit from this single run; the closing baseline repeat moved
 about `0.048 mm`, and corrected sphere diameters still show probe calibration
-or effective-diameter error. TCPC work is paused for the day so X/Y backlash and
-commanded-distance verification can be characterized next.
+or effective-diameter error.
+
+Follow-up on 2026-04-28 found about `0.035-0.040 mm` X reversal lost motion and
+about `0.029 mm` Y reversal lost motion at the tested location.
+Commanded-distance verification is deferred until suitable tooling is available
+or a distance/scale problem is suspected.
