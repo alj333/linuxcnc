@@ -138,13 +138,13 @@ Fit references:
   `X=305.669816 Z=-589.742446`, radius `308.963734 mm`, residual within about
   `0.020 mm`
 
-Current retained real-machine correction after sign-corrected symmetric
-mixed-pose fixed-tip checks on 2026-04-28:
+Current calibration-correction state after discovering the old vector-sign
+error:
 
 ```hal
-setp headheadkins.cal-b-to-tool.x -0.100000
+setp headheadkins.cal-b-to-tool.x 0.000000
 setp headheadkins.cal-b-to-tool.y 0.000000
-setp headheadkins.cal-b-to-tool.z 0.030000
+setp headheadkins.cal-b-to-tool.z 0.000000
 setp headheadkins.b-zero-offset 0.000000
 setp headheadkins.c-zero-offset 0.000000
 ```
@@ -153,13 +153,13 @@ The vector probing routines were corrected to match the current B-axis sign
 convention before this fit. The earlier wrong-sign vector datasets are not used
 for final fitting. The repeated corrected data still cannot distinguish a small
 `B` zero angular error from a small B-to-tool X translation error, so this
-correction intentionally keeps the rotary zero offsets unchanged and only biases
-the B-to-tool vector.
+reset intentionally clears all calibration corrections and keeps only the
+nominal starting geometry.
 
 A later test of `cal-b-to-tool.x=-0.200000` and
 `cal-b-to-tool.z=+0.160000` was rejected because it increased the small-pose
-validation drift. The startup config was reverted to the retained
-`-0.100000/+0.030000` correction.
+validation drift. The previous retained `-0.100000/+0.030000` correction was
+also cleared because it was rooted in the old wrong-sign vector data.
 
 These values are only for slow no-cut fixed-tip visual validation. The fit still
 needs repeat validation after restart and final handling of tool length before

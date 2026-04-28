@@ -303,9 +303,12 @@ B-axis vector probing rule:
     `cal-b-to-tool.x = -0.200000 mm` and
     `cal-b-to-tool.z = +0.160000 mm` was tested after restart, but rejected
     because all four tilted small poses got worse
-  - current retained TCPC test config correction is back to
-    `cal-b-to-tool.x = -0.100000 mm` and
-    `cal-b-to-tool.z = +0.030000 mm`, mirrored to `headheadtwp.*`
+  - the retained `cal-b-to-tool.x = -0.100000 mm` and
+    `cal-b-to-tool.z = +0.030000 mm` correction was also cleared because it was
+    rooted in the old wrong-sign vector data
+  - current TCPC test config calibration corrections are reset to zero while
+    keeping the nominal starting geometry unchanged; rerun the corrected
+    symmetric vector program after restart to establish a clean baseline
   - `b-zero-offset` and `c-zero-offset` still remain `0.000000`; validate this
     startup correction with another symmetric run after restarting the TCPC
     config before expanding the pose range

@@ -650,7 +650,21 @@ setp headheadkins.b-zero-offset 0.000000
 setp headheadkins.c-zero-offset 0.000000
 ```
 
-Do not apply further geometry corrections from the current small-angle dataset
-alone. The next useful step is either a same-geometry repeat at stable
-temperature or a wider but still safe pose range to separate geometry from
-machine alignment/backlash effects.
+Follow-up decision:
+
+- The retained `-0.100000/+0.030000` correction was also rooted in the old
+  wrong-sign vector data.
+- To restart the fit cleanly, the TCPC test config calibration corrections were
+  reset to zero while keeping the nominal starting geometry unchanged:
+
+```hal
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.000000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset 0.000000
+```
+
+Next validation should restart the TCPC config, rerun the corrected symmetric
+vector program, and use that as the clean sign-corrected baseline before any
+new TCPC correction is applied.
