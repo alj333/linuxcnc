@@ -12,6 +12,9 @@
 
 (Accepted pass-2 centers log to:)
 (/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-symmetric-pose-vector-2pass-results.csv)
+(High-resolution rotary state logs to:)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-symmetric-pose-vector-rotary-joint-state.csv)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-symmetric-pose-vector-rotary-ssi-state.csv)
 
 G21 G17 G40 G64 P0.001 G80 G90 G94
 
@@ -314,6 +317,26 @@ o<tcpc_vector_sphere_pass> sub
   #610 = [#608 - [2.0 * #504]]
   #611 = [#609 - [2.0 * #504]]
 
+  (Capture rotary command/feedback at full useful resolution.)
+  #150 = #<_hal[joint.3.pos-cmd]>
+  #151 = #<_hal[joint.3.pos-fb]>
+  #152 = #<_hal[joint.3.motor-pos-cmd]>
+  #153 = #<_hal[joint.3.motor-pos-fb]>
+  #154 = #<_hal[joint.4.pos-cmd]>
+  #155 = #<_hal[joint.4.pos-fb]>
+  #156 = #<_hal[joint.4.motor-pos-cmd]>
+  #157 = #<_hal[joint.4.motor-pos-fb]>
+  #158 = #<_hal[b-ssi-abs-position]>
+  #159 = #<_hal[b-ssi-zeroed-position]>
+  #160 = #<_hal[c-ssi-abs-position]>
+  #161 = #<_hal[c-ssi-zeroed-position]>
+  #162 = #<_hal[hm2_7i95.0.ssi.00.abs.rawcounts]>
+  #163 = #<_hal[hm2_7i95.0.ssi.01.abs.rawcounts]>
+  #164 = [[#151 - #150] * 1000000.0]
+  #165 = [[#155 - #154] * 1000000.0]
+  #166 = [#151 * 1000000.0]
+  #167 = [#155 * 1000000.0]
+
   (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-symmetric-pose-vector-2pass-raw-points.csv)
   #110 = #520
   #111 = #521
@@ -363,6 +386,36 @@ o<tcpc_vector_sphere_pass> sub
   #93 = #610
   #94 = #611
   (LOG,#80,#81,#82,#83,#84,#85,#86,#87,#88,#89,#90,#91,#92,#93,#94)
+  (LOGCLOSE)
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-symmetric-pose-vector-rotary-joint-state.csv)
+  #170 = #520
+  #171 = #521
+  #172 = #<pass_id>
+  #173 = #<accepted>
+  #174 = #150
+  #175 = #151
+  #176 = #152
+  #177 = #153
+  #178 = #154
+  #179 = #155
+  #180 = #156
+  #181 = #157
+  (LOG,#170,#171,#172,#173,#174,#175,#176,#177,#178,#179,#180,#181)
+  (LOGCLOSE)
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-symmetric-pose-vector-rotary-ssi-state.csv)
+  #174 = #158
+  #175 = #159
+  #176 = #160
+  #177 = #161
+  #178 = #162
+  #179 = #163
+  #180 = #164
+  #181 = #165
+  #182 = #166
+  #183 = #167
+  (LOG,#170,#171,#172,#173,#174,#175,#176,#177,#178,#179,#180,#181,#182,#183)
   (LOGCLOSE)
 
   (DEBUG, TCPC_VECTOR pass #<pass_id> accepted #<accepted>)

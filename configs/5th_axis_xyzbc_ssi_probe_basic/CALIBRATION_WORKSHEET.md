@@ -254,6 +254,25 @@ B-axis vector probing rule:
     recorded as morning sun started heating the workshop; treat this run as
     useful diagnostic data, but do not fit TCPC offsets from it without a
     stable-temperature repeat or reverse-order confirmation
+  - immediate rerun of the same symmetric program completed normally; the
+    second run's first `B0 C0` was about `0.110 mm` from the first run's first
+    `B0 C0`, but only about `0.011 mm` from the first run's closing `B0 C0`
+  - tilted accepted pass-2 centers repeated between the two runs within about
+    `0.016-0.022 mm` absolute, while the second run closed at about `0.008 mm`
+    from its own starting `B0 C0`
+  - this repeat supports treating the first run's large `B0 C0` closure shift
+    as baseline drift or B0 approach/backlash state, not as direct TCPC geometry
+    error
+  - with a B-to-tip radius near `309 mm`, `0.108 mm` X shift at `C0` is only
+    about `0.020 deg` of B angle error; the known B backlash value around
+    `0.022 deg` is enough to create about `0.119 mm` tip motion, so B approach
+    direction needs a dedicated check
+  - the symmetric TCPC program now also logs high-resolution B/C rotary state
+    for future runs:
+    `tcpc-symmetric-pose-vector-rotary-joint-state.csv` records LinuxCNC joint
+    command/feedback, and `tcpc-symmetric-pose-vector-rotary-ssi-state.csv`
+    records direct SSI absolute/zeroed/rawcount values plus microdegree
+    following-error fields
 
 ## Step 5: Mixed-Pose Cross Check
 
