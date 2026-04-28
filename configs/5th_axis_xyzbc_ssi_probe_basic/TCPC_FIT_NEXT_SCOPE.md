@@ -453,13 +453,13 @@ Repeat interpretation:
 - The repeat data is good enough to proceed to offline sensitivity analysis,
   but the fit must remove or model common baseline drift before evaluating
   geometry residuals.
-- The `0.108-0.111 mm` X-heavy `B0 C0` baseline shift is also consistent with
-  B-axis approach/backlash at the current lever arm. With an active B-to-tip
-  radius near `309 mm`, `0.108 mm` at the tip is only about `0.020 deg` of B
-  angle error; the known B backlash value of about `0.022 deg` would be about
-  `0.119 mm` at the tip. Current LinuxCNC B following error at the end of the
-  run was tiny, so if this is B-related it is more likely mechanical
-  backlash/approach or compensation state than servo following error.
+- The `0.108-0.111 mm` X-heavy `B0 C0` baseline shift is large enough that a
+  very small rotary angular error would matter: with an active B-to-tip radius
+  near `309 mm`, `0.108 mm` at the tip is only about `0.020 deg` of B angle.
+  However, B and C are closed-loop on direct SSI encoders at the rotary output,
+  so a LinuxCNC backlash setting should not leave a static B/C output-position
+  split if the feedback loop and SSI readback are repeating. Treat this as a
+  reason to verify output repeatability, not as proof of rotary backlash.
 
 High-resolution rotary-state rerun:
 
@@ -499,14 +499,18 @@ Recommended next TCPC check:
   `b-zero-offset`, and `c-zero-offset`
 - before changing TCPC geometry, run a focused `B0 C0` approach-repeat test:
   measure the sphere after approaching B0 from `B+5`, then after approaching
-  from `B-5`, repeated enough times to check whether the center splits mainly
-  in X by roughly the B-backlash lever-arm amount
+  from `B-5`, repeated enough times to check whether the center splits while
+  the direct SSI output position remains consistent
 - use the new rotary SSI logs in that approach-repeat test. If B SSI readback
   stays within a few hundred microdegrees while the sphere center splits by
   about `0.1 mm`, the error is not B output-angle drift.
-- if later stable-temperature repeats show closing drift near `0.1 mm`, focus
-  on thermal/return-path repeatability and rotary/linear backlash before
-  changing TCPC offsets
+- if later stable-temperature repeats show closing drift near `0.1 mm` while
+  SSI output angle repeats, focus on thermal/return-path repeatability, linear
+  axes, structure, probe behavior, and head alignment before changing TCPC
+  offsets
+- future machine-control work still needs dedicated B/C feedback, backlash, and
+  servo tuning, but do not use TCPC sphere data alone to infer a rotary output
+  position error when the SSI encoder says the output is repeating
 
 ## First Small TCPC Geometry Correction - 2026-04-28
 
@@ -701,8 +705,8 @@ Repeat interpretation:
 - The two final closing `B0 C0` centers repeated extremely well, about
   `0.0015 mm` 3D.
 - The starting `B0 C0` center changed about `0.036 mm` between runs, so using
-  the starting `B0` as the only reference can misread approach/backlash or
-  return-state movement as TCPC geometry error.
+  the starting `B0` as the only reference can misread return-state, thermal,
+  probe, linear-axis, or structural movement as TCPC geometry error.
 - With zero correction, all small tilted poses remain inside the current
   `0.2 mm` target, and most are inside or near the `0.1 mm` refinement target.
 
@@ -711,8 +715,9 @@ Decision:
 - Keep TCPC calibration corrections at zero for now.
 - Do not fit new offsets from this small-angle dataset alone.
 - Next useful check is a B0 approach/reversal diagnostic or a controlled wider
-  pose range, still within current mold clearance limits, to separate TCPC
-  geometry from B approach/backlash and machine alignment effects.
+  pose range, still within current mold clearance limits, to prove direct SSI
+  rotary output repeatability and separate TCPC geometry from machine
+  alignment, structure, thermal, probe, or linear-axis effects.
 
 ## Handoff For 3-Axis Machine Use - 2026-04-28
 
@@ -739,8 +744,9 @@ Purpose:
 
 - measure the same `B0 C0` sphere position after alternating approaches from
   `B+5` and `B-5`
-- determine whether the observed `B0` start/close split is approach/backlash
-  or return-state behavior before applying any new TCPC geometry correction
+- determine whether the observed `B0` start/close split occurs while direct SSI
+  B/C output position remains repeatable before applying any new TCPC geometry
+  correction
 - log direct SSI and LinuxCNC rotary feedback at each accepted sphere pass
 
 Start conditions for the next session:

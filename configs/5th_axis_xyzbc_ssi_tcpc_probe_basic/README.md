@@ -315,6 +315,11 @@ Decision:
 - do not fit new offsets from the small-angle dataset alone
 - use the prepared B0 approach/reversal diagnostic next:
   `nc_files/calibration/tcpc_b0_approach_reversal_sphere_auto.ngc`
+- B and C are closed-loop on direct SSI encoders at the rotary output; if SSI
+  readback repeats, LinuxCNC backlash settings should not leave a static
+  B/C output-position split
+- future B/C feedback, backlash, and servo tuning remains a separate machine
+  control workstream before production TCPC use
 - for normal 3-axis work, close this TCPC config and use a `trivkins`
   maintenance/setup config
 - `G55` remains reserved for staff 3-axis work unless the operator explicitly

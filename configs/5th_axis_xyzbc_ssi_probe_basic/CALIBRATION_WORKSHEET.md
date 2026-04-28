@@ -261,12 +261,16 @@ B-axis vector probing rule:
     `0.016-0.022 mm` absolute, while the second run closed at about `0.008 mm`
     from its own starting `B0 C0`
   - this repeat supports treating the first run's large `B0 C0` closure shift
-    as baseline drift or B0 approach/backlash state, not as direct TCPC geometry
+    as baseline drift or return-state behavior, not as direct TCPC geometry
     error
   - with a B-to-tip radius near `309 mm`, `0.108 mm` X shift at `C0` is only
-    about `0.020 deg` of B angle error; the known B backlash value around
-    `0.022 deg` is enough to create about `0.119 mm` tip motion, so B approach
-    direction needs a dedicated check
+    about `0.020 deg` of B angle, but B/C are closed-loop on direct SSI
+    encoders at the rotary output, so a LinuxCNC backlash setting should not
+    leave a static B/C output-position split if the feedback and SSI readback
+    are repeating
+  - future work still needs dedicated B/C feedback, backlash, and servo tuning,
+    but the current TCPC fit should not infer rotary output-angle error unless
+    the direct SSI logs show it
   - the symmetric TCPC program now also logs high-resolution B/C rotary state
     for future runs:
     `tcpc-symmetric-pose-vector-rotary-joint-state.csv` records LinuxCNC joint
@@ -314,9 +318,10 @@ B-axis vector probing rule:
     about `0.0015 mm`, and all tilted poses remained within the current
     `0.2 mm` target
   - the starting `B0 C0` center shifted about `0.036 mm` between the two
-    zero-correction runs, while final closing `B0 C0` repeated closely; treat
-    this as approach/backlash or return-state behavior, not direct TCPC
-    geometry
+    zero-correction runs, while final closing `B0 C0` repeated closely; with
+    direct SSI closed-loop B/C feedback, treat this first as return-state,
+    thermal, probe, linear-axis, structural, or alignment behavior unless SSI
+    logs show actual rotary output-angle movement
   - keep TCPC calibration corrections at zero for now and do not fit new
     offsets from the small-angle dataset alone
   - TCPC work is paused on 2026-04-28 while the machine is used for 3-axis
@@ -324,7 +329,7 @@ B-axis vector probing rule:
   - next prepared TCPC diagnostic is
     `nc_files/calibration/tcpc_b0_approach_reversal_sphere_auto.ngc`, which
     alternates `B+5 -> B0` and `B-5 -> B0` approaches and logs direct SSI
-    rotary state to separate B0 approach/backlash behavior from TCPC geometry
+    rotary state to prove B/C output repeatability before blaming TCPC geometry
   - this diagnostic keeps B within `+/-5 deg`, uses probe `F50`, rotary
     indexing `F100`, and linear positioning `F400`
 
