@@ -507,3 +507,57 @@ Recommended next TCPC check:
 - if later stable-temperature repeats show closing drift near `0.1 mm`, focus
   on thermal/return-path repeatability and rotary/linear backlash before
   changing TCPC offsets
+
+## First Small TCPC Geometry Correction - 2026-04-28
+
+Input data:
+
+- repeated symmetric mixed-pose fixed-tip runs at `B +/-5`, `C +/-20`
+- run 2 and run 3 tilted-pose centers were repeatable to about
+  `0.016-0.019 mm` in absolute coordinates
+- direct SSI logging showed B output-angle variation far too small to explain
+  the remaining `~0.09-0.12 mm` fixed-tip pattern
+
+Fit interpretation:
+
+- The data has a real ambiguity between a small `B` zero angular correction and
+  a small B-to-tool X translation correction.
+- Because a `B` zero offset also changes tool-vector orientation, the first
+  real-machine correction intentionally avoids changing `b-zero-offset`.
+- The common X-heavy residual is not forced into TCPC geometry because it may
+  include linear-axis/backlash, approach-state, or thermal/setup drift.
+
+Applied startup HAL correction in the TCPC test config:
+
+```hal
+setp headheadkins.cal-b-to-tool.x -0.100000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.030000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset 0.000000
+```
+
+The same values are mirrored to `headheadtwp.*` in
+`5th_axis_xyzbc_ssi_tcpc_probe_basic.hal`.
+
+Offline prediction against the run 2/run 3 averaged residuals:
+
+| Pose | Before dr mm | Predicted after dr mm |
+| --- | ---: | ---: |
+| `B+5 C+20` | 0.118647 | 0.092674 |
+| `B+5 C-20` | 0.087949 | 0.079148 |
+| `B-5 C+20` | 0.114035 | 0.111451 |
+| `B-5 C-20` | 0.090680 | 0.064121 |
+
+This is a conservative first correction, not a final geometry solve. It should
+reduce the C-sign Y/Z component while leaving enough of the residual visible to
+identify backlash, thermal drift, or other alignment errors.
+
+Next validation:
+
+- restart the TCPC test config so the HAL correction loads
+- rerun `nc_files/calibration/tcpc_symmetric_pose_vector_sphere_auto.ngc`
+- compare against the run 2/run 3 baseline, especially whether Y/Z improve and
+  whether the common X residual remains
+- if the common X residual remains near `0.05-0.10 mm`, do not keep forcing it
+  into TCPC geometry; run the focused B0 approach-repeat/backlash check

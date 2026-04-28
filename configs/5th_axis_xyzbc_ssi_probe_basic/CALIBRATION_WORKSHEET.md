@@ -283,6 +283,16 @@ B-axis vector probing rule:
     measured poses, far too small to explain a `~0.1 mm` TCP shift at a
     `309 mm` lever arm; this argues against B output-angle drift as the main
     cause of the mixed-pose pattern
+  - first small real-machine TCPC geometry correction was applied in the TCPC
+    test config only: `cal-b-to-tool.x = -0.100000 mm` and
+    `cal-b-to-tool.z = +0.030000 mm`, mirrored to `headheadtwp.*`
+  - `b-zero-offset` and `c-zero-offset` remain `0.000000` because the current
+    sphere data cannot distinguish a small B angular zero error from a small
+    B-to-tool X translation error without additional checks
+  - offline prediction against the run 2/run 3 averaged symmetric residuals is
+    modest: maximum tilted-pose drift should reduce from about `0.119 mm` to
+    about `0.111 mm`; the main expected improvement is reduced C-sign Y/Z
+    error, not removal of the common X-heavy residual
 
 ## Step 5: Mixed-Pose Cross Check
 

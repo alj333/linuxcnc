@@ -138,15 +138,31 @@ Fit references:
   `X=305.669816 Z=-589.742446`, radius `308.963734 mm`, residual within about
   `0.020 mm`
 
+First real-machine correction applied after the repeated symmetric mixed-pose
+fixed-tip checks on 2026-04-28:
+
+```hal
+setp headheadkins.cal-b-to-tool.x -0.100000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.030000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset 0.000000
+```
+
+The repeated data cannot yet distinguish a small `B` zero angular error from a
+small B-to-tool X translation error. This first correction intentionally keeps
+the rotary zero offsets unchanged and only biases the B-to-tool vector.
+
 These values are only for slow no-cut fixed-tip visual validation. The fit still
-needs sign-convention verification, repeat B0/C0 checks after the machine work,
-and final handling of tool length before production TCPC use.
+needs repeat validation after restart and final handling of tool length before
+production TCPC use.
 
 Important limitations:
 
 - first-pass visual validation geometry values are loaded in
   `5th_axis_xyzbc_ssi_tcpc_probe_basic.hal`
-- no final TCPC offsets have been fitted from the real sphere data yet
+- only the first small TCPC geometry correction has been fitted from real sphere
+  data; it is not final cutting data
 - first slow no-cut real-machine B/C direction validation has passed in all C
   quadrants, including the C wrap crossing after `rotaryunwrap`
 - live `G43.4/G49.1` TCPC switching is intentionally disabled for safety
