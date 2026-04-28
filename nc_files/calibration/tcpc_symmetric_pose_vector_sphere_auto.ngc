@@ -53,7 +53,7 @@ o<probe_cal_offset_default> endif
 
 #506 = 50.0           (probe feed)
 #507 = 400.0          (linear positioning feed)
-#508 = 12.0           (top probe vector length)
+#508 = 16.0           (top probe vector length)
 #509 = 5.0            (top clearance past sphere+probe)
 #510 = 4.0            (side start clearance past sphere+probe)
 #511 = 6.0            (side probe vector length)
@@ -440,8 +440,8 @@ o<tcpc_measure_pose> sub
 
   (After the first accepted center, reposition to clearance for each new pose.)
   o<use_last_center> if [#700 GT 0.5]
-    #<start_w_x> = [SIN[#<target_b>] * COS[#<target_c>]]
-    #<start_w_y> = [SIN[#<target_b>] * SIN[#<target_c>]]
+    #<start_w_x> = [-SIN[#<target_b>] * COS[#<target_c>]]
+    #<start_w_y> = [-SIN[#<target_b>] * SIN[#<target_c>]]
     #<start_w_z> = [-COS[#<target_b>]]
     #<next_start_x> = [#701 - #540 - [#<start_w_x> * #513]]
     #<next_start_y> = [#702 - #541 - [#<start_w_y> * #513]]
@@ -459,14 +459,14 @@ o<tcpc_measure_pose> sub
   #521 = #<_abs_c>
 
   (W points along the probe vector toward the table at this B/C pose.)
-  #530 = [SIN[#520] * COS[#521]]
-  #531 = [SIN[#520] * SIN[#521]]
+  #530 = [-SIN[#520] * COS[#521]]
+  #531 = [-SIN[#520] * SIN[#521]]
   #532 = [-COS[#520]]
 
   (U is perpendicular to W in the tilt plane.)
   #533 = [COS[#520] * COS[#521]]
   #534 = [COS[#520] * SIN[#521]]
-  #535 = [SIN[#520]]
+  #535 = [-SIN[#520]]
 
   (V is perpendicular to W and U.)
   #536 = [-SIN[#521]]
@@ -529,6 +529,19 @@ o<tcpc_measure_pose> call [5.0] [20.0]
 o<tcpc_measure_pose> call [5.0] [-20.0]
 o<tcpc_measure_pose> call [-5.0] [20.0]
 o<tcpc_measure_pose> call [-5.0] [-20.0]
+
+(Add extra clearance before the final B0 C0 return/closure check.)
+#<return_w_x> = [-SIN[#<_abs_b>] * COS[#<_abs_c>]]
+#<return_w_y> = [-SIN[#<_abs_b>] * SIN[#<_abs_c>]]
+#<return_w_z> = [-COS[#<_abs_b>]]
+#<return_extra> = 10.0
+#<return_x> = [#<_x> - [#<return_w_x> * #<return_extra>]]
+#<return_y> = [#<_y> - [#<return_w_y> * #<return_extra>]]
+#<return_z> = [#<_z> - [#<return_w_z> * #<return_extra>]]
+G90
+F#507
+G1 X#<return_x> Y#<return_y> Z#<return_z>
+
 o<tcpc_measure_pose> call [0.0] [0.0]
 
 G90

@@ -553,6 +553,14 @@ This is a conservative first correction, not a final geometry solve. It should
 reduce the C-sign Y/Z component while leaving enough of the residual visible to
 identify backlash, thermal drift, or other alignment errors.
 
+Follow-up correction:
+
+- Later visual checking showed the vector probing program still used the old B
+  lateral sign. This makes the above vector-run fit invalid for final TCPC
+  fitting, although the machine stayed within the `0.2 mm` practical target.
+- The vector probing files were corrected so `B+ C0` top/down vector motion is
+  `X- Z-`, matching the current `headheadkins` convention.
+
 Next validation:
 
 - restart the TCPC test config so the HAL correction loads
@@ -561,3 +569,66 @@ Next validation:
   whether the common X residual remains
 - if the common X residual remains near `0.05-0.10 mm`, do not keep forcing it
   into TCPC geometry; run the focused B0 approach-repeat/backlash check
+
+## Sign-Corrected TCPC Vector Validation - 2026-04-28
+
+The vector probing math was corrected in:
+
+- `nc_files/calibration/tcpc_symmetric_pose_vector_sphere_auto.ngc`
+- `nc_files/calibration/tcpc_small_pose_vector_sphere_auto.ngc`
+- `nc_files/calibration/tcpc_wide_pose_vector_sphere_auto.ngc`
+- `nc_files/calibration/b_axis_vector_sphere_2pass_current_pose.ngc`
+- the older B-vector helper programs
+
+The corrected convention is:
+
+```text
+B+ C0 top/down vector motion = X- Z-
+W = (-sin(B) cos(C), -sin(B) sin(C), -cos(B))
+```
+
+Two corrected symmetric runs were completed with the current provisional
+startup correction loaded (`cal-b-to-tool.x=-0.100000`,
+`cal-b-to-tool.z=+0.030000`).
+
+Run-to-run repeat:
+
+- tilted absolute centers repeated by about `0.016-0.023 mm`
+- closing `B0 C0` repeat was `0.011 mm` in run 1 and `0.017 mm` in run 2
+- run 2 starting `B0 C0` shifted about `0.022 mm` from run 1, consistent with
+  slow machine/setup drift rather than a failed run
+
+Average corrected-run residuals from each run's own starting `B0 C0`:
+
+| Pose | Average dx mm | Average dy mm | Average dz mm | Average dr mm |
+| --- | ---: | ---: | ---: | ---: |
+| `B+5 C+20` | -0.023644 | -0.111684 | +0.022701 | 0.116394 |
+| `B+5 C-20` | -0.046121 | +0.067007 | +0.022439 | 0.084383 |
+| `B-5 C+20` | -0.121714 | -0.058205 | -0.011177 | 0.135377 |
+| `B-5 C-20` | -0.059513 | +0.090432 | -0.016714 | 0.109540 |
+
+Applied next startup HAL correction, keeping rotary zero offsets unchanged:
+
+```hal
+setp headheadkins.cal-b-to-tool.x -0.200000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.160000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset 0.000000
+```
+
+The same values are mirrored to `headheadtwp.*`.
+
+Offline prediction for this conservative correction against the averaged
+corrected runs:
+
+| Pose | Before dr mm | Predicted after dr mm |
+| --- | ---: | ---: |
+| `B+5 C+20` | 0.116394 | 0.090254 |
+| `B+5 C-20` | 0.084383 | 0.071931 |
+| `B-5 C+20` | 0.135377 | 0.121781 |
+| `B-5 C-20` | 0.109540 | 0.079068 |
+
+This keeps the machine inside the current `0.2 mm` target and should bring all
+four small mixed poses close to or below about `0.12 mm`. Validate after a TCPC
+config restart before expanding the pose range.

@@ -51,14 +51,14 @@ o<12> endif
 #521 = #<_abs_c>
 
 (W points along the probe vector toward the table at this B/C pose.)
-#530 = [SIN[#520] * COS[#521]]
-#531 = [SIN[#520] * SIN[#521]]
+#530 = [-SIN[#520] * COS[#521]]
+#531 = [-SIN[#520] * SIN[#521]]
 #532 = [-COS[#520]]
 
 (U is perpendicular to W in the tilt plane.)
 #533 = [COS[#520] * COS[#521]]
 #534 = [COS[#520] * SIN[#521]]
-#535 = [SIN[#520]]
+#535 = [-SIN[#520]]
 
 (V is perpendicular to W and U.)
 #536 = [-SIN[#521]]

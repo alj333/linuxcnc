@@ -29,14 +29,14 @@ o<b_vector_pose> sub
   G1 B#<b_pose> C#<c_pose>
 
   (W points along the probe vector toward the table at this B/C pose.)
-  #<w_x> = [SIN[#<b_pose>] * COS[#<c_pose>]]
-  #<w_y> = [SIN[#<b_pose>] * SIN[#<c_pose>]]
+  #<w_x> = [-SIN[#<b_pose>] * COS[#<c_pose>]]
+  #<w_y> = [-SIN[#<b_pose>] * SIN[#<c_pose>]]
   #<w_z> = [-COS[#<b_pose>]]
 
   (U is perpendicular to W in the tilt plane.)
   #<u_x> = [COS[#<b_pose>] * COS[#<c_pose>]]
   #<u_y> = [COS[#<b_pose>] * SIN[#<c_pose>]]
-  #<u_z> = [SIN[#<b_pose>]]
+  #<u_z> = [-SIN[#<b_pose>]]
 
   (V is perpendicular to W and U; at C0 this is machine +Y.)
   #<v_x> = [-SIN[#<c_pose>]]

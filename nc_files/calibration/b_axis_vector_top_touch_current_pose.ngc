@@ -44,8 +44,8 @@ o<12> endif
 #<c_pose> = #<_abs_c>
 
 (W points along the probe vector toward the table at this B/C pose.)
-#<w_x> = [SIN[#<b_pose>] * COS[#<c_pose>]]
-#<w_y> = [SIN[#<b_pose>] * SIN[#<c_pose>]]
+#<w_x> = [-SIN[#<b_pose>] * COS[#<c_pose>]]
+#<w_y> = [-SIN[#<b_pose>] * SIN[#<c_pose>]]
 #<w_z> = [-COS[#<b_pose>]]
 
 #122 = [#<w_x> * #<top_search>]

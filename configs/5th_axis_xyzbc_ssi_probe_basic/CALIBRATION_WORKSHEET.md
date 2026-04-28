@@ -293,6 +293,18 @@ B-axis vector probing rule:
     modest: maximum tilted-pose drift should reduce from about `0.119 mm` to
     about `0.111 mm`; the main expected improvement is reduced C-sign Y/Z
     error, not removal of the common X-heavy residual
+  - later visual checking caught that the vector probing files still used the
+    old B lateral sign. Corrected vector convention is now `B+ C0` top/down
+    vector motion = `X- Z-`, matching `headheadkins`.
+  - the two corrected symmetric runs repeated well: tilted absolute centers
+    repeated by about `0.016-0.023 mm`, and closing `B0 C0` was about
+    `0.011-0.017 mm` from the starting `B0 C0`
+  - current sign-corrected small TCPC correction in the TCPC test config is
+    `cal-b-to-tool.x = -0.200000 mm` and
+    `cal-b-to-tool.z = +0.160000 mm`, mirrored to `headheadtwp.*`
+  - `b-zero-offset` and `c-zero-offset` still remain `0.000000`; validate this
+    startup correction with another symmetric run after restarting the TCPC
+    config before expanding the pose range
 
 ## Step 5: Mixed-Pose Cross Check
 
