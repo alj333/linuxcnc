@@ -232,3 +232,34 @@ simulation notes record a previous spindle-center error of about `2 mm`, but
 those old values should not be copied directly into `headheadkins`. The current
 active lateral representation is `headheadkins.nominal-b-to-tool.x = -0.668710`;
 adjust only after a wider B/C validation set confirms which term is dominant.
+
+## Runtime Update - 2026-04-28 Wide-Pose Validation
+
+First wider mixed-pose fixed-tip validation completed with:
+
+- `nc_files/calibration/tcpc_wide_pose_vector_sphere_auto.ngc`
+- `nc_files/calibration/tcpc_wide_b0c0_closure_resume.ngc`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-wide-pose-vector-2pass-results.csv`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-wide-pose-vector-2pass-raw-points.csv`
+
+The program ran with startup TCPC enabled, probe `F50`, linear positioning
+`F400`, rotary index `F100`, and B kept inside the table-mold clearance limit.
+
+The first full sweep stopped during closing `B0 C0` because the wireless probe
+false-tripped during a non-probe move. The operator identified nearby laser
+cutter interference as the likely cause. After the laser finished, the
+closure-only resume file completed the missing `B0 C0` two-pass repeat.
+
+Accepted pass-2 center drift from the first accepted `B0 C0` baseline:
+
+- `B+5 C0`: `0.061160 mm`
+- `B-5 C0`: `0.037473 mm`
+- `B+5 C+20`: `0.141757 mm`
+- `B+5 C-20`: `0.078422 mm`
+- closing `B0 C0`: `0.007091 mm`
+
+Result: still inside the current `0.2 mm` practical TCPC target. The strong
+closing repeat means the mixed-pose error is real pose-dependent signal. The
+largest error is `B+5 C+20` and is mostly XY, so the next analysis should look
+at C/B geometry interaction, C-axis center/zero/alignment, head squareness, and
+local X/Y mechanics before changing offsets.

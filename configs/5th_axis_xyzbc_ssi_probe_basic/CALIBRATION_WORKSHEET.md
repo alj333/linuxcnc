@@ -232,6 +232,18 @@ B-axis vector probing rule:
     first-pass representation of that lateral B-to-spindle offset, but note
     that the current X-heavy residual is also sensitive to B effective radius
     / `nominal-b-to-tool.z`, B zero, and head alignment
+  - 2026-04-28 first wider mixed-pose fixed-tip TCPC validation completed with
+    `B+5/B-5 C0` and `B+5 C+/-20`
+  - accepted pass-2 drift from the first wide `B0 C0` baseline was about
+    `0.061 mm` at `B+5 C0`, `0.037 mm` at `B-5 C0`, `0.142 mm` at
+    `B+5 C+20`, `0.078 mm` at `B+5 C-20`, and `0.007 mm` on the final
+    closing `B0 C0` repeat
+  - the first full wide sweep had a wireless-probe false trip during the
+    closing `B0 C0` correction move; nearby laser-cutter interference was the
+    likely cause, and a closure-only resume completed the final repeat
+  - this remains inside the current `0.2 mm` target; the largest error is
+    mostly XY at `B+5 C+20`, so investigate C/B geometry interaction,
+    alignment, and local X/Y mechanics before changing offsets
 
 ## Step 5: Mixed-Pose Cross Check
 
@@ -307,5 +319,7 @@ Those deltas are the values you fit against when solving the rotary geometry.
 3. Collect the `C` sweep.
 4. Collect the `B` sweep.
 5. Fit geometry from the absolute center deltas.
-6. Accept the first TCPC fit when fixed-tip error is repeatable around `0.10 mm` across the practical pose set.
+6. For current mold-cutout work, accept the first TCPC fit if fixed-tip error
+   is repeatable under `0.20 mm` across the practical pose set; refine toward
+   `0.10 mm` only after backlash/alignment work is characterized.
 7. Only after that start the TWP integration pass.

@@ -1,11 +1,11 @@
 # TCPC Fit Next Scope
 
-Status: TCPC direction checks and repeat small-pose fixed-tip validation have
-passed on the real machine. The latest automated small-pose run completed on
-2026-04-28 with worst accepted 3D drift about `0.111 mm` and closing `B0 C0`
-repeat drift about `0.002 mm`. Current practical acceptance target is
-`0.2 mm`; refine toward `0.1 mm` only after mechanical backlash/alignment work
-is better characterized.
+Status: TCPC direction checks, small-pose fixed-tip validation, and the first
+wider mixed-pose fixed-tip validation have passed on the real machine. The
+latest wider run completed on 2026-04-28 with worst accepted 3D drift about
+`0.142 mm` and final closing `B0 C0` repeat drift about `0.007 mm`. Current
+practical acceptance target is `0.2 mm`; refine toward `0.1 mm` only after
+mechanical backlash/alignment work is better characterized.
 
 Earlier on 2026-04-27 staff started epoxy preparation on a mold on the machine,
 and the start was bumped near the end of the B-axis session. TCPC work was
@@ -286,11 +286,68 @@ B-axis centerline offset hypothesis:
   the B effective-radius/zero terms need adjustment, instead of compensating the
   symptom with WCS or axis backlash values.
 
+## Wide-Pose TCPC Fixed-Tip Validation - 2026-04-28
+
+Programs:
+
+- `nc_files/calibration/tcpc_wide_pose_vector_sphere_auto.ngc`
+- `nc_files/calibration/tcpc_wide_b0c0_closure_resume.ngc`
+
+Logs:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-wide-pose-vector-2pass-results.csv`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-wide-pose-vector-2pass-raw-points.csv`
+
+Setup/state:
+
+- TCPC test config was running with startup TCPC enabled.
+- Table still had a mold present; B was kept well inside the
+  operator-requested `+/-50 deg` limit.
+- Program sequence: `B0 C0`, `B+5 C0`, `B-5 C0`, `B+5 C+20`,
+  `B+5 C-20`, closing `B0 C0`.
+- Program feeds: probe `F50`, linear positioning `F400`, rotary index `F100`.
+- Probe calibration offset used: `0.134533 mm`; loaded probe tool logged as
+  `T3`.
+- The first full sweep stopped during the closing `B0 C0` correction move
+  because the wireless probe had a false trip from nearby laser-cutter
+  interference. Accepted rows before the false trip are valid.
+- After the laser finished, `tcpc_wide_b0c0_closure_resume.ngc` completed the
+  missing closing `B0 C0` two-pass check and appended to the same wide-pose
+  logs.
+
+Accepted pass-2 centers, compared to the first accepted `B0 C0` baseline
+`X=305.463641 Y=326.084119 Z=-859.744074`:
+
+| Pose | dX mm | dY mm | dZ mm | 3D drift mm |
+| --- | ---: | ---: | ---: | ---: |
+| `B0 C0` baseline | +0.000000 | +0.000000 | +0.000000 | 0.000000 |
+| `B+5 C0` | +0.052316 | -0.029622 | +0.011232 | 0.061160 |
+| `B-5 C0` | +0.031282 | +0.013841 | -0.015301 | 0.037473 |
+| `B+5 C+20` | +0.080388 | -0.116445 | +0.008569 | 0.141757 |
+| `B+5 C-20` | +0.054128 | +0.054622 | +0.015382 | 0.078422 |
+| closing `B0 C0` | -0.006251 | -0.003332 | -0.000334 | 0.007091 |
+
+Interpretation:
+
+- Result is inside the current `0.2 mm` TCPC acceptance target.
+- The final closing `B0 C0` repeat is strong, so the wider mixed-pose error is
+  real pose-dependent signal rather than sphere/probe drift.
+- `B+5 C0` and `B-5 C0` remain small, about `0.061 mm` and `0.037 mm`.
+- `B+5 C+20` is the largest error at about `0.142 mm`; `B+5 C-20` is lower at
+  about `0.078 mm`.
+- The larger errors are mostly XY with small Z change. That points more toward
+  C/B geometry interaction, C-axis center/zero/alignment, head squareness, or
+  local X/Y mechanics than a simple B effective-radius-only error.
+- Do not change offsets from this single wider run. The data is good enough to
+  justify one repeated mixed-pose run or an offline sensitivity fit before
+  changing `headheadkins` geometry.
+
 Recommended next TCPC check:
 
 - keep the mold/table clearance constraint and stay within `B +/-50 deg`
-- run a slightly wider automated validation set before changing geometry, for
-  example `B+5/B-5` at `C0`, then `B+5` at `C+20/C-20`, closing `B0 C0`
-- if worst drift remains below `0.2 mm`, expand gradually; if a directional
-  pattern grows, use that pattern to decide whether to adjust the B/tool vector
-  or investigate axis/alignment error first
+- repeat the wide-pose sequence once if time allows, preferably with the laser
+  and other RF/noise sources off, to verify the `C+20`/`C-20` asymmetry
+- then run an offline sensitivity fit using candidate adjustments for
+  `nominal-c-to-b.x/y`, `nominal-b-to-tool.z`, `b-zero-offset`, and
+  `c-zero-offset`; include backlash/alignment as residual explanations rather
+  than forcing all error into TCPC offsets
