@@ -138,13 +138,13 @@ Fit references:
   `X=305.669816 Z=-589.742446`, radius `308.963734 mm`, residual within about
   `0.020 mm`
 
-Current real-machine correction applied after the sign-corrected repeated
-symmetric mixed-pose fixed-tip checks on 2026-04-28:
+Current retained real-machine correction after sign-corrected symmetric
+mixed-pose fixed-tip checks on 2026-04-28:
 
 ```hal
-setp headheadkins.cal-b-to-tool.x -0.200000
+setp headheadkins.cal-b-to-tool.x -0.100000
 setp headheadkins.cal-b-to-tool.y 0.000000
-setp headheadkins.cal-b-to-tool.z 0.160000
+setp headheadkins.cal-b-to-tool.z 0.030000
 setp headheadkins.b-zero-offset 0.000000
 setp headheadkins.c-zero-offset 0.000000
 ```
@@ -155,6 +155,11 @@ for final fitting. The repeated corrected data still cannot distinguish a small
 `B` zero angular error from a small B-to-tool X translation error, so this
 correction intentionally keeps the rotary zero offsets unchanged and only biases
 the B-to-tool vector.
+
+A later test of `cal-b-to-tool.x=-0.200000` and
+`cal-b-to-tool.z=+0.160000` was rejected because it increased the small-pose
+validation drift. The startup config was reverted to the retained
+`-0.100000/+0.030000` correction.
 
 These values are only for slow no-cut fixed-tip visual validation. The fit still
 needs repeat validation after restart and final handling of tool length before

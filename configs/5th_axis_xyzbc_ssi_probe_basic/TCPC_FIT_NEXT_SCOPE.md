@@ -607,7 +607,7 @@ Average corrected-run residuals from each run's own starting `B0 C0`:
 | `B-5 C+20` | -0.121714 | -0.058205 | -0.011177 | 0.135377 |
 | `B-5 C-20` | -0.059513 | +0.090432 | -0.016714 | 0.109540 |
 
-Applied next startup HAL correction, keeping rotary zero offsets unchanged:
+Rejected next startup HAL correction, keeping rotary zero offsets unchanged:
 
 ```hal
 setp headheadkins.cal-b-to-tool.x -0.200000
@@ -617,7 +617,7 @@ setp headheadkins.b-zero-offset 0.000000
 setp headheadkins.c-zero-offset 0.000000
 ```
 
-The same values are mirrored to `headheadtwp.*`.
+The same values were mirrored to `headheadtwp.*` for the test only.
 
 Offline prediction for this conservative correction against the averaged
 corrected runs:
@@ -629,6 +629,28 @@ corrected runs:
 | `B-5 C+20` | 0.135377 | 0.121781 |
 | `B-5 C-20` | 0.109540 | 0.079068 |
 
-This keeps the machine inside the current `0.2 mm` target and should bring all
-four small mixed poses close to or below about `0.12 mm`. Validate after a TCPC
-config restart before expanding the pose range.
+Validation result after restarting with this correction:
+
+| Pose | Previous avg dr mm | Tested dr mm |
+| --- | ---: | ---: |
+| `B+5 C+20` | 0.116394 | 0.123785 |
+| `B+5 C-20` | 0.084383 | 0.094971 |
+| `B-5 C+20` | 0.135377 | 0.148197 |
+| `B-5 C-20` | 0.109540 | 0.139037 |
+| closing `B0 C0` | 0.011-0.017 | 0.006827 |
+
+The test correction made all four tilted poses worse even though the closing
+`B0 C0` was stable. Reverted startup HAL to the retained correction:
+
+```hal
+setp headheadkins.cal-b-to-tool.x -0.100000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.030000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset 0.000000
+```
+
+Do not apply further geometry corrections from the current small-angle dataset
+alone. The next useful step is either a same-geometry repeat at stable
+temperature or a wider but still safe pose range to separate geometry from
+machine alignment/backlash effects.
