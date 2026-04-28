@@ -318,6 +318,9 @@ Decision:
 - B and C are closed-loop on direct SSI encoders at the rotary output; if SSI
   readback repeats, LinuxCNC backlash settings should not leave a static
   B/C output-position split
+- trust SSI encoder data as the B/C output position, while still testing B
+  zero, C zero, B/C axis alignment, head squareness, and kinematic geometry
+  mapping as separate TCPC setup tasks
 - future B/C feedback, backlash, and servo tuning remains a separate machine
   control workstream before production TCPC use
 - for normal 3-axis work, close this TCPC config and use a `trivkins`

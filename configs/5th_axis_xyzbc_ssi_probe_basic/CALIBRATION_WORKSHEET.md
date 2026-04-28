@@ -287,6 +287,9 @@ B-axis vector probing rule:
     measured poses, far too small to explain a `~0.1 mm` TCP shift at a
     `309 mm` lever arm; this argues against B output-angle drift as the main
     cause of the mixed-pose pattern
+  - trust direct SSI encoder data as the B/C output position unless logs prove
+    otherwise, but still test B zero, C zero, B/C axis alignment, head
+    squareness, and kinematic geometry mapping as separate TCPC setup items
   - first small real-machine TCPC geometry correction was applied in the TCPC
     test config only: `cal-b-to-tool.x = -0.100000 mm` and
     `cal-b-to-tool.z = +0.030000 mm`, mirrored to `headheadtwp.*`

@@ -486,6 +486,10 @@ High-resolution rotary-state rerun:
   the remaining `~0.09-0.12 mm` pose pattern is more likely TCPC geometry,
   head/spindle assembly compliance or alignment, local linear-axis effects, or
   thermal/setup drift than actual B-axis output-angle drift.
+- Trust the direct SSI encoder position as the B/C output position unless the
+  logs prove otherwise. Still test B zero, C zero, B/C axis alignment, head
+  squareness, and the kinematic geometry mapping separately; those can be wrong
+  even when the encoder position is fully repeatable.
 
 Recommended next TCPC check:
 
@@ -511,6 +515,9 @@ Recommended next TCPC check:
 - future machine-control work still needs dedicated B/C feedback, backlash, and
   servo tuning, but do not use TCPC sphere data alone to infer a rotary output
   position error when the SSI encoder says the output is repeating
+- B/C zero and alignment testing should remain in scope for TCPC setup. The
+  rule is to trust the encoder position measurement, not to assume the physical
+  rotary axes are geometrically aligned or correctly zeroed.
 
 ## First Small TCPC Geometry Correction - 2026-04-28
 
