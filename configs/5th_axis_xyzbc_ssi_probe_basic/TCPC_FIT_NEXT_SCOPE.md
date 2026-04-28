@@ -713,3 +713,49 @@ Decision:
 - Next useful check is a B0 approach/reversal diagnostic or a controlled wider
   pose range, still within current mold clearance limits, to separate TCPC
   geometry from B approach/backlash and machine alignment effects.
+
+## Handoff For 3-Axis Machine Use - 2026-04-28
+
+TCPC testing is paused while the machine is used for 3-axis work. For normal
+3-axis setup/cutting, keep using the existing `trivkins` maintenance/setup
+configs, not the TCPC test config.
+
+Current TCPC state to return to:
+
+- TCPC config starts with the nominal first-pass geometry loaded.
+- All TCPC calibration corrections remain zero:
+  `cal-b-to-tool.x/y/z = 0`, `cal-c-to-b.x/y/z = 0`,
+  `b-zero-offset = 0`, and `c-zero-offset = 0`.
+- The corrected vector probing convention is active in the TCPC validation
+  programs: `B+ C0` top/down vector motion is `X- Z-`.
+- `G55` remains locked out for staff 3-axis work unless the operator releases
+  it.
+
+Prepared next calibration program:
+
+- `nc_files/calibration/tcpc_b0_approach_reversal_sphere_auto.ngc`
+
+Purpose:
+
+- measure the same `B0 C0` sphere position after alternating approaches from
+  `B+5` and `B-5`
+- determine whether the observed `B0` start/close split is approach/backlash
+  or return-state behavior before applying any new TCPC geometry correction
+- log direct SSI and LinuxCNC rotary feedback at each accepted sphere pass
+
+Start conditions for the next session:
+
+- launch the TCPC test config only after the 3-axis work is finished
+- restart near a known safe C side, preferably `C0`
+- confirm `TCPC ON`, TWP not active, and the probe tool/diameter/calibration
+  offset are valid in Probe Basic
+- place the probe close to sphere center, about `5 mm` above the sphere top
+- keep probing feed `F50`, rotary index `F100`, and linear positioning `F400`
+- keep B within `+/-5 deg`; this diagnostic stays well inside the current
+  `+/-50 deg` table/mold clearance limit
+
+New logs for that program:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b0-approach-reversal-results.csv`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b0-approach-reversal-raw-points.csv`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b0-approach-reversal-rotary-ssi-state.csv`

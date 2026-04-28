@@ -319,6 +319,14 @@ B-axis vector probing rule:
     geometry
   - keep TCPC calibration corrections at zero for now and do not fit new
     offsets from the small-angle dataset alone
+  - TCPC work is paused on 2026-04-28 while the machine is used for 3-axis
+    work; return using the TCPC test config only after the 3-axis task is clear
+  - next prepared TCPC diagnostic is
+    `nc_files/calibration/tcpc_b0_approach_reversal_sphere_auto.ngc`, which
+    alternates `B+5 -> B0` and `B-5 -> B0` approaches and logs direct SSI
+    rotary state to separate B0 approach/backlash behavior from TCPC geometry
+  - this diagnostic keeps B within `+/-5 deg`, uses probe `F50`, rotary
+    indexing `F100`, and linear positioning `F400`
 
 ## Step 5: Mixed-Pose Cross Check
 

@@ -287,3 +287,35 @@ closing repeat means the mixed-pose error is real pose-dependent signal. The
 largest error is `B+5 C+20` and is mostly XY, so the next analysis should look
 at C/B geometry interaction, C-axis center/zero/alignment, head squareness, and
 local X/Y mechanics before changing offsets.
+
+## Runtime Update - 2026-04-28 Zero-Correction Handoff
+
+The old vector-probing sign was corrected, then all TCPC calibration
+corrections were reset to zero because the previous nonzero corrections were
+derived from wrong-sign data.
+
+Current startup correction state:
+
+```hal
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.000000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset 0.000000
+```
+
+Two corrected symmetric validation runs with zero correction completed inside
+the current `0.2 mm` practical target. Tilted absolute centers repeated about
+`0.013-0.019 mm`, final closing `B0 C0` repeated about `0.0015 mm`, and the
+starting `B0 C0` shifted about `0.036 mm` between runs.
+
+Decision:
+
+- keep TCPC calibration corrections at zero for now
+- do not fit new offsets from the small-angle dataset alone
+- use the prepared B0 approach/reversal diagnostic next:
+  `nc_files/calibration/tcpc_b0_approach_reversal_sphere_auto.ngc`
+- for normal 3-axis work, close this TCPC config and use a `trivkins`
+  maintenance/setup config
+- `G55` remains reserved for staff 3-axis work unless the operator explicitly
+  releases it
