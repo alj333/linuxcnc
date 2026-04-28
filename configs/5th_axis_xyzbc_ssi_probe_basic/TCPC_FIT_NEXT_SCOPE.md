@@ -1,11 +1,12 @@
 # TCPC Fit Next Scope
 
-Status: TCPC direction checks, small-pose fixed-tip validation, and the first
-wider mixed-pose fixed-tip validation have passed on the real machine. The
-latest wider run completed on 2026-04-28 with worst accepted 3D drift about
-`0.142 mm` and final closing `B0 C0` repeat drift about `0.007 mm`. Current
-practical acceptance target is `0.2 mm`; refine toward `0.1 mm` only after
-mechanical backlash/alignment work is better characterized.
+Status: TCPC direction checks, small-pose fixed-tip validation, the first wider
+mixed-pose validation, and the first symmetric mixed-pose validation have
+passed on the real machine. The latest symmetric run completed on 2026-04-28
+with worst tilted-pose 3D drift about `0.138 mm` and final closing `B0 C0`
+repeat drift about `0.111 mm`. Current practical acceptance target is
+`0.2 mm`; refine toward `0.1 mm` only after mechanical backlash, alignment, and
+return-path repeatability are better characterized.
 
 Earlier on 2026-04-27 staff started epoxy preparation on a mold on the machine,
 and the start was bumped near the end of the B-axis session. TCPC work was
@@ -342,12 +343,70 @@ Interpretation:
   justify one repeated mixed-pose run or an offline sensitivity fit before
   changing `headheadkins` geometry.
 
+## Symmetric Mixed-Pose TCPC Fixed-Tip Validation - 2026-04-28
+
+Program:
+
+- `nc_files/calibration/tcpc_symmetric_pose_vector_sphere_auto.ngc`
+
+Logs:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-symmetric-pose-vector-2pass-results.csv`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-symmetric-pose-vector-2pass-raw-points.csv`
+
+Setup/state:
+
+- TCPC test config was running with startup TCPC enabled.
+- Table still had a mold present; B was kept well inside the
+  operator-requested `+/-50 deg` limit.
+- Morning sun was starting to heat the workshop near the end of the run, so
+  some thermal drift may be present in the closing repeat.
+- Program sequence: `B0 C0`, `B+5 C+20`, `B+5 C-20`, `B-5 C+20`,
+  `B-5 C-20`, closing `B0 C0`.
+- Program feeds: probe `F50`, linear positioning `F400`, rotary index `F100`.
+- Probe calibration offset used: `0.134533 mm`; loaded probe tool logged as
+  `T3`.
+
+Accepted pass-2 centers, compared to the first accepted `B0 C0` baseline
+`X=305.453432 Y=326.074181 Z=-859.740385`:
+
+| Pose | dX mm | dY mm | dZ mm | 3D drift mm |
+| --- | ---: | ---: | ---: | ---: |
+| `B0 C0` baseline | +0.000000 | +0.000000 | +0.000000 | 0.000000 |
+| `B+5 C+20` | +0.079358 | -0.112898 | +0.007161 | 0.138184 |
+| `B+5 C-20` | +0.053058 | +0.050778 | +0.015637 | 0.075087 |
+| `B-5 C+20` | +0.009856 | -0.041648 | -0.013804 | 0.044969 |
+| `B-5 C-20` | +0.075391 | +0.071578 | -0.015402 | 0.105093 |
+| closing `B0 C0` | +0.110883 | -0.010302 | +0.002601 | 0.111391 |
+
+Interpretation:
+
+- Result is inside the current `0.2 mm` TCPC acceptance target for all tilted
+  poses.
+- `B+5 C+20` repeated the previous wide-pose result closely:
+  about `0.138 mm` here versus about `0.142 mm` in the prior run.
+- The mirrored poses do not form a simple one-term B-radius error pattern:
+  `B-5 C+20` was low at about `0.045 mm`, while `B-5 C-20` was about
+  `0.105 mm`.
+- The final closing `B0 C0` repeat moved about `0.111 mm`, mostly in X. This is
+  much weaker than the prior wide-pose closure of about `0.007 mm`, so the
+  dataset includes thermal drift, return-path, backlash, rotary approach, probe,
+  or local axis repeatability signal as well as TCPC geometry.
+- Do not change `headheadkins` offsets from this run alone. It is useful as a
+  diagnostic, but the closing repeat means geometry fitting must account for
+  path-dependent error instead of forcing all residual into TCPC offsets.
+
 Recommended next TCPC check:
 
 - keep the mold/table clearance constraint and stay within `B +/-50 deg`
-- repeat the wide-pose sequence once if time allows, preferably with the laser
-  and other RF/noise sources off, to verify the `C+20`/`C-20` asymmetry
-- then run an offline sensitivity fit using candidate adjustments for
+- keep the laser and other likely wireless-probe noise sources off during
+  probing
+- before changing offsets, run either a quick `B0 C0` repeat or a reverse-order
+  symmetric sequence to check whether the `0.111 mm` closing drift was
+  repeatable/path-dependent; do this when the workshop temperature is stable
+- if closure returns to the `0.03-0.05 mm` range and the same pose pattern
+  persists, run an offline sensitivity fit using candidate adjustments for
   `nominal-c-to-b.x/y`, `nominal-b-to-tool.z`, `b-zero-offset`, and
-  `c-zero-offset`; include backlash/alignment as residual explanations rather
-  than forcing all error into TCPC offsets
+  `c-zero-offset`
+- if closing drift remains near `0.1 mm`, characterize return-path repeatability
+  and rotary/linear backlash before changing TCPC offsets

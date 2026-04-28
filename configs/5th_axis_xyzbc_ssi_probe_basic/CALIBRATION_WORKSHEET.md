@@ -244,6 +244,16 @@ B-axis vector probing rule:
   - this remains inside the current `0.2 mm` target; the largest error is
     mostly XY at `B+5 C+20`, so investigate C/B geometry interaction,
     alignment, and local X/Y mechanics before changing offsets
+  - 2026-04-28 symmetric mixed-pose fixed-tip TCPC validation completed with
+    `B+5/B-5 C+/-20`
+  - accepted pass-2 drift from the first symmetric `B0 C0` baseline was about
+    `0.138 mm` at `B+5 C+20`, `0.075 mm` at `B+5 C-20`, `0.045 mm` at
+    `B-5 C+20`, `0.105 mm` at `B-5 C-20`, and `0.111 mm` on the final
+    closing `B0 C0` repeat
+  - the closing repeat is weaker than the prior wide-pose closure and was
+    recorded as morning sun started heating the workshop; treat this run as
+    useful diagnostic data, but do not fit TCPC offsets from it without a
+    stable-temperature repeat or reverse-order confirmation
 
 ## Step 5: Mixed-Pose Cross Check
 
