@@ -309,9 +309,16 @@ B-axis vector probing rule:
   - current TCPC test config calibration corrections are reset to zero while
     keeping the nominal starting geometry unchanged; rerun the corrected
     symmetric vector program after restart to establish a clean baseline
-  - `b-zero-offset` and `c-zero-offset` still remain `0.000000`; validate this
-    startup correction with another symmetric run after restarting the TCPC
-    config before expanding the pose range
+  - zero-correction clean baseline was run twice after restart: tilted absolute
+    centers repeated about `0.013-0.019 mm`, final closing `B0 C0` repeated
+    about `0.0015 mm`, and all tilted poses remained within the current
+    `0.2 mm` target
+  - the starting `B0 C0` center shifted about `0.036 mm` between the two
+    zero-correction runs, while final closing `B0 C0` repeated closely; treat
+    this as approach/backlash or return-state behavior, not direct TCPC
+    geometry
+  - keep TCPC calibration corrections at zero for now and do not fit new
+    offsets from the small-angle dataset alone
 
 ## Step 5: Mixed-Pose Cross Check
 

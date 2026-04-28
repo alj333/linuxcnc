@@ -668,3 +668,48 @@ setp headheadkins.c-zero-offset 0.000000
 Next validation should restart the TCPC config, rerun the corrected symmetric
 vector program, and use that as the clean sign-corrected baseline before any
 new TCPC correction is applied.
+
+## Zero-Correction Clean Baseline - 2026-04-28
+
+The TCPC config was restarted with all `cal-*` corrections reset to zero and
+the corrected symmetric vector program was run twice.
+
+Run 1 residuals from that run's starting `B0 C0`:
+
+| Pose | dx mm | dy mm | dz mm | dr mm |
+| --- | ---: | ---: | ---: | ---: |
+| `B+5 C+20` | +0.014929 | -0.032846 | -0.000684 | 0.036086 |
+| `B+5 C-20` | -0.001698 | +0.015523 | -0.000255 | 0.015618 |
+| `B-5 C+20` | -0.076620 | +0.026219 | +0.002053 | 0.081008 |
+| `B-5 C-20` | -0.005839 | +0.034674 | -0.005994 | 0.035669 |
+| closing `B0 C0` | +0.045068 | +0.009373 | -0.000636 | 0.046037 |
+
+Run 2 residuals from that run's starting `B0 C0`:
+
+| Pose | dx mm | dy mm | dz mm | dr mm |
+| --- | ---: | ---: | ---: | ---: |
+| `B+5 C+20` | -0.036371 | -0.030673 | +0.000550 | 0.047581 |
+| `B+5 C-20` | -0.050467 | +0.009512 | +0.000518 | 0.051358 |
+| `B-5 C+20` | -0.126345 | +0.021870 | +0.001949 | 0.128239 |
+| `B-5 C-20` | -0.059294 | +0.032991 | -0.005628 | 0.068087 |
+| closing `B0 C0` | +0.010547 | +0.002356 | -0.000270 | 0.010810 |
+
+Repeat interpretation:
+
+- Tilted absolute centers repeated well, about `0.013-0.019 mm` between the
+  two zero-correction runs.
+- The two final closing `B0 C0` centers repeated extremely well, about
+  `0.0015 mm` 3D.
+- The starting `B0 C0` center changed about `0.036 mm` between runs, so using
+  the starting `B0` as the only reference can misread approach/backlash or
+  return-state movement as TCPC geometry error.
+- With zero correction, all small tilted poses remain inside the current
+  `0.2 mm` target, and most are inside or near the `0.1 mm` refinement target.
+
+Decision:
+
+- Keep TCPC calibration corrections at zero for now.
+- Do not fit new offsets from this small-angle dataset alone.
+- Next useful check is a B0 approach/reversal diagnostic or a controlled wider
+  pose range, still within current mold clearance limits, to separate TCPC
+  geometry from B approach/backlash and machine alignment effects.
