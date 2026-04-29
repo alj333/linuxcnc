@@ -1148,42 +1148,56 @@ Validated checks:
 - This validates the candidate inside the current `0.2 mm` practical target
   through B `+/-30`.
 
-B `+/-50` diagnostic status:
+B `+/-50` diagnostic result:
 
-- `nc_files/calibration/tcpc_expanded_pose_vector_sphere_auto.ngc` was
-  temporarily set to `#707 = 50.0` and later `#706 = 0.0` so the proven groups
-  run without operator stops.
-- Repeated B `+/-50` attempts were interrupted by wireless/optical probe
-  faults, logged by Probe Basic as `Probe tripped during non-probe move`.
-- The operator identified likely optical receiver interference from laser tube
-  cutters and other workshop IR/reflection sources.
-- The first restart produced a clean B0 C-only group with closure
-  `0.005963 mm` but stopped after `B+10 C0` pass 1.
-- A resume-mode retry started from a fresh accepted `B0 C0` baseline at
-  `X=357.533806 Y=317.969502 Z=-858.917885`, completed accepted pass-2 rows
-  through `B-10 C180`, then stopped during the move after `B-10 C270` pass 1.
-- The latest partial resume rows are useful as a fault record only; do not use
-  them as the final expanded B `+/-50` validation because the B `+/-10` group
-  did not close and B `+/-30`/`+/-50` were not reached.
+- Repeated first attempts were interrupted by wireless/optical probe faults,
+  logged by Probe Basic as `Probe tripped during non-probe move`.
+- The operator reset the probe/receiver and repeated the run after the
+  workshop closed; this produced a complete clean B `+/-50` data block.
+- Latest clean block starts at data row `200` in
+  `tcpc-expanded-pose-vector-2pass-results.csv`.
+- Initial accepted `B0 C0` baseline:
+  `X=357.587972 Y=317.971169 Z=-858.934552`.
+- After the B `+/-30` group, closure from that baseline was `0.019881 mm`.
+- B `+/-30` group max/RMS drift from the fresh baseline:
+  max `0.175977 mm` at `B-30 C90`, RMS `0.122098 mm`.
+- B `+/-50` group used the B30 closure as its baseline:
+  `X=357.571222 Y=317.965505 Z=-858.925464`.
+- B `+/-50` group max/RMS drift from that baseline:
+  max `0.427632 mm` at `B-50 C90`, RMS `0.266161 mm`.
+- Final `B0 C0` closure after the B `+/-50` group was `0.014415 mm` from the
+  B50 group baseline.
+- Overall start-to-final `B0 C0` closure across the clean block was
+  `0.032135 mm`.
+- Accepted pass-2 rotary following error stayed small: B max about
+  `229 microdeg`, C max about `1030 microdeg`.
+- Corrected diameters across the accepted clean block remained high but
+  stable: U min/max/avg `30.133994 / 30.206677 / 30.168536 mm`, V min/max/avg
+  `30.158000 / 30.225500 / 30.195040 mm`.
 
-Temporary program state for the next after-hours run:
+Interpretation:
 
-- `#706 = 0.0`: no stops between B groups.
-- `#707 = 50.0`: B `+/-50` diagnostic enabled.
-- `#708 = 1.0`: resume mode enabled. The program probes a fresh `B0 C0`
-  baseline, skips the full B0 C quadrant sweep, then runs B `+/-10`,
-  B `+/-30`, and B `+/-50`.
+- The candidate is validated through B `+/-30` inside the current `0.2 mm`
+  practical target.
+- B `+/-50` is now useful diagnostic data and closely matches the earlier
+  offline prediction. Remaining high-B error is more likely head/spindle
+  alignment, axis squareness, or mechanical geometry than a simple TCPC offset
+  term.
 
-Next action:
+Program state after lock-in:
 
-- Run the resume-mode program only when likely optical probe interference is
-  removed. Treat the next clean block after a fresh accepted `B0 C0` baseline
-  as the active B `+/-50` diagnostic. Exclude the partial false-trip blocks.
+- `nc_files/calibration/tcpc_expanded_pose_vector_sphere_auto.ngc` has been
+  restored to safe defaults: `#706 = 1.0`, `#707 = 30.0`, `#708 = 0.0`,
+  `#709 = 10.0`.
+- The program now supports an explicit optional B `+/-60` diagnostic. For a
+  B60-only extension after the completed B50 run, deliberately set:
+  `#707 = 60.0`, `#708 = 1.0`, and `#709 = 60.0`.
+- Do not leave B60 as the default. Use it only after confirming clearance,
+  probe receiver stability, and no active workshop optical interference.
 
-## Handoff For 3-Axis Machine Use - 2026-04-29
+## Handoff After B50 Validation - 2026-04-29
 
-The TCPC session is paused after repeated probe/optical faults during the
-B `+/-50` diagnostic.
+The TCPC session has a complete corrected B `+/-50` validation data set.
 
 Current TCPC test-config state to return to:
 
@@ -1193,11 +1207,11 @@ Current TCPC test-config state to return to:
   mirrored to `headheadtwp.*`
 - corrected symmetric validation and corrected B `+/-30` expanded validation
   passed inside the current `0.2 mm` practical target
-- corrected B `+/-50` validation is still incomplete because the wireless
-  probe false-tripped before the B `+/-30` and B `+/-50` groups in the latest
-  resume attempt
-- the active expanded program is intentionally in temporary B `+/-50` resume
-  mode with `#706 = 0.0`, `#707 = 50.0`, and `#708 = 1.0`
+- corrected B `+/-50` validation completed with max `0.427632 mm` at
+  `B-50 C90`, RMS `0.266161 mm`, and final closure `0.014415 mm`
+- the active expanded program is restored to safe defaults but supports a
+  deliberate B `+/-60` extension with `#707 = 60.0`, `#708 = 1.0`, and
+  `#709 = 60.0`
 
 For 3-axis work:
 

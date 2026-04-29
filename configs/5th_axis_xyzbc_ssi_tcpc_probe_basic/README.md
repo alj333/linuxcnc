@@ -539,21 +539,49 @@ Validation completed:
   `0.171569 mm` for B `+/-30`
 - B `+/-30` is inside the current `0.2 mm` practical TCPC target
 
-B `+/-50` validation is still incomplete:
+B `+/-50` validation result:
 
-- the expanded program was temporarily set to B `+/-50` diagnostic mode
-  (`#707 = 50.0`)
-- stops between B groups were removed for the proven sequence (`#706 = 0.0`)
-- resume mode was added (`#708 = 1.0`) so a retry probes a fresh `B0 C0`
-  baseline, skips the full B0 C quadrant sweep, then runs B `+/-10`,
-  B `+/-30`, and B `+/-50`
-- repeated attempts stopped on wireless/optical probe faults reported as
+- first attempts were interrupted by wireless/optical probe faults reported as
   `Probe tripped during non-probe move`
-- likely cause is optical receiver interference from laser tube cutters or
-  other workshop IR/reflection sources
-- latest partial retry accepted rows through `B-10 C180`, then stopped after
-  `B-10 C270` pass 1; B `+/-30` and B `+/-50` were not reached
+- after the probe/receiver reset and the workshop closed, a clean B `+/-50`
+  resume block completed
+- clean block starts at data row `200` in
+  `tcpc-expanded-pose-vector-2pass-results.csv`
+- B `+/-30` group from the fresh `B0 C0` baseline:
+  max `0.175977 mm` at `B-30 C90`, RMS `0.122098 mm`, closure
+  `0.019881 mm`
+- B `+/-50` group from the B30 closure baseline:
+  max `0.427632 mm` at `B-50 C90`, RMS `0.266161 mm`, closure
+  `0.014415 mm`
+- overall start-to-final `B0 C0` closure across the clean block:
+  `0.032135 mm`
+- accepted pass-2 rotary following error stayed small:
+  B max about `229 microdeg`, C max about `1030 microdeg`
 
-Next run should be after-hours or otherwise isolated from optical probe
-interference. Exclude the partial false-trip blocks and analyze only the next
-clean block after a fresh accepted `B0 C0` baseline.
+Interpretation:
+
+- B `+/-30` is validated inside the current `0.2 mm` practical TCPC target.
+- B `+/-50` is usable diagnostic data and matches the earlier offline
+  prediction closely. Remaining high-B error is more likely machine/head
+  alignment, squareness, or mechanical geometry than a simple TCPC offset.
+
+The expanded program has been restored to safe defaults:
+
+```ngc
+#706 = 1.0
+#707 = 30.0
+#708 = 0.0
+#709 = 10.0
+```
+
+It also supports a deliberate B `+/-60` extension. For a B60-only diagnostic
+after the completed B50 run, set:
+
+```ngc
+#707 = 60.0
+#708 = 1.0
+#709 = 60.0
+```
+
+Do not leave B60 as the default. Confirm clearance and probe receiver stability
+before running it.

@@ -404,17 +404,26 @@ B-axis vector probing rule:
   - corrected expanded validation through B `+/-30` passed inside the current
     `0.2 mm` practical target; group max drift was `0.084764 mm` for B0
     C-only, `0.099723 mm` for B `+/-10`, and `0.171569 mm` for B `+/-30`
-  - B `+/-50` validation remains incomplete because repeated attempts stopped
-    on wireless/optical probe faults logged as `Probe tripped during non-probe
-    move`
-  - likely probe-fault cause is optical receiver interference from laser tube
-    cutters or other workshop IR/reflection sources; the next B `+/-50` run
-    should be after-hours or otherwise isolated from optical noise
-  - the active expanded program is intentionally in temporary resume mode for
-    that next attempt: `#706 = 0.0`, `#707 = 50.0`, `#708 = 1.0`
-  - latest partial resume attempt accepted rows through `B-10 C180`, then
-    stopped after `B-10 C270` pass 1; exclude partial false-trip blocks from
-    final B `+/-50` analysis
+  - repeated first B `+/-50` attempts stopped on wireless/optical probe faults
+    logged as `Probe tripped during non-probe move`
+  - after probe/receiver reset and workshop closure, the clean B `+/-50`
+    resume block completed from data row `200`
+  - clean B `+/-30` group from the fresh B0 baseline: max `0.175977 mm` at
+    `B-30 C90`, RMS `0.122098 mm`, closure `0.019881 mm`
+  - clean B `+/-50` group from the B30 closure baseline: max `0.427632 mm` at
+    `B-50 C90`, RMS `0.266161 mm`, closure `0.014415 mm`
+  - overall start-to-final B0 closure was `0.032135 mm`
+  - accepted pass-2 rotary following error stayed small: B max about
+    `229 microdeg`, C max about `1030 microdeg`
+  - B `+/-50` residual is now useful diagnostic data but is outside the
+    current `0.2 mm` target; treat remaining high-B error as likely
+    machine/head alignment, squareness, or mechanical geometry rather than a
+    simple TCPC offset-only problem
+  - the active expanded program has been restored to safe defaults:
+    `#706 = 1.0`, `#707 = 30.0`, `#708 = 0.0`, `#709 = 10.0`
+  - optional B `+/-60` extension is now supported; for a B60-only diagnostic
+    set `#707 = 60.0`, `#708 = 1.0`, and `#709 = 60.0` deliberately after
+    confirming clearance and probe receiver stability
 
 ## Step 5: Mixed-Pose Cross Check
 
