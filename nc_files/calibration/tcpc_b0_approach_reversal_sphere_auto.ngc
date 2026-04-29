@@ -41,7 +41,7 @@ o<probe_cal_offset_default> endif
 #505 = [#503 + #504]
 
 #506 = 50.0           (probe feed)
-#507 = 400.0          (linear positioning feed)
+#507 = 600.0          (linear positioning feed)
 #508 = 16.0           (top probe Z length)
 #509 = 5.0            (top clearance past sphere+probe)
 #510 = 4.0            (side start clearance past sphere+probe)
@@ -49,7 +49,7 @@ o<probe_cal_offset_default> endif
 #512 = 3.0            (side retract length)
 #513 = [#505 + #509]
 #514 = [#505 + #510]
-#705 = 100.0          (rotary index feed)
+#705 = 200.0          (rotary index feed)
 
 #700 = 0.0            (last accepted center valid)
 #701 = 0.0            (last accepted center abs X)

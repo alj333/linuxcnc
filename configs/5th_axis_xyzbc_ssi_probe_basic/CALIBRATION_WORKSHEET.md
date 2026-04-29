@@ -335,6 +335,64 @@ B-axis vector probing rule:
     rotary state to prove B/C output repeatability before blaming TCPC geometry
   - this diagnostic keeps B within `+/-5 deg`, uses probe `F50`, rotary
     indexing `F100`, and linear positioning `F400`
+  - 2026-04-29 feed update for future TCPC validation programs: keep probe
+    `F50`, increase linear positioning to `F600`, and increase rotary indexing
+    to `F200`; do not edit the active B0 approach/reversal file while it is
+    running
+  - 2026-04-29 B0 approach/reversal diagnostic showed a repeatable
+    `0.121722 mm` X split between `B+5 -> B0` and `B-5 -> B0`
+  - direct SSI showed the B output position also split by `0.022202 deg`,
+    about `64.7` raw counts, which matches about `0.119735 mm` at the
+    `309 mm` B-to-tip lever arm
+  - conclusion: trust the encoder data; it exposed that LinuxCNC B backlash
+    compensation was shifting the rotary output position in the TCPC config
+  - TCPC test config now sets B and C backlash compensation to zero; restart
+    LinuxCNC and rerun the B0 approach/reversal diagnostic before changing TCPC
+    geometry
+  - post-restart rerun confirmed the fix: direct B SSI zeroed-position split
+    from `B+5 -> B0` versus `B-5 -> B0` was `0.000000 deg`, raw SSI split was
+    `0.0 counts`, and accepted sphere center split dropped to `0.004201 mm`
+  - next TCPC geometry validation should rerun the corrected symmetric
+    mixed-pose program with zero TCPC correction and updated `F600/F200`
+    positioning/indexing feeds
+  - the first post-fix symmetric run completed after one invalid probe
+    double-pulse attempt; use only the final complete 12-row block
+  - accepted post-fix tilted-pose drift from the starting `B0 C0` was about
+    `0.089 mm` at `B+5 C+20`, `0.102 mm` at `B+5 C-20`, `0.099 mm` at
+    `B-5 C+20`, and `0.099 mm` at `B-5 C-20`
+  - closing `B0 C0` drift was only `0.004 mm`, so the remaining tilted-pose
+    pattern is now useful TCPC geometry/alignment signal rather than the old
+    backlash-compensation artifact
+  - repeat of the same symmetric program was stable: closing `B0 C0` drift was
+    `0.004 mm`, tilted-pose drift remained `0.091-0.101 mm`, and accepted
+    centers repeated against the previous valid post-fix run within about
+    `0.006 mm`
+  - next recommended machine action is the expanded C-quadrant / B `+/-50`
+    matrix, then an offline sensitivity fit for small B-zero and B effective
+    radius / B-to-tool-vector adjustments
+  - expanded TCPC data set is prepared as
+    `nc_files/calibration/tcpc_expanded_pose_vector_sphere_auto.ngc`
+  - expanded program uses C quadrants `C0/C90/C180/C270` and B groups
+    `0`, `+/-10`, `+/-30`, `+/-50`, with B0 closures between groups
+  - the sphere is on a `45 deg` post; the known clearance concern is around
+    `C45` with B more negative than `-10 deg`, while `C225` is acceptable
+  - the first expanded pass uses C quadrants only and avoids the known risky
+    `C45 / B < -10` sector; it pauses between B groups for clearance checks
+  - expanded logs use the `tcpc-expanded-pose-vector-*` CSV files
+  - expanded run completed before the machine was handed back for 3-axis work:
+    `64` result rows, `32` accepted pass-2 centers, and `320` raw point rows
+  - accepted `B0 C0` closures from the first expanded baseline stayed tight:
+    `0.006710 mm`, `0.011584 mm`, `0.010126 mm`, and final `0.017328 mm`
+  - maximum group drift from each preceding `B0 C0` closure increased with
+    B angle: `0.144343 mm` at `B0 C180`, `0.278010 mm` at `B-10 C0`,
+    `0.796227 mm` at `B-30 C90`, and `1.316641 mm` at `B-50 C90`
+  - expanded-run accepted rotary following error was small relative to the
+    measured TCP residuals: about `229 microdeg` maximum absolute B following
+    error and `2403 microdeg` maximum absolute C following error
+  - no new TCPC geometry correction has been applied from the expanded data yet
+  - future scope: run a dedicated servo-motion tuning session for all axes,
+    especially B/C rotary SSI feedback loops; current rotary following-error
+    limits are loose commissioning values, not final TCPC quality limits
 
 ## Step 5: Mixed-Pose Cross Check
 

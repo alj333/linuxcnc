@@ -1,22 +1,27 @@
-(TCPC small-pose vector sphere validation)
-(Automated sequence for first quantitative TCPC drift check.)
+(TCPC expanded-pose vector sphere validation)
+(Automated sequence for B/C geometry and alignment diagnostics.)
 (No WCS changes. No G43/G49 changes. TCPC must already be ON.)
 
 (Operator setup:)
 (1. Start at/near B0 C0 with the probe 3 to 8 mm clear from the 30 mm sphere.)
 (2. Keep hand on feed hold/stop for the full first run.)
-(3. This program automatically indexes only small B/C poses and probes slowly.)
+(3. This program uses C quadrants and B up to +/-50 deg.)
+(4. Sphere post risk is C45 with B less than -10 deg. C225 is acceptable.)
+(5. This first expanded pass uses quadrants only and avoids direct C45 moves.)
 
 (Sequence:)
-(B0 C0 baseline, B+2 C0, B-2 C0, B+2 C+10, B+2 C-10, B0 C0 close)
+(B0 C quadrants, B +/-10, B +/-30, B +/-50, with B0 C0 closures)
 
 (Accepted pass-2 centers log to:)
-(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-small-pose-vector-2pass-results.csv)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-results.csv)
+(High-resolution rotary state logs to:)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-joint-state.csv)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-ssi-state.csv)
 
 G21 G17 G40 G64 P0.001 G80 G90 G94
 
 o<preview_guard> if [#<_task> EQ 0]
-  (DEBUG, TCPC_SMALL_POSE_VECTOR preview only)
+  (DEBUG, TCPC_EXPANDED_POSE_VECTOR preview only)
   M2
 o<preview_guard> endif
 
@@ -50,7 +55,7 @@ o<probe_cal_offset_default> endif
 
 #506 = 50.0           (probe feed)
 #507 = 600.0          (linear positioning feed)
-#508 = 12.0           (top probe vector length)
+#508 = 16.0           (top probe vector length)
 #509 = 5.0            (top clearance past sphere+probe)
 #510 = 4.0            (side start clearance past sphere+probe)
 #511 = 6.0            (side probe vector length)
@@ -64,6 +69,7 @@ o<probe_cal_offset_default> endif
 #703 = 0.0            (last accepted center abs Z)
 #704 = 0.0            (set to 1.0 to pause before each probing pose)
 #705 = 200.0          (rotary index feed)
+#706 = 1.0            (set to 1.0 to pause between B range groups)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -314,7 +320,27 @@ o<tcpc_vector_sphere_pass> sub
   #610 = [#608 - [2.0 * #504]]
   #611 = [#609 - [2.0 * #504]]
 
-  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-small-pose-vector-2pass-raw-points.csv)
+  (Capture rotary command/feedback at full useful resolution.)
+  #150 = #<_hal[joint.3.pos-cmd]>
+  #151 = #<_hal[joint.3.pos-fb]>
+  #152 = #<_hal[joint.3.motor-pos-cmd]>
+  #153 = #<_hal[joint.3.motor-pos-fb]>
+  #154 = #<_hal[joint.4.pos-cmd]>
+  #155 = #<_hal[joint.4.pos-fb]>
+  #156 = #<_hal[joint.4.motor-pos-cmd]>
+  #157 = #<_hal[joint.4.motor-pos-fb]>
+  #158 = #<_hal[b-ssi-abs-position]>
+  #159 = #<_hal[b-ssi-zeroed-position]>
+  #160 = #<_hal[c-ssi-abs-position]>
+  #161 = #<_hal[c-ssi-zeroed-position]>
+  #162 = #<_hal[hm2_7i95.0.ssi.00.abs.rawcounts]>
+  #163 = #<_hal[hm2_7i95.0.ssi.01.abs.rawcounts]>
+  #164 = [[#151 - #150] * 1000000.0]
+  #165 = [[#155 - #154] * 1000000.0]
+  #166 = [#151 * 1000000.0]
+  #167 = [#155 * 1000000.0]
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-raw-points.csv)
   #110 = #520
   #111 = #521
   #112 = #<pass_id>
@@ -346,7 +372,7 @@ o<tcpc_vector_sphere_pass> sub
   (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
   (LOGCLOSE)
 
-  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-small-pose-vector-2pass-results.csv)
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-results.csv)
   #80 = #520
   #81 = #521
   #82 = #<pass_id>
@@ -363,6 +389,36 @@ o<tcpc_vector_sphere_pass> sub
   #93 = #610
   #94 = #611
   (LOG,#80,#81,#82,#83,#84,#85,#86,#87,#88,#89,#90,#91,#92,#93,#94)
+  (LOGCLOSE)
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-joint-state.csv)
+  #170 = #520
+  #171 = #521
+  #172 = #<pass_id>
+  #173 = #<accepted>
+  #174 = #150
+  #175 = #151
+  #176 = #152
+  #177 = #153
+  #178 = #154
+  #179 = #155
+  #180 = #156
+  #181 = #157
+  (LOG,#170,#171,#172,#173,#174,#175,#176,#177,#178,#179,#180,#181)
+  (LOGCLOSE)
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-ssi-state.csv)
+  #174 = #158
+  #175 = #159
+  #176 = #160
+  #177 = #161
+  #178 = #162
+  #179 = #163
+  #180 = #164
+  #181 = #165
+  #182 = #166
+  #183 = #167
+  (LOG,#170,#171,#172,#173,#174,#175,#176,#177,#178,#179,#180,#181,#182,#183)
   (LOGCLOSE)
 
   (DEBUG, TCPC_VECTOR pass #<pass_id> accepted #<accepted>)
@@ -398,7 +454,7 @@ o<tcpc_measure_pose> sub
   o<use_last_center> endif
 
   o<pause_before_probe> if [#704 GT 0.5]
-    (MSG, TCPC small-pose check paused before probing)
+    (MSG, TCPC expanded-pose check paused before probing)
     M0
   o<pause_before_probe> endif
 
@@ -470,17 +526,74 @@ o<tcpc_measure_pose> sub
 
 o<tcpc_measure_pose> endsub
 
-(Run the conservative first quantitative TCPC drift sequence.)
+(Run the expanded quantitative TCPC drift sequence.)
 o<tcpc_measure_pose> call [0.0] [0.0]
-o<tcpc_measure_pose> call [2.0] [0.0]
-o<tcpc_measure_pose> call [-2.0] [0.0]
-o<tcpc_measure_pose> call [2.0] [10.0]
-o<tcpc_measure_pose> call [2.0] [-10.0]
+o<tcpc_measure_pose> call [0.0] [90.0]
+o<tcpc_measure_pose> call [0.0] [180.0]
+o<tcpc_measure_pose> call [0.0] [270.0]
+o<tcpc_measure_pose> call [0.0] [0.0]
+
+o<pause_after_b0> if [#706 GT 0.5]
+  (MSG, TCPC expanded B0 C quadrant group complete. Resume for B +/-10.)
+  M0
+o<pause_after_b0> endif
+
+o<tcpc_measure_pose> call [10.0] [0.0]
+o<tcpc_measure_pose> call [10.0] [90.0]
+o<tcpc_measure_pose> call [10.0] [180.0]
+o<tcpc_measure_pose> call [10.0] [270.0]
+o<tcpc_measure_pose> call [-10.0] [0.0]
+o<tcpc_measure_pose> call [-10.0] [90.0]
+o<tcpc_measure_pose> call [-10.0] [180.0]
+o<tcpc_measure_pose> call [-10.0] [270.0]
+o<tcpc_measure_pose> call [0.0] [0.0]
+
+o<pause_after_b10> if [#706 GT 0.5]
+  (MSG, TCPC expanded B +/-10 group complete. Resume for B +/-30.)
+  M0
+o<pause_after_b10> endif
+
+o<tcpc_measure_pose> call [30.0] [0.0]
+o<tcpc_measure_pose> call [30.0] [90.0]
+o<tcpc_measure_pose> call [30.0] [180.0]
+o<tcpc_measure_pose> call [30.0] [270.0]
+o<tcpc_measure_pose> call [-30.0] [0.0]
+o<tcpc_measure_pose> call [-30.0] [90.0]
+o<tcpc_measure_pose> call [-30.0] [180.0]
+o<tcpc_measure_pose> call [-30.0] [270.0]
+o<tcpc_measure_pose> call [0.0] [0.0]
+
+o<pause_after_b30> if [#706 GT 0.5]
+  (MSG, TCPC expanded B +/-30 group complete. Resume for B +/-50.)
+  M0
+o<pause_after_b30> endif
+
+o<tcpc_measure_pose> call [50.0] [0.0]
+o<tcpc_measure_pose> call [50.0] [90.0]
+o<tcpc_measure_pose> call [50.0] [180.0]
+o<tcpc_measure_pose> call [50.0] [270.0]
+o<tcpc_measure_pose> call [-50.0] [0.0]
+o<tcpc_measure_pose> call [-50.0] [90.0]
+o<tcpc_measure_pose> call [-50.0] [180.0]
+o<tcpc_measure_pose> call [-50.0] [270.0]
+
+(Add extra clearance before the final B0 C0 return/closure check.)
+#<return_w_x> = [-SIN[#<_abs_b>] * COS[#<_abs_c>]]
+#<return_w_y> = [-SIN[#<_abs_b>] * SIN[#<_abs_c>]]
+#<return_w_z> = [-COS[#<_abs_b>]]
+#<return_extra> = 10.0
+#<return_x> = [#<_x> - [#<return_w_x> * #<return_extra>]]
+#<return_y> = [#<_y> - [#<return_w_y> * #<return_extra>]]
+#<return_z> = [#<_z> - [#<return_w_z> * #<return_extra>]]
+G90
+F#507
+G1 X#<return_x> Y#<return_y> Z#<return_z>
+
 o<tcpc_measure_pose> call [0.0] [0.0]
 
 G90
 F#705
 G1 B0 C0
 
-(DEBUG, TCPC_SMALL_POSE_VECTOR complete)
+(DEBUG, TCPC_EXPANDED_POSE_VECTOR complete)
 M2

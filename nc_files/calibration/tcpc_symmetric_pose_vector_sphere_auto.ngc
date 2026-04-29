@@ -52,7 +52,7 @@ o<probe_cal_offset_default> endif
 #505 = [#503 + #504]
 
 #506 = 50.0           (probe feed)
-#507 = 400.0          (linear positioning feed)
+#507 = 600.0          (linear positioning feed)
 #508 = 16.0           (top probe vector length)
 #509 = 5.0            (top clearance past sphere+probe)
 #510 = 4.0            (side start clearance past sphere+probe)
@@ -66,7 +66,7 @@ o<probe_cal_offset_default> endif
 #702 = 0.0            (last accepted center abs Y)
 #703 = 0.0            (last accepted center abs Z)
 #704 = 0.0            (set to 1.0 to pause before each probing pose)
-#705 = 100.0          (rotary index feed)
+#705 = 200.0          (rotary index feed)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]

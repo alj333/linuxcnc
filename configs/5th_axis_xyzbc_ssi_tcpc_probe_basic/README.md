@@ -288,6 +288,13 @@ largest error is `B+5 C+20` and is mostly XY, so the next analysis should look
 at C/B geometry interaction, C-axis center/zero/alignment, head squareness, and
 local X/Y mechanics before changing offsets.
 
+Feed update for 2026-04-29 onward TCPC validation programs:
+
+- probe feed stays `F50`
+- linear positioning feed increases to `F600`
+- rotary indexing feed increases to `F200`
+- do not edit or reload the active program while a cycle is running
+
 ## Runtime Update - 2026-04-28 Zero-Correction Handoff
 
 The old vector-probing sign was corrected, then all TCPC calibration
@@ -327,3 +334,138 @@ Decision:
   maintenance/setup config
 - `G55` remains reserved for staff 3-axis work unless the operator explicitly
   releases it
+
+## Runtime Update - 2026-04-29 B/C Backlash Compensation
+
+The B0 approach/reversal diagnostic found a repeatable split between
+`B+5 -> B0` and `B-5 -> B0`:
+
+- sphere-center X split: about `0.121722 mm`
+- direct B SSI zeroed-position split: about `0.022202 deg`
+- expected TCP motion at a `309 mm` lever arm: about `0.119735 mm`
+
+This confirms the direct SSI encoder data should be trusted. The issue was that
+the TCPC test config still had LinuxCNC backlash compensation active on the
+rotary joints:
+
+- previous B `[JOINT_3]BACKLASH = 0.022`
+- previous C `[JOINT_4]BACKLASH = 0.010`
+
+Because B and C feedback is from direct SSI encoders at the rotary output,
+backlash compensation changes the physical output position while logical
+`joint.N.pos-cmd` remains on target. For TCPC calibration that creates exactly
+the approach-dependent TCP shift we measured.
+
+Current TCPC test config:
+
+```ini
+[JOINT_3]
+BACKLASH = 0.0
+
+[JOINT_4]
+BACKLASH = 0.0
+```
+
+Restart LinuxCNC before rerunning the B0 approach/reversal diagnostic; the
+running session will not pick up INI changes.
+
+Post-restart result:
+
+- `joint.3.backlash-corr = 0`
+- `joint.4.backlash-corr = 0`
+- direct B SSI approach split after disabling backlash: `0.000000 deg`
+- accepted sphere center approach split after disabling backlash: `0.004201 mm`
+
+The backlash-compensation removal is validated for TCPC testing.
+
+First post-fix symmetric TCPC validation:
+
+- program:
+  `nc_files/calibration/tcpc_symmetric_pose_vector_sphere_auto.ngc`
+- probe `F50`, linear positioning `F600`, rotary indexing `F200`
+- one prior attempt was invalid due to probe double-pulse noise on retract
+- final complete run closed `B0 C0` at `0.004406 mm`
+- tilted-pose drift from the starting `B0 C0` was about `0.089-0.102 mm`
+
+This is inside the current `0.2 mm` practical TCPC target. The remaining
+pattern is now geometry/alignment signal, not the old B backlash-compensation
+artifact. Repeat the same symmetric run once before fitting new TCPC
+corrections.
+
+The immediate repeat was stable: closing `B0 C0` drift was `0.004268 mm`,
+tilted-pose drift remained about `0.091-0.101 mm`, and accepted centers
+repeated within about `0.006 mm` against the previous valid post-fix run.
+Proceeding to the expanded C-quadrant / B `+/-50` matrix is justified before
+fitting corrections.
+
+Expanded TCPC diagnostic program prepared:
+
+- `nc_files/calibration/tcpc_expanded_pose_vector_sphere_auto.ngc`
+- C quadrants: `C0/C90/C180/C270`
+- B groups: `0`, `+/-10`, `+/-30`, `+/-50`
+- B0 C0 closure between groups
+- probe `F50`, linear positioning `F600`, rotary indexing `F200`
+- pauses between B groups with `M0`
+- uses separate `tcpc-expanded-pose-vector-*` CSV logs
+
+The calibration sphere is on a `45 deg` post. The known clearance concern is
+around `C45` with B more negative than `-10 deg`; `C225` is acceptable. The
+first expanded program uses C quadrants only and avoids the known risky
+`C45 / B < -10` sector.
+
+Servo tuning is a separate future scope. The B/C closed-loop SSI feedback path
+is functional, but it has not been fine-tuned. Current rotary following-error
+limits are loose commissioning values:
+
+```ini
+[JOINT_3]
+FERROR = 2
+MIN_FERROR = 0.5
+
+[JOINT_4]
+FERROR = 2
+MIN_FERROR = 0.5
+```
+
+Schedule a dedicated servo-motion tuning session for all axes, especially the
+B/C rotary feedback loops, before treating this config as production TCPC.
+
+## Runtime Update - 2026-04-29 Expanded TCPC Matrix
+
+The expanded TCPC diagnostic completed before the machine was handed back for
+3-axis work:
+
+- program:
+  `nc_files/calibration/tcpc_expanded_pose_vector_sphere_auto.ngc`
+- result log:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-results.csv`
+- rotary SSI log:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-ssi-state.csv`
+- result set: `64` result rows, with `32` accepted pass-2 centers
+- TCPC calibration corrections remained zero for this run
+- B/C backlash compensation remained disabled in this TCPC test config
+
+Accepted `B0 C0` closures from the initial baseline:
+
+- after B0 C-only group: `0.006710 mm`
+- after B `+/-10` group: `0.011584 mm`
+- after B `+/-30` group: `0.010126 mm`
+- final after B `+/-50` group: `0.017328 mm`
+
+Maximum drift from each group's preceding `B0 C0` closure:
+
+- B0 C-only group: `0.144343 mm` at `B0 C180`
+- B `+/-10` group: `0.278010 mm` at `B-10 C0`
+- B `+/-30` group: `0.796227 mm` at `B-30 C90`
+- B `+/-50` group: `1.316641 mm` at `B-50 C90`
+
+The closure data is tight enough to trust the pose pattern. The large high-B
+residuals are not explained by rotary following error in this run: accepted
+pass-2 maximum absolute following error was about `229 microdeg` on B and
+`2403 microdeg` on C.
+
+No new TCPC geometry correction has been applied yet. Next TCPC work is offline
+sensitivity fitting from the expanded matrix, followed by a small correction
+and slow no-cut validation. For current 3-axis work, close this TCPC config and
+use a normal `trivkins` maintenance/setup config. `G55` remains reserved for
+staff 3-axis setup unless the operator explicitly releases it.
