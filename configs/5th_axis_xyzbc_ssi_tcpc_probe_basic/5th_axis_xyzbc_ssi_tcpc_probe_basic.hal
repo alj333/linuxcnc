@@ -8,8 +8,8 @@
 
 # First visual TCPC starting geometry from the saved C-sweep and B-vector
 # candidate fit. Use for slow no-cut validation only; not final cutting data.
-# Reset calibration corrections after fixing the B vector probing sign. Keep
-# the nominal starting geometry, then refit from sign-corrected probe data.
+# First correction candidate from the 2026-04-29 expanded fixed-tip data.
+# Keep this in the TCPC test config only until slow no-cut validation passes.
 #
 # TCPC test convention: commanded B+ is clockwise looking at the front of the
 # head. The reused maintenance HAL currently labels the opposite physical
@@ -27,14 +27,14 @@ setp headheadkins.nominal-c-to-b.z -270.0
 setp headheadkins.nominal-b-to-tool.x -0.668710
 setp headheadkins.nominal-b-to-tool.y -26.721365
 setp headheadkins.nominal-b-to-tool.z -308.980001
-setp headheadkins.cal-c-to-b.x 0.0
-setp headheadkins.cal-c-to-b.y 0.0
+setp headheadkins.cal-c-to-b.x -0.065000
+setp headheadkins.cal-c-to-b.y 0.014000
 setp headheadkins.cal-c-to-b.z 0.0
 setp headheadkins.cal-b-to-tool.x 0.0
 setp headheadkins.cal-b-to-tool.y 0.0
-setp headheadkins.cal-b-to-tool.z 0.0
+setp headheadkins.cal-b-to-tool.z 0.815000
 setp headheadkins.b-zero-offset 0.0
-setp headheadkins.c-zero-offset 0.0
+setp headheadkins.c-zero-offset -0.024500
 
 # Start TCPC/TWP fail-safe: G68.2 is rejected until G43.4 has been run.
 loadusr -Wn headheadtwp python3 ./python/headhead_twp_state_safe.py
@@ -69,14 +69,14 @@ setp headheadtwp.nominal_c_to_b_z -270.0
 setp headheadtwp.nominal_b_to_tool_x -0.668710
 setp headheadtwp.nominal_b_to_tool_y -26.721365
 setp headheadtwp.nominal_b_to_tool_z -308.980001
-setp headheadtwp.cal_c_to_b_x 0.0
-setp headheadtwp.cal_c_to_b_y 0.0
+setp headheadtwp.cal_c_to_b_x -0.065000
+setp headheadtwp.cal_c_to_b_y 0.014000
 setp headheadtwp.cal_c_to_b_z 0.0
 setp headheadtwp.cal_b_to_tool_x 0.0
 setp headheadtwp.cal_b_to_tool_y 0.0
-setp headheadtwp.cal_b_to_tool_z 0.0
+setp headheadtwp.cal_b_to_tool_z 0.815000
 setp headheadtwp.b_zero_offset 0.0
-setp headheadtwp.c_zero_offset 0.0
+setp headheadtwp.c_zero_offset -0.024500
 setp headheadtwp.requested_normal_rotation 0.0
 
 # Feed the kinematics layer from the stored TWP state only after G68.2 enables

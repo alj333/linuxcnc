@@ -472,8 +472,9 @@ staff 3-axis setup unless the operator explicitly releases it.
 
 ## Offline Correction Candidate - 2026-04-29
 
-The first expanded-matrix sensitivity fit should remain inactive until the next
-TCPC no-cut validation session.
+The first expanded-matrix sensitivity fit is loaded in the TCPC test overlay
+for the next restart. It is still test-only and must be validated with slow
+no-cut probing before any cutting use.
 
 Candidate full simple correction:
 
@@ -488,8 +489,8 @@ setp headheadkins.b-zero-offset 0.000000
 setp headheadkins.c-zero-offset -0.024500
 ```
 
-Mirror these values to the matching `headheadtwp.*` pins if the candidate is
-loaded into the TCPC overlay.
+These values are mirrored to the matching `headheadtwp.*` pins in
+`5th_axis_xyzbc_ssi_tcpc_probe_basic.hal`.
 
 Expected result:
 
@@ -499,8 +500,11 @@ Expected result:
 
 Validation order:
 
-1. Run the symmetric program first.
-2. If signs and residuals improve, run the expanded program through the B
-   `+/-30` group and stop at the `M0` pause after the B30 closure.
-3. Treat remaining B `+/-50` error as likely alignment/squareness work unless
+1. Restart this TCPC test config so the candidate values load.
+2. Run the symmetric program first.
+3. If signs and residuals improve, run the expanded program. It now defaults
+   to B `+/-30` only with `#707 = 30.0`.
+4. Set `#707 = 50.0` only after B `+/-30` validation passes and clearance is
+   deliberately confirmed.
+5. Treat remaining B `+/-50` error as likely alignment/squareness work unless
    a repeat data set shows a clean simple-offset pattern.

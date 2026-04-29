@@ -1041,7 +1041,14 @@ setp headheadkins.c-zero-offset -0.024500
 ```
 
 Mirror the same values to `headheadtwp.*` if this candidate is applied to the
-TCPC test overlay. This candidate is not applied yet.
+TCPC test overlay.
+
+Applied state for the next TCPC session:
+
+- the full simple candidate is now loaded in
+  `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/5th_axis_xyzbc_ssi_tcpc_probe_basic.hal`
+- the matching `headheadtwp.*` pins are mirrored to the same values
+- the candidate only takes effect after restarting the TCPC test config
 
 Why this fit is preferred as the first correction:
 
@@ -1089,8 +1096,8 @@ Recommended next TCPC validation sequence:
 
 1. Leave the current 3-axis maintenance work alone; do not load the TCPC config
    while production/setup work is active.
-2. When TCPC resumes, apply either the half-step or the full simple candidate
-   in the TCPC test overlay only, and mirror it to `headheadtwp`.
+2. When TCPC resumes, restart the TCPC test overlay so the full simple
+   candidate loads.
 3. Restart the TCPC config at a known safe C side of the wrap, preferably C0,
    then home.
 4. Confirm TCPC ON, TWP OFF, B/C backlash compensation zero, probe tool `T3`,
@@ -1099,11 +1106,11 @@ Recommended next TCPC validation sequence:
 6. If the full candidate is used, expect all tilted symmetric residuals to be
    well under `0.08 mm` and closing `B0 C0` under `0.02 mm`; stop and revert if
    the residuals grow or signs reverse.
-7. If symmetric validation passes, run the expanded program only through the
-   B `+/-30` group and stop at the `M0` pause after the B30 closure.
+7. If symmetric validation passes, run the expanded program. It now defaults
+   to B `+/-30` only with `#707 = 30.0`.
 8. If B `+/-30` is inside about `0.20-0.25 mm`, decide whether to run the
-   B `+/-50` group. Remaining high-B residual is likely alignment/squareness
-   work, not a simple TCPC offset fit.
+   B `+/-50` group by deliberately changing `#707` to `50.0`. Remaining high-B
+   residual is likely alignment/squareness work, not a simple TCPC offset fit.
 
 ## Handoff For 3-Axis Machine Use - 2026-04-29
 
