@@ -393,6 +393,28 @@ B-axis vector probing rule:
   - future scope: run a dedicated servo-motion tuning session for all axes,
     especially B/C rotary SSI feedback loops; current rotary following-error
     limits are loose commissioning values, not final TCPC quality limits
+  - the first expanded-matrix correction candidate was then loaded in the TCPC
+    test config:
+    `cal-c-to-b.x = -0.065000`,
+    `cal-c-to-b.y = +0.014000`,
+    `cal-b-to-tool.z = +0.815000`, and
+    `c-zero-offset = -0.024500`
+  - corrected symmetric validation passed with worst tilted-pose drift
+    `0.044784 mm` and closing `B0 C0` drift `0.021471 mm`
+  - corrected expanded validation through B `+/-30` passed inside the current
+    `0.2 mm` practical target; group max drift was `0.084764 mm` for B0
+    C-only, `0.099723 mm` for B `+/-10`, and `0.171569 mm` for B `+/-30`
+  - B `+/-50` validation remains incomplete because repeated attempts stopped
+    on wireless/optical probe faults logged as `Probe tripped during non-probe
+    move`
+  - likely probe-fault cause is optical receiver interference from laser tube
+    cutters or other workshop IR/reflection sources; the next B `+/-50` run
+    should be after-hours or otherwise isolated from optical noise
+  - the active expanded program is intentionally in temporary resume mode for
+    that next attempt: `#706 = 0.0`, `#707 = 50.0`, `#708 = 1.0`
+  - latest partial resume attempt accepted rows through `B-10 C180`, then
+    stopped after `B-10 C270` pass 1; exclude partial false-trip blocks from
+    final B `+/-50` analysis
 
 ## Step 5: Mixed-Pose Cross Check
 

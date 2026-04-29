@@ -5,13 +5,15 @@
 (Operator setup:)
 (1. Start at/near B0 C0 with the probe 3 to 8 mm clear from the 30 mm sphere.)
 (2. Keep hand on feed hold/stop for the full first run.)
-(3. This program uses C quadrants. Default max B range is +/-30 deg.)
+(3. This program uses C quadrants. Current diagnostic max B is +/-50 deg.)
 (4. Sphere post risk is C45 with B less than -10 deg. C225 is acceptable.)
 (5. This first expanded pass uses quadrants only and avoids direct C45 moves.)
-(6. Set #707 to 50.0 only after B +/-30 validation passes.)
+(6. Set #707 back to 30.0 after this B +/-50 diagnostic.)
+(7. Set #708 back to 0.0 for the full B0 C quadrant sweep.)
 
 (Sequence:)
 (B0 C quadrants, B +/-10, B +/-30, optional B +/-50, with closures)
+(Current resume mode probes fresh B0 C0, then skips the B0 C quadrant sweep.)
 
 (Accepted pass-2 centers log to:)
 (/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-results.csv)
@@ -70,8 +72,9 @@ o<probe_cal_offset_default> endif
 #703 = 0.0            (last accepted center abs Z)
 #704 = 0.0            (set to 1.0 to pause before each probing pose)
 #705 = 200.0          (rotary index feed)
-#706 = 1.0            (set to 1.0 to pause between B range groups)
-#707 = 30.0           (max B group: 30 default, set 50 only when cleared)
+#706 = 0.0            (set to 1.0 to pause between B range groups)
+#707 = 50.0           (max B group: 30 default, 50 for this diagnostic)
+#708 = 1.0            (resume mode: 1 skips full B0 C sweep after fresh B0 C0 baseline)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -530,12 +533,14 @@ o<tcpc_measure_pose> endsub
 
 (Run the expanded quantitative TCPC drift sequence.)
 o<tcpc_measure_pose> call [0.0] [0.0]
-o<tcpc_measure_pose> call [0.0] [90.0]
-o<tcpc_measure_pose> call [0.0] [180.0]
-o<tcpc_measure_pose> call [0.0] [270.0]
-o<tcpc_measure_pose> call [0.0] [0.0]
+o<run_full_b0_c_sweep> if [#708 LT 0.5]
+  o<tcpc_measure_pose> call [0.0] [90.0]
+  o<tcpc_measure_pose> call [0.0] [180.0]
+  o<tcpc_measure_pose> call [0.0] [270.0]
+  o<tcpc_measure_pose> call [0.0] [0.0]
+o<run_full_b0_c_sweep> endif
 
-o<pause_after_b0> if [#706 GT 0.5]
+o<pause_after_b0> if [[#706 GT 0.5] AND [#708 LT 0.5]]
   (MSG, TCPC expanded B0 C quadrant group complete. Resume for B +/-10.)
   M0
 o<pause_after_b0> endif

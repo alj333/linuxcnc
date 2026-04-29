@@ -508,3 +508,52 @@ Validation order:
    deliberately confirmed.
 5. Treat remaining B `+/-50` error as likely alignment/squareness work unless
    a repeat data set shows a clean simple-offset pattern.
+
+## Runtime Update - 2026-04-29 Correction Validation
+
+The full simple correction candidate above was loaded and validated on the
+real machine with slow no-cut sphere probing.
+
+Current live correction state:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.065000
+setp headheadkins.cal-c-to-b.y 0.014000
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024500
+```
+
+The same values are mirrored to `headheadtwp.*`.
+
+Validation completed:
+
+- visual TCPC correction direction checks remained correct in all C quadrants
+- corrected symmetric validation passed with worst tilted-pose drift
+  `0.044784 mm` and closing `B0 C0` drift `0.021471 mm`
+- corrected expanded validation through B `+/-30` passed with group max drift
+  `0.084764 mm` for the B0 C-only group, `0.099723 mm` for B `+/-10`, and
+  `0.171569 mm` for B `+/-30`
+- B `+/-30` is inside the current `0.2 mm` practical TCPC target
+
+B `+/-50` validation is still incomplete:
+
+- the expanded program was temporarily set to B `+/-50` diagnostic mode
+  (`#707 = 50.0`)
+- stops between B groups were removed for the proven sequence (`#706 = 0.0`)
+- resume mode was added (`#708 = 1.0`) so a retry probes a fresh `B0 C0`
+  baseline, skips the full B0 C quadrant sweep, then runs B `+/-10`,
+  B `+/-30`, and B `+/-50`
+- repeated attempts stopped on wireless/optical probe faults reported as
+  `Probe tripped during non-probe move`
+- likely cause is optical receiver interference from laser tube cutters or
+  other workshop IR/reflection sources
+- latest partial retry accepted rows through `B-10 C180`, then stopped after
+  `B-10 C270` pass 1; B `+/-30` and B `+/-50` were not reached
+
+Next run should be after-hours or otherwise isolated from optical probe
+interference. Exclude the partial false-trip blocks and analyze only the next
+clean block after a fresh accepted `B0 C0` baseline.

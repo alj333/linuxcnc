@@ -1112,17 +1112,92 @@ Recommended next TCPC validation sequence:
    B `+/-50` group by deliberately changing `#707` to `50.0`. Remaining high-B
    residual is likely alignment/squareness work, not a simple TCPC offset fit.
 
+## Correction Candidate Validation - 2026-04-29
+
+The full simple correction candidate above was loaded by restarting the TCPC
+test config. Live correction state:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.065000
+setp headheadkins.cal-c-to-b.y 0.014000
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024500
+```
+
+The same values are mirrored to `headheadtwp.*`.
+
+Validated checks:
+
+- TCPC correction direction was visually correct in all C quadrants after the
+  correction was loaded.
+- The corrected symmetric run completed with tilted-pose drift of
+  `0.006759-0.044784 mm` from its own `B0 C0` baseline and a closing `B0 C0`
+  drift of `0.021471 mm`.
+- The corrected expanded B `+/-30` validation completed. From each preceding
+  `B0 C0` closure, max/RMS drift was:
+  - B0 C-only group: max `0.084764 mm`, RMS `0.068839 mm`, closure
+    `0.003543 mm`
+  - B `+/-10` group: max `0.099723 mm`, RMS `0.064420 mm`, closure
+    `0.007116 mm`
+  - B `+/-30` group: max `0.171569 mm`, RMS `0.116421 mm`, closure
+    `0.005957 mm`
+- This validates the candidate inside the current `0.2 mm` practical target
+  through B `+/-30`.
+
+B `+/-50` diagnostic status:
+
+- `nc_files/calibration/tcpc_expanded_pose_vector_sphere_auto.ngc` was
+  temporarily set to `#707 = 50.0` and later `#706 = 0.0` so the proven groups
+  run without operator stops.
+- Repeated B `+/-50` attempts were interrupted by wireless/optical probe
+  faults, logged by Probe Basic as `Probe tripped during non-probe move`.
+- The operator identified likely optical receiver interference from laser tube
+  cutters and other workshop IR/reflection sources.
+- The first restart produced a clean B0 C-only group with closure
+  `0.005963 mm` but stopped after `B+10 C0` pass 1.
+- A resume-mode retry started from a fresh accepted `B0 C0` baseline at
+  `X=357.533806 Y=317.969502 Z=-858.917885`, completed accepted pass-2 rows
+  through `B-10 C180`, then stopped during the move after `B-10 C270` pass 1.
+- The latest partial resume rows are useful as a fault record only; do not use
+  them as the final expanded B `+/-50` validation because the B `+/-10` group
+  did not close and B `+/-30`/`+/-50` were not reached.
+
+Temporary program state for the next after-hours run:
+
+- `#706 = 0.0`: no stops between B groups.
+- `#707 = 50.0`: B `+/-50` diagnostic enabled.
+- `#708 = 1.0`: resume mode enabled. The program probes a fresh `B0 C0`
+  baseline, skips the full B0 C quadrant sweep, then runs B `+/-10`,
+  B `+/-30`, and B `+/-50`.
+
+Next action:
+
+- Run the resume-mode program only when likely optical probe interference is
+  removed. Treat the next clean block after a fresh accepted `B0 C0` baseline
+  as the active B `+/-50` diagnostic. Exclude the partial false-trip blocks.
+
 ## Handoff For 3-Axis Machine Use - 2026-04-29
 
-The TCPC session is paused so the machine can be used for 3-axis work.
+The TCPC session is paused after repeated probe/optical faults during the
+B `+/-50` diagnostic.
 
 Current TCPC test-config state to return to:
 
 - B/C LinuxCNC backlash compensation disabled in the TCPC test config
 - direct SSI rotary logging is available for symmetric and expanded programs
-- TCPC calibration corrections remain zero
-- expanded fixed-tip data has been collected and is ready for offline fitting
-- no new TCPC geometry correction has been applied after the expanded run
+- the first simple correction candidate is loaded in the TCPC test config and
+  mirrored to `headheadtwp.*`
+- corrected symmetric validation and corrected B `+/-30` expanded validation
+  passed inside the current `0.2 mm` practical target
+- corrected B `+/-50` validation is still incomplete because the wireless
+  probe false-tripped before the B `+/-30` and B `+/-50` groups in the latest
+  resume attempt
+- the active expanded program is intentionally in temporary B `+/-50` resume
+  mode with `#706 = 0.0`, `#707 = 50.0`, and `#708 = 1.0`
 
 For 3-axis work:
 
