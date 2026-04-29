@@ -1015,6 +1015,96 @@ Interpretation:
   first offline sensitivity fit, then validate with the symmetric program and
   a reduced expanded subset.
 
+## Offline Fit Candidate From Expanded Data - 2026-04-29
+
+Fit method:
+
+- use accepted pass-2 centers from
+  `tcpc-expanded-pose-vector-2pass-results.csv`
+- subtract the preceding accepted `B0 C0` closure for each pose group to reduce
+  thermal/setup drift influence
+- fit only physically modest terms first; do not use the full eight-parameter
+  least-squares solution because `B` zero, B-to-tool X, and B-to-tool Z are
+  highly correlated over this data set
+
+Stable diagnostic fit:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.065000
+setp headheadkins.cal-c-to-b.y 0.014000
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024500
+```
+
+Mirror the same values to `headheadtwp.*` if this candidate is applied to the
+TCPC test overlay. This candidate is not applied yet.
+
+Why this fit is preferred as the first correction:
+
+- it uses only simple TCPC geometry terms: C/B lateral X-Y, B-to-tool Z, and a
+  small C zero offset
+- it avoids B-to-tool X and B zero for now because those terms are not cleanly
+  separated by the current data
+- it matches the repeated symmetric data reasonably while not overfitting the
+  small-angle set
+
+Predicted effect using the expanded matrix:
+
+- current group-baselined expanded RMS 3D residual: `0.513 mm`
+- predicted RMS after candidate: about `0.167 mm`
+- current worst group-baselined residual: `1.190 mm` at `B-50 C90`
+- predicted worst residual after candidate: about `0.437 mm`, still at
+  `B-50 C90`
+- predicted B `+/-30` worst residual after candidate: about `0.196 mm`
+
+Predicted effect on the last symmetric repeat:
+
+- current tilted-pose RMS 3D residual: about `0.098 mm`
+- predicted tilted-pose RMS after candidate: about `0.030 mm`
+- predicted worst symmetric tilted-pose residual after candidate:
+  about `0.034 mm`
+
+Conservative half-step option:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.033000
+setp headheadkins.cal-c-to-b.y 0.007000
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.408000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.012000
+```
+
+The half-step predicts only about `0.065 mm` worst residual on the symmetric
+check, but it does not correct the high-B expanded matrix enough. Use it only
+if we want a very cautious first no-cut confirmation of correction direction.
+
+Recommended next TCPC validation sequence:
+
+1. Leave the current 3-axis maintenance work alone; do not load the TCPC config
+   while production/setup work is active.
+2. When TCPC resumes, apply either the half-step or the full simple candidate
+   in the TCPC test overlay only, and mirror it to `headheadtwp`.
+3. Restart the TCPC config at a known safe C side of the wrap, preferably C0,
+   then home.
+4. Confirm TCPC ON, TWP OFF, B/C backlash compensation zero, probe tool `T3`,
+   and probe calibration offset `0.134533`.
+5. Run `nc_files/calibration/tcpc_symmetric_pose_vector_sphere_auto.ngc`.
+6. If the full candidate is used, expect all tilted symmetric residuals to be
+   well under `0.08 mm` and closing `B0 C0` under `0.02 mm`; stop and revert if
+   the residuals grow or signs reverse.
+7. If symmetric validation passes, run the expanded program only through the
+   B `+/-30` group and stop at the `M0` pause after the B30 closure.
+8. If B `+/-30` is inside about `0.20-0.25 mm`, decide whether to run the
+   B `+/-50` group. Remaining high-B residual is likely alignment/squareness
+   work, not a simple TCPC offset fit.
+
 ## Handoff For 3-Axis Machine Use - 2026-04-29
 
 The TCPC session is paused so the machine can be used for 3-axis work.

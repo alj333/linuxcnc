@@ -469,3 +469,38 @@ sensitivity fitting from the expanded matrix, followed by a small correction
 and slow no-cut validation. For current 3-axis work, close this TCPC config and
 use a normal `trivkins` maintenance/setup config. `G55` remains reserved for
 staff 3-axis setup unless the operator explicitly releases it.
+
+## Offline Correction Candidate - 2026-04-29
+
+The first expanded-matrix sensitivity fit should remain inactive until the next
+TCPC no-cut validation session.
+
+Candidate full simple correction:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.065000
+setp headheadkins.cal-c-to-b.y 0.014000
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024500
+```
+
+Mirror these values to the matching `headheadtwp.*` pins if the candidate is
+loaded into the TCPC overlay.
+
+Expected result:
+
+- last symmetric repeat predicted worst tilted residual: about `0.034 mm`
+- expanded matrix predicted B `+/-30` worst residual: about `0.196 mm`
+- expanded matrix predicted B `+/-50` worst residual: about `0.437 mm`
+
+Validation order:
+
+1. Run the symmetric program first.
+2. If signs and residuals improve, run the expanded program through the B
+   `+/-30` group and stop at the `M0` pause after the B30 closure.
+3. Treat remaining B `+/-50` error as likely alignment/squareness work unless
+   a repeat data set shows a clean simple-offset pattern.
