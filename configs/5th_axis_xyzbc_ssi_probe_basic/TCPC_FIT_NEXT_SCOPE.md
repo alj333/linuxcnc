@@ -1224,6 +1224,69 @@ For 3-axis work:
 
 Future servo-tuning scope:
 
+## Shutdown Handoff - 2026-04-30
+
+Machine/testing state:
+
+- The late-night full expanded TCPC sweep was stopped by repeat wireless probe
+  false trips at the B60 stage.
+- The operator confirmed the probe flashed with no contact; treat these stops
+  as optical/wireless false trips, not sphere contact.
+- The sphere was moved after the B60 false-trip attempts. Any future data must
+  start as a fresh data set; do not continue a resume block from the old sphere
+  position.
+- Current log boundary after the moved sphere is:
+  `tcpc-expanded-pose-vector-2pass-results.csv` line `314`,
+  raw-points line `1566`, rotary joint line `314`, rotary SSI line `314`.
+  The next morning full rerun starts at result line `315`.
+
+Useful data before the sphere moved:
+
+- Rows `243-306` are the best late-night full rerun through B `+/-50` closure.
+- Rows `307-314` are incomplete B60 attempts. They are trend/clearance data
+  only and should not be used for a final TCPC fit.
+- Rows `243-306` B0 closure stayed good:
+  final `B0 C0` after B `+/-50` was `0.010627 mm` from the run baseline.
+- Rows `243-306` B `+/-30` remained inside the current practical target:
+  max drift `0.169504 mm`, average group drift about `0.11-0.12 mm`.
+- Rows `243-306` B `+/-50` remained outside the `0.2 mm` practical target:
+  B+50 max `0.355050 mm`; B-50 max `0.404233 mm`.
+- Rotary feedback was not the limiting error in that block. Accepted pass-2
+  following error stayed about B `305 microdeg` max and C `1030 microdeg` max.
+
+First-pass TCPC/mechanical interpretation:
+
+- There is enough data for first-pass analysis and mechanical fault direction.
+  There is not enough for a final geometry fit because B60 is incomplete, the
+  sphere moved, and the probe false trips disturbed the end of the session.
+- A direct TCPC-parameter least-squares fit only modestly improves the late
+  full-run RMS, from about `0.155 mm` to about `0.142 mm` using the practical
+  `cal-c-to-b.x/y`, `cal-b-to-tool.x/z`, and C-zero terms.
+- The weak fit improvement means the remaining high-B error is not behaving
+  like one clean kinematic offset. Treat it as mixed geometry plus machine
+  alignment/mechanical error until a stable repeat confirms otherwise.
+- The stable B0 closures argue against simple thermal drift or random probing
+  as the main high-B error source.
+- Primary suspects to investigate after a stable repeat:
+  B-axis/spindle centerline offset or tilt, B-to-spindle squareness, C/B
+  non-intersection or squareness, local linear-axis mechanics under large head
+  angle, and Z rack/local motion effects.
+
+Program state for the next morning:
+
+- `nc_files/calibration/tcpc_expanded_pose_vector_sphere_auto.ngc` is set for a
+  fresh full B `+/-60` rerun, not resume mode.
+- Current run controls are:
+  `#704 = 1.0` pause before each probing pose,
+  `#706 = 1.0` pause between B groups,
+  `#707 = 60.0` full B `+/-60`,
+  `#708 = 0.0` no resume,
+  `#709 = 10.0` start at B `+/-10`.
+- The program includes `#515 = 5.0`, a +5 mm Z lift before rotary index moves.
+- The experimental supervised `G38.3` travel retry idea was not left in the
+  active file for the morning run. Revisit that later as a separate surface
+  probing/noisy-probe robustness task.
+
 - The B/C closed-loop SSI feedback path is functional but has not been
   fine-tuned.
 - Current rotary following-error limits are intentionally loose enough to avoid

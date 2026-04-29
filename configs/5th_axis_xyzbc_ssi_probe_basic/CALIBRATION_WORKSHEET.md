@@ -494,6 +494,27 @@ Those deltas are the values you fit against when solving the rotary geometry.
 
 ## Immediate Next Engineering Steps
 
+2026-04-30 shutdown handoff:
+
+- The late-night full expanded TCPC run produced useful rows through B `+/-50`
+  before repeat wireless probe false trips at B60.
+- Use rows `243-306` of
+  `tcpc-expanded-pose-vector-2pass-results.csv` as the best pre-shutdown
+  full-run data through B `+/-50`.
+- Rows `307-314` are incomplete B60 attempts only. The sphere was moved after
+  those attempts, so do not use them for final fitting.
+- New data after the moved sphere starts at results line `315`.
+- The morning program is set for a conservative fresh full B `+/-60` rerun:
+  `#704=1.0`, `#706=1.0`, `#707=60.0`, `#708=0.0`, `#709=10.0`.
+- The program now lifts +5 mm in Z before rotary index moves via `#515=5.0`.
+- First-pass analysis says there is enough data to identify likely mechanical
+  contributors, but not enough for a final TCPC fit. A practical TCPC fit only
+  improves rows `243-306` RMS from about `0.155 mm` to about `0.142 mm`, so
+  the remaining high-B residual is likely mixed geometry/alignment/mechanics,
+  not one simple offset.
+- Stable B0 closures and small rotary following error argue against random
+  drift or B/C servo following error as the primary B `+/-50` source.
+
 1. Get the ring calibration offset stable.
 2. Get repeatable `B0 C0` sphere-center data.
 3. Collect the `C` sweep.

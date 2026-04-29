@@ -585,3 +585,51 @@ after the completed B50 run, set:
 
 Do not leave B60 as the default. Confirm clearance and probe receiver stability
 before running it.
+
+## Shutdown Handoff - 2026-04-30
+
+The late-night full expanded sphere run reached B60 but was stopped by repeat
+wireless/optical probe false trips. The operator observed probe flashes with no
+contact. The sphere was moved after those attempts, so the next run must be a
+fresh data set, not a resume from the old sphere position.
+
+Data state:
+
+- Current log boundary after the moved sphere:
+  `tcpc-expanded-pose-vector-2pass-results.csv` line `314`,
+  `tcpc-expanded-pose-vector-2pass-raw-points.csv` line `1566`, rotary logs
+  line `314`.
+- Rows `243-306` are the best pre-shutdown full-run block through B `+/-50`.
+- Rows `307-314` are incomplete B60 attempts and should be treated as trend
+  data only.
+- Rows `243-306` final B0 C0 closure after B `+/-50` was about `0.010627 mm`.
+- Rows `243-306` B `+/-30` remains inside the practical `0.2 mm` target; B
+  `+/-50` remains outside it with about `0.355 mm` max at B+50 and `0.404 mm`
+  max at B-50.
+- Rotary following error was not the limiting factor: accepted pass-2 rows in
+  the block stayed around B `305 microdeg` max and C `1030 microdeg` max.
+
+Interpretation:
+
+- There is enough data for first-pass TCPC/mechanical analysis and fault
+  direction.
+- There is not enough data for a final TCPC fit because B60 is incomplete, the
+  sphere moved, and false trips disturbed the last attempts.
+- A practical TCPC parameter fit only reduces the rows `243-306` RMS from about
+  `0.155 mm` to about `0.142 mm`; do not apply new offsets from this alone.
+- Treat remaining high-B residual as mixed geometry/alignment/mechanics until a
+  stable repeat confirms a clean offset pattern.
+
+Morning program state:
+
+```ngc
+#704 = 1.0
+#706 = 1.0
+#707 = 60.0
+#708 = 0.0
+#709 = 10.0
+#515 = 5.0
+```
+
+This is a conservative fresh full B `+/-60` rerun with pause-before-pose and
+pause-between-groups enabled, plus a +5 mm Z lift before rotary index moves.

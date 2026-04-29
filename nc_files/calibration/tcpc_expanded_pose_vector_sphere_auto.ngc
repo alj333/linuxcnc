@@ -15,6 +15,11 @@
 (Sequence:)
 (B0 C quadrants, B +/-10, B +/-30, optional B +/-50/B +/-60, with closures)
 
+(Handoff 2026-04-30 shutdown:)
+(Set for a conservative fresh full B +/-60 rerun in the morning.)
+(The sphere was moved after the late-night B60 false-trip attempts, so do)
+(not use resume mode. #704 is enabled so each pose pauses before probing.)
+
 (Accepted pass-2 centers log to:)
 (/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-results.csv)
 (High-resolution rotary state logs to:)
@@ -65,15 +70,16 @@ o<probe_cal_offset_default> endif
 #512 = 3.0            (side retract vector length)
 #513 = [#505 + #509]
 #514 = [#505 + #510]
+#515 = 5.0            (extra +Z lift before rotary index moves)
 
 #700 = 0.0            (last accepted center valid)
 #701 = 0.0            (last accepted center abs X)
 #702 = 0.0            (last accepted center abs Y)
 #703 = 0.0            (last accepted center abs Z)
-#704 = 0.0            (set to 1.0 to pause before each probing pose)
+#704 = 1.0            (morning full rerun: pause before each probing pose)
 #705 = 200.0          (rotary index feed)
 #706 = 1.0            (set to 1.0 to pause between B range groups)
-#707 = 30.0           (max B group: 30 default, set 50/60 only when cleared)
+#707 = 60.0           (morning full rerun to B +/-60)
 #708 = 0.0            (resume mode: 1 skips full B0 C sweep after fresh B0 C0 baseline)
 #709 = 10.0           (resume start B group: 10, 30, 50, or 60)
 
@@ -438,8 +444,12 @@ o<tcpc_measure_pose> sub
   #<target_b> = #1
   #<target_c> = #2
 
-  (Index rotaries first. TCPC should keep the tip close to the sphere.)
+  (Lift before indexing rotaries; high B angles can pass close after C moves.)
   G90
+  F#507
+  G1 Z[#<_z> + #515]
+
+  (Index rotaries, then move back to the calculated vector clearance.)
   F#705
   G1 B#<target_b> C#<target_c>
 
