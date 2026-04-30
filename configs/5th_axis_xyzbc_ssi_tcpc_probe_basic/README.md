@@ -633,3 +633,79 @@ Morning program state:
 
 This is a conservative fresh full B `+/-60` rerun with pause-before-pose and
 pause-between-groups enabled, plus a +5 mm Z lift before rotary index moves.
+
+## Diagnostic Half-Step Correction - 2026-04-30
+
+The latest completed B `+/-90` data confirms repeatable pose-dependent error:
+B0 closures stayed tight while residuals grew with B angle. A linear sensitivity
+check against the modeled TCPC joint travel ranked the strongest apparent terms
+as Z error with large Z travel, Y error with large Y travel, then Y/Z
+squareness-type coupling. This does not prove the physical source, but it gives
+a practical direction for the next small software verification.
+
+A small half-step correction has been loaded in the TCPC test overlay only. It
+is intentionally not a final compensation:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.111675
+setp headheadkins.cal-c-to-b.y 0.004925
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.064339
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.757746
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024800
+```
+
+The same values are mirrored to `headheadtwp.*`.
+
+Predicted effect against the latest clean group-baselined data:
+
+- B `+/-30`: RMS `0.115 mm` to `0.113 mm`, max `0.163 mm` to `0.154 mm`
+- B `+/-50`: RMS `0.244 mm` to `0.214 mm`, max `0.390 mm` to `0.305 mm`
+- B `+/-60`: RMS `0.317 mm` to `0.265 mm`, max `0.534 mm` to `0.440 mm`
+- B `+/-90`: RMS `0.566 mm` to `0.477 mm`, max `0.891 mm` to `0.774 mm`
+
+The active expanded program has also been reset out of the temporary B90 resume
+state:
+
+```ngc
+#704 = 0.0
+#706 = 1.0
+#707 = 60.0
+#708 = 0.0
+#709 = 10.0
+#710 = 0.0
+#515 = 25.0
+```
+
+Validation intent:
+
+- restart the TCPC test config so the new values load
+- run only slow no-cut probing
+- first confirm B `+/-30` does not get worse
+- then compare B `+/-50` and B `+/-60` against the prior data
+- if high-B residuals do not reduce in the predicted direction, revert this
+  half-step and prioritize mechanical/linear-axis alignment tests
+
+## Probe Gate Runtime Note - 2026-04-30
+
+The supervised probe-gate process is working well for the current TCPC probing:
+the active program enables `motion.digital-out-00` only during the actual
+`G38.3` probe move and disables it immediately after contact. This prevented
+the repeated false/double pulse from stopping transport and retract moves.
+
+Operator observation from the last full run:
+
+- the wireless probe flashed a second time about `3-4` times after contact
+- this did not stop the gated program
+- likely cause is low battery alarm behavior rather than a real second touch
+
+Future probe robustness task:
+
+- add a timed post-contact gate, about `2-3 seconds`, after a valid probe hit
+- ignore/block additional probe pulses during that window
+- log or display a non-stopping operator warning such as suspected probe low
+  battery/double pulse
+- keep real probe-hit safety active during every intentional `G38` move
+- treat this as a separate task from TCPC geometry fitting

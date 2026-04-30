@@ -18,7 +18,7 @@
 (Handoff 2026-04-30 shutdown:)
 (Set for a conservative fresh full B +/-60 rerun in the morning.)
 (The sphere was moved after the late-night B60 false-trip attempts, so do)
-(not use resume mode. #704 is enabled so each pose pauses before probing.)
+(not use resume mode. #704 disables per-pose pauses; #706 pauses at B blocks.)
 
 (Accepted pass-2 centers log to:)
 (/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-results.csv)
@@ -32,6 +32,10 @@ o<preview_guard> if [#<_task> EQ 0]
   (DEBUG, TCPC_EXPANDED_POSE_VECTOR preview only)
   M2
 o<preview_guard> endif
+
+(TCPC test config gates motion.probe-input with motion.digital-out-00.)
+(Keep the gate disabled except during the actual G38 probe move.)
+M65 P0
 
 #500 = #3014
 o<probe_tool_default> if [#500 LE 0]
@@ -70,18 +74,19 @@ o<probe_cal_offset_default> endif
 #512 = 3.0            (side retract vector length)
 #513 = [#505 + #509]
 #514 = [#505 + #510]
-#515 = 5.0            (extra +Z lift before rotary index moves)
+#515 = 25.0           (machine-Z lift for high-B C-index transit moves)
 
 #700 = 0.0            (last accepted center valid)
 #701 = 0.0            (last accepted center abs X)
 #702 = 0.0            (last accepted center abs Y)
 #703 = 0.0            (last accepted center abs Z)
-#704 = 1.0            (morning full rerun: pause before each probing pose)
+#704 = 0.0            (pause before each probing pose; 0 after first B0 check)
 #705 = 200.0          (rotary index feed)
-#706 = 1.0            (set to 1.0 to pause between B range groups)
-#707 = 60.0           (morning full rerun to B +/-60)
-#708 = 0.0            (resume mode: 1 skips full B0 C sweep after fresh B0 C0 baseline)
-#709 = 10.0           (resume start B group: 10, 30, 50, or 60)
+#706 = 1.0            (pause before each new B-angle block)
+#707 = 60.0           (max B range for small-correction verification)
+#708 = 0.0            (normal full B0 C sweep; 1.0 only for resume/extension)
+#709 = 10.0           (normal start after B0 group)
+#710 = 0.0            (normal path; nonzero values are temporary resume modes)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -104,7 +109,11 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [#532 * #508]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
 
   o<top_fail> if [#5070 EQ 0]
     G90
@@ -148,7 +157,11 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [#535 * #511]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
   o<um_fail> if [#5070 EQ 0]
     F#507
     G1 X[-#122] Y[-#123] Z[-#124]
@@ -184,7 +197,11 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [-#535 * #511]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
   o<up_fail> if [#5070 EQ 0]
     F#507
     G1 X[-#122] Y[-#123] Z[-#124]
@@ -220,7 +237,11 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [#538 * #511]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
   o<vm_fail> if [#5070 EQ 0]
     F#507
     G1 X[-#122] Y[-#123] Z[-#124]
@@ -256,7 +277,11 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [-#538 * #511]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
   o<vp_fail> if [#5070 EQ 0]
     F#507
     G1 X[-#122] Y[-#123] Z[-#124]
@@ -444,21 +469,20 @@ o<tcpc_measure_pose> sub
   #<target_b> = #1
   #<target_c> = #2
 
-  (Lift before indexing rotaries; high B angles can pass close after C moves.)
-  G90
-  F#507
-  G1 Z[#<_z> + #515]
+  (For later poses, transit high in machine Z: lift, index, XY, then lower Z.)
+  o<use_high_z_transit> if [#700 GT 0.5]
+    #<safe_z> = [#<_z> + #515]
+    G90
+    F#507
+    G1 Z#<safe_z>
 
-  (Index rotaries, then move back to the calculated vector clearance.)
-  F#705
-  G1 B#<target_b> C#<target_c>
+    F#705
+    G1 B#<target_b> C#<target_c>
 
-  #540 = [#<_abs_x> - #<_x>]
-  #541 = [#<_abs_y> - #<_y>]
-  #542 = [#<_abs_z> - #<_z>]
+    #540 = [#<_abs_x> - #<_x>]
+    #541 = [#<_abs_y> - #<_y>]
+    #542 = [#<_abs_z> - #<_z>]
 
-  (After the first accepted center, reposition to clearance for each new pose.)
-  o<use_last_center> if [#700 GT 0.5]
     #<start_w_x> = [-SIN[#<target_b>] * COS[#<target_c>]]
     #<start_w_y> = [-SIN[#<target_b>] * SIN[#<target_c>]]
     #<start_w_z> = [-COS[#<target_b>]]
@@ -466,8 +490,18 @@ o<tcpc_measure_pose> sub
     #<next_start_y> = [#702 - #541 - [#<start_w_y> * #513]]
     #<next_start_z> = [#703 - #542 - [#<start_w_z> * #513]]
     F#507
-    G1 X#<next_start_x> Y#<next_start_y> Z#<next_start_z>
-  o<use_last_center> endif
+    G1 X#<next_start_x> Y#<next_start_y>
+    G1 Z#<next_start_z>
+  o<use_high_z_transit> else
+    (First pose starts from the operator-set position near the sphere.)
+    G90
+    F#705
+    G1 B#<target_b> C#<target_c>
+
+    #540 = [#<_abs_x> - #<_x>]
+    #541 = [#<_abs_y> - #<_y>]
+    #542 = [#<_abs_z> - #<_z>]
+  o<use_high_z_transit> endif
 
   o<pause_before_probe> if [#704 GT 0.5]
     (MSG, TCPC expanded-pose check paused before probing)
@@ -543,45 +577,123 @@ o<tcpc_measure_pose> sub
 o<tcpc_measure_pose> endsub
 
 (Run the expanded quantitative TCPC drift sequence.)
-o<tcpc_measure_pose> call [0.0] [0.0]
-o<run_full_b0_c_sweep> if [#708 LT 0.5]
-  o<tcpc_measure_pose> call [0.0] [90.0]
-  o<tcpc_measure_pose> call [0.0] [180.0]
-  o<tcpc_measure_pose> call [0.0] [270.0]
+o<resume_after_bminus10_c90> if [[#710 GT 0.5] AND [#710 LT 1.5]]
+  (Resume after B-10 C90 by capturing a fresh B0 C0 baseline first.)
   o<tcpc_measure_pose> call [0.0] [0.0]
-o<run_full_b0_c_sweep> endif
 
-o<pause_after_b0> if [[#706 GT 0.5] AND [#708 LT 0.5]]
-  (MSG, TCPC expanded B0 C quadrant group complete. Resume for B +/-10.)
-  M0
-o<pause_after_b0> endif
+  o<pause_after_resume_baseline> if [#706 GT 0.5]
+    (MSG, Resume baseline complete. Resume for B -10 C180.)
+    M0
+  o<pause_after_resume_baseline> endif
 
-o<run_b10_group> if [#709 LT 29.5]
-  o<tcpc_measure_pose> call [10.0] [0.0]
-  o<tcpc_measure_pose> call [10.0] [90.0]
-  o<tcpc_measure_pose> call [10.0] [180.0]
-  o<tcpc_measure_pose> call [10.0] [270.0]
-  o<tcpc_measure_pose> call [-10.0] [0.0]
-  o<tcpc_measure_pose> call [-10.0] [90.0]
   o<tcpc_measure_pose> call [-10.0] [180.0]
   o<tcpc_measure_pose> call [-10.0] [270.0]
+
+  o<pause_to_b0_resume_b10> if [#706 GT 0.5]
+    (MSG, TCPC B -10 resume complete. Resume for B0 closure.)
+    M0
+  o<pause_to_b0_resume_b10> endif
+
   o<tcpc_measure_pose> call [0.0] [0.0]
 
-  o<pause_after_b10> if [#706 GT 0.5]
-    (MSG, TCPC expanded B +/-10 group complete. Resume for B +/-30.)
+  o<pause_after_resume_b10> if [#706 GT 0.5]
+    (MSG, TCPC B +/-10 resumed complete. Resume for B +/-30.)
     M0
-  o<pause_after_b10> endif
-o<run_b10_group> endif
+  o<pause_after_resume_b10> endif
+
+  #709 = 30.0
+o<resume_after_bminus10_c90> elseif [[#710 GT 1.5] AND [#710 LT 2.5]]
+  (Current-position resume: operator must start above sphere at B-10 C180.)
+  (Prior clean accepted rows completed through B-10 C90 pass 2.)
+  o<tcpc_measure_pose> call [-10.0] [180.0]
+  o<tcpc_measure_pose> call [-10.0] [270.0]
+
+  o<pause_to_b0_current_resume> if [#706 GT 0.5]
+    (MSG, TCPC B -10 current-position resume complete. Resume for B0 closure.)
+    M0
+  o<pause_to_b0_current_resume> endif
+
+  o<tcpc_measure_pose> call [0.0] [0.0]
+
+  o<pause_after_current_resume_b10> if [#706 GT 0.5]
+    (MSG, TCPC B +/-10 resumed complete. Resume for B +/-30.)
+    M0
+  o<pause_after_current_resume_b10> endif
+
+  #709 = 30.0
+o<resume_after_bminus10_c90> elseif [[#710 GT 2.5] AND [#710 LT 3.5]]
+  (Current-position resume: operator starts at B60 C270 high-safe transit level.)
+  (Prior accepted center is B60 C180 pass 2 from this run.)
+  #700 = 1.0
+  #701 = 469.249760
+  #702 = 323.985528
+  #703 = -858.927998
+  #709 = 61.0
+o<resume_after_bminus10_c90> else
+  o<tcpc_measure_pose> call [0.0] [0.0]
+  o<run_full_b0_c_sweep> if [#708 LT 0.5]
+    o<tcpc_measure_pose> call [0.0] [90.0]
+    o<tcpc_measure_pose> call [0.0] [180.0]
+    o<tcpc_measure_pose> call [0.0] [270.0]
+    o<tcpc_measure_pose> call [0.0] [0.0]
+  o<run_full_b0_c_sweep> endif
+
+  o<pause_after_b0> if [[#706 GT 0.5] AND [#708 LT 0.5]]
+    (MSG, TCPC expanded B0 C quadrant group complete. Resume for B +/-10.)
+    M0
+  o<pause_after_b0> endif
+
+  o<run_b10_group> if [#709 LT 29.5]
+    o<tcpc_measure_pose> call [10.0] [0.0]
+    o<tcpc_measure_pose> call [10.0] [90.0]
+    o<tcpc_measure_pose> call [10.0] [180.0]
+    o<tcpc_measure_pose> call [10.0] [270.0]
+
+    o<pause_to_b_minus10> if [#706 GT 0.5]
+      (MSG, TCPC B +10 complete. Resume for B -10.)
+      M0
+    o<pause_to_b_minus10> endif
+
+    o<tcpc_measure_pose> call [-10.0] [0.0]
+    o<tcpc_measure_pose> call [-10.0] [90.0]
+    o<tcpc_measure_pose> call [-10.0] [180.0]
+    o<tcpc_measure_pose> call [-10.0] [270.0]
+
+    o<pause_to_b0_after_b10> if [#706 GT 0.5]
+      (MSG, TCPC B -10 complete. Resume for B0 closure.)
+      M0
+    o<pause_to_b0_after_b10> endif
+
+    o<tcpc_measure_pose> call [0.0] [0.0]
+
+    o<pause_after_b10> if [#706 GT 0.5]
+      (MSG, TCPC expanded B +/-10 group complete. Resume for B +/-30.)
+      M0
+    o<pause_after_b10> endif
+  o<run_b10_group> endif
+o<resume_after_bminus10_c90> endif
 
 o<run_b30_group> if [#709 LT 49.5]
   o<tcpc_measure_pose> call [30.0] [0.0]
   o<tcpc_measure_pose> call [30.0] [90.0]
   o<tcpc_measure_pose> call [30.0] [180.0]
   o<tcpc_measure_pose> call [30.0] [270.0]
+
+  o<pause_to_b_minus30> if [#706 GT 0.5]
+    (MSG, TCPC B +30 complete. Resume for B -30.)
+    M0
+  o<pause_to_b_minus30> endif
+
   o<tcpc_measure_pose> call [-30.0] [0.0]
   o<tcpc_measure_pose> call [-30.0] [90.0]
   o<tcpc_measure_pose> call [-30.0] [180.0]
   o<tcpc_measure_pose> call [-30.0] [270.0]
+
+  o<pause_to_b0_after_b30> if [#706 GT 0.5]
+    (MSG, TCPC B -30 complete. Resume for B0 closure.)
+    M0
+  o<pause_to_b0_after_b30> endif
+
   o<tcpc_measure_pose> call [0.0] [0.0]
 
   o<pause_after_b30> if [[#706 GT 0.5] AND [#707 GT 49.5]]
@@ -595,10 +707,21 @@ o<run_b50_group> if [[#707 GT 49.5] AND [#709 LT 59.5]]
   o<tcpc_measure_pose> call [50.0] [90.0]
   o<tcpc_measure_pose> call [50.0] [180.0]
   o<tcpc_measure_pose> call [50.0] [270.0]
+
+  o<pause_to_b_minus50> if [#706 GT 0.5]
+    (MSG, TCPC B +50 complete. Resume for B -50.)
+    M0
+  o<pause_to_b_minus50> endif
+
   o<tcpc_measure_pose> call [-50.0] [0.0]
   o<tcpc_measure_pose> call [-50.0] [90.0]
   o<tcpc_measure_pose> call [-50.0] [180.0]
   o<tcpc_measure_pose> call [-50.0] [270.0]
+
+  o<pause_to_b0_after_b50> if [#706 GT 0.5]
+    (MSG, TCPC B -50 complete. Resume for B0 closure.)
+    M0
+  o<pause_to_b0_after_b50> endif
 
   (Add extra clearance before the final B0 C0 return/closure check.)
   #<return_w_x> = [-SIN[#<_abs_b>] * COS[#<_abs_c>]]
@@ -620,15 +743,34 @@ o<run_b50_group> if [[#707 GT 49.5] AND [#709 LT 59.5]]
   o<pause_after_b50> endif
 o<run_b50_group> endif
 
-o<run_b60_group> if [#707 GT 59.5]
-  o<tcpc_measure_pose> call [60.0] [0.0]
-  o<tcpc_measure_pose> call [60.0] [90.0]
-  o<tcpc_measure_pose> call [60.0] [180.0]
-  o<tcpc_measure_pose> call [60.0] [270.0]
+o<run_b60_group> if [[#707 GT 59.5] AND [#709 LT 89.5]]
+  o<run_b60_positive_full> if [#709 LT 60.5]
+    o<tcpc_measure_pose> call [60.0] [0.0]
+    o<tcpc_measure_pose> call [60.0] [90.0]
+    o<tcpc_measure_pose> call [60.0] [180.0]
+    o<tcpc_measure_pose> call [60.0] [270.0]
+  o<run_b60_positive_full> elseif [[#709 GT 60.5] AND [#709 LT 61.5]]
+    (Resume from current B60 C270 high-safe level. Do not add another lift.)
+    #<saved_lift> = #515
+    #515 = 0.0
+    o<tcpc_measure_pose> call [60.0] [270.0]
+    #515 = #<saved_lift>
+  o<run_b60_positive_full> endif
+
+  o<pause_to_b_minus60> if [#706 GT 0.5]
+    (MSG, TCPC B +60 complete. Resume for B -60.)
+    M0
+  o<pause_to_b_minus60> endif
+
   o<tcpc_measure_pose> call [-60.0] [0.0]
   o<tcpc_measure_pose> call [-60.0] [90.0]
   o<tcpc_measure_pose> call [-60.0] [180.0]
   o<tcpc_measure_pose> call [-60.0] [270.0]
+
+  o<pause_to_b0_after_b60> if [#706 GT 0.5]
+    (MSG, TCPC B -60 complete. Resume for final B0 closure.)
+    M0
+  o<pause_to_b0_after_b60> endif
 
   (Add extra clearance before the final B0 C0 return/closure check.)
   #<return_w_x> = [-SIN[#<_abs_b>] * COS[#<_abs_c>]]
@@ -645,9 +787,34 @@ o<run_b60_group> if [#707 GT 59.5]
   o<tcpc_measure_pose> call [0.0] [0.0]
 o<run_b60_group> endif
 
+o<run_b90_group> if [#707 GT 89.5]
+  o<tcpc_measure_pose> call [90.0] [0.0]
+  o<tcpc_measure_pose> call [90.0] [90.0]
+  o<tcpc_measure_pose> call [90.0] [180.0]
+  o<tcpc_measure_pose> call [90.0] [270.0]
+
+  o<pause_to_b_minus90> if [#706 GT 0.5]
+    (MSG, TCPC B +90 complete. Resume for B -90.)
+    M0
+  o<pause_to_b_minus90> endif
+
+  o<tcpc_measure_pose> call [-90.0] [0.0]
+  o<tcpc_measure_pose> call [-90.0] [90.0]
+  o<tcpc_measure_pose> call [-90.0] [180.0]
+  o<tcpc_measure_pose> call [-90.0] [270.0]
+
+  o<pause_to_b0_after_b90> if [#706 GT 0.5]
+    (MSG, TCPC B -90 complete. Resume for final B0 closure.)
+    M0
+  o<pause_to_b0_after_b90> endif
+
+  o<tcpc_measure_pose> call [0.0] [0.0]
+o<run_b90_group> endif
+
 G90
 F#705
 G1 B0 C0
 
+M65 P0
 (DEBUG, TCPC_EXPANDED_POSE_VECTOR complete)
 M2

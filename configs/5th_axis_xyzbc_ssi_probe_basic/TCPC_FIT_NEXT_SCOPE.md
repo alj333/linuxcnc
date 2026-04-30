@@ -1299,3 +1299,90 @@ Program state for the next morning:
   focus on B/C rotary feedback loops, following-error limits, PID gains,
   feed-forward, acceleration limits, and final backlash/compensation strategy.
 - Do not use TCPC sphere residuals alone as a substitute for servo loop tuning.
+
+## Diagnostic Half-Step Loaded - 2026-04-30
+
+After the completed B `+/-90` expanded matrix, the data is now sufficient for a
+small intent-verification correction. The aim is to check whether the high-B
+residuals move in the predicted direction, not to create final production
+compensation.
+
+Latest clean group-baselined pass-2 residuals:
+
+- B `+/-30`: RMS `0.115 mm`, max `0.163 mm`
+- B `+/-50`: RMS `0.244 mm`, max `0.390 mm`
+- B `+/-60`: RMS `0.317 mm`, max `0.534 mm`
+- B `+/-90`: RMS `0.566 mm`, max `0.891 mm`
+
+Linear-travel correlation against the current TCPC model ranked apparent
+contributors as:
+
+- Z error versus large Z travel, about `-1.1 mm/m`
+- Y error versus large Y travel, about `-0.8 mm/m`
+- Z error versus Y travel, about `-0.4` to `-0.5 mm/m`
+
+These are diagnostic correlations only. They may represent real axis
+scale/squareness error, but they may also be the projection of B/C head
+geometry errors through the TCPC motion.
+
+Loaded test-only half-step correction, relative to the previous validated
+candidate:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.111675
+setp headheadkins.cal-c-to-b.y 0.004925
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.064339
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.757746
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024800
+```
+
+Predicted half-step effect:
+
+- B `+/-30`: RMS `0.115` to `0.113 mm`, max `0.163` to `0.154 mm`
+- B `+/-50`: RMS `0.244` to `0.214 mm`, max `0.390` to `0.305 mm`
+- B `+/-60`: RMS `0.317` to `0.265 mm`, max `0.534` to `0.440 mm`
+- B `+/-90`: RMS `0.566` to `0.477 mm`, max `0.891` to `0.774 mm`
+
+The expanded program has been reset to a fresh verification path:
+
+```ngc
+#704 = 0.0
+#706 = 1.0
+#707 = 60.0
+#708 = 0.0
+#709 = 10.0
+#710 = 0.0
+#515 = 25.0
+```
+
+Validation rule:
+
+- If B `+/-30` gets worse, revert immediately.
+- If B `+/-30` stays stable and B `+/-50`/B `+/-60` improve, keep this as a
+  direction-confirming diagnostic and continue separating axis squareness,
+  pitch/rack compensation, and rotary-head geometry.
+- If high-B residuals do not move as predicted, do not keep fitting TCPC
+  offsets from this data. Move to direct axis alignment and pitch/rack tests.
+
+## Probe Gate Observation - 2026-04-30
+
+The current supervised gate around `G38.3` probe moves is validated in practice.
+The operator saw the wireless probe double-flash about `3-4` times during the
+last full run, but the gated probe input prevented those post-contact pulses
+from stopping retract or transport moves.
+
+Likely cause is the probe low-battery alarm behavior. Replacement batteries are
+on order. Future robustness work should add a timed post-contact filter/alarm:
+
+- after a valid probe touch, suppress extra probe pulses for about `2-3`
+  seconds
+- if a pulse occurs in that suppression window, show/log a low-battery or
+  double-pulse warning
+- do not stop the active program for that warning
+- never suppress the probe signal during an intentional `G38` move
+
+Keep this separate from TCPC fitting. The current gate is sufficient for the
+next supervised TCPC verification run.
