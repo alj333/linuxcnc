@@ -1386,3 +1386,82 @@ on order. Future robustness work should add a timed post-contact filter/alarm:
 
 Keep this separate from TCPC fitting. The current gate is sufficient for the
 next supervised TCPC verification run.
+
+## Half-Step Failed, Opposite Test Prepared - 2026-04-30
+
+The diagnostic half-step loaded after the B `+/-90` matrix was tested through
+B `+/-50` and then stopped. It failed the pass/fail rule:
+
+- new half-step run starts at data row `432` in
+  `tcpc-expanded-pose-vector-2pass-results.csv`
+- B0 C-only sweep was essentially unchanged: previous RMS `0.101 mm`, new RMS
+  `0.098 mm`
+- B `+/-30` worsened: RMS `0.115 mm` to `0.143 mm`; max `0.163 mm` to
+  `0.216 mm`
+- B `+/-50` worsened: RMS `0.244 mm` to `0.297 mm`; max `0.390 mm` to
+  `0.497 mm`
+- B0 closures remained good: B30 closure `0.006 mm`, B50 closure `0.004 mm`
+
+Interpretation:
+
+- The failed result is not caused by general probing repeatability or B0 C
+  closure drift.
+- The correction-family direction was wrong for tilted B poses.
+- The old-to-new residual delta is mostly reversible, so the opposite
+  empirical half-step is a valid next small direction test.
+- This still does not prove a final TCPC geometry correction; it is only a
+  controlled sign/direction check.
+
+Empirical opposite-half prediction, using `residual_next ~= 2*old - failed`:
+
+- B `+/-30`: RMS about `0.107 mm`, max about `0.134 mm`
+- B `+/-50`: RMS about `0.213 mm`, max about `0.286 mm`
+
+Prepared next startup correction in the TCPC test overlay:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.018325
+setp headheadkins.cal-c-to-b.y 0.023075
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x -0.064339
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.872254
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024200
+```
+
+The same values are mirrored to `headheadtwp.*`.
+
+Prepared next probing default:
+
+```ngc
+#704 = 0.0
+#706 = 1.0
+#707 = 30.0
+#708 = 0.0
+#709 = 10.0
+#710 = 0.0
+#515 = 25.0
+```
+
+Next-session validation sequence:
+
+1. Restart the TCPC config so the opposite correction loads.
+2. Home and set up above the calibration sphere at B0 C0.
+3. Run the expanded program as configured, B `+/-30` only.
+4. Stop and revert if B `+/-30` is worse than the prior validated candidate.
+5. If B `+/-30` improves, deliberately change `#707` to `50.0` and run B
+   `+/-50`; keep B60 for a later confirmation only after B50 passes.
+
+Prior validated candidate to revert to if needed:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.065000
+setp headheadkins.cal-c-to-b.y 0.014000
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024500
+```

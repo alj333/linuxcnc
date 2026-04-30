@@ -709,3 +709,65 @@ Future probe robustness task:
   battery/double pulse
 - keep real probe-hit safety active during every intentional `G38` move
 - treat this as a separate task from TCPC geometry fitting
+
+## Half-Step Verification Result - 2026-04-30
+
+The diagnostic half-step above was tested through B `+/-50` and then stopped.
+The result is a failed direction test:
+
+- new run starts at `tcpc-expanded-pose-vector-2pass-results.csv` data row
+  `432` / file line `433`
+- B0 C-only sweep stayed stable: prior RMS `0.101 mm`, new RMS `0.098 mm`
+- B `+/-30` worsened: RMS `0.115 mm` to `0.143 mm`, max `0.163 mm` to
+  `0.216 mm`
+- B `+/-50` worsened: RMS `0.244 mm` to `0.297 mm`, max `0.390 mm` to
+  `0.497 mm`
+- B0 closures remained good, so the failed result is a useful correction-sign
+  diagnostic rather than a general repeatability failure
+
+The failed half-step mainly pushed the tilted-pose residuals farther in the
+same direction. Linear projection of old-to-new residuals predicts that the
+opposite empirical half-step should improve the same B `+/-30` and B `+/-50`
+groups:
+
+- B `+/-30`: predicted RMS about `0.107 mm`, max about `0.134 mm`
+- B `+/-50`: predicted RMS about `0.213 mm`, max about `0.286 mm`
+
+The TCPC test overlay has therefore been prepared for the next session with the
+opposite empirical half-step:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.018325
+setp headheadkins.cal-c-to-b.y 0.023075
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x -0.064339
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.872254
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024200
+```
+
+The same values are mirrored to `headheadtwp.*`.
+
+The expanded program is now set to B `+/-30` only for the next first check:
+
+```ngc
+#704 = 0.0
+#706 = 1.0
+#707 = 30.0
+#708 = 0.0
+#709 = 10.0
+#710 = 0.0
+#515 = 25.0
+```
+
+Next-session rule:
+
+- restart the TCPC config before running so the opposite correction loads
+- run the B `+/-30` check first
+- if B `+/-30` is worse than the prior validated candidate, revert to:
+  `cal-c-to-b.x=-0.065000`, `cal-c-to-b.y=0.014000`,
+  `cal-b-to-tool.x=0.000000`, `cal-b-to-tool.z=0.815000`,
+  `c-zero-offset=-0.024500`
+- if B `+/-30` improves, extend deliberately to B `+/-50`; do not run B60
+  until B50 confirms the direction
