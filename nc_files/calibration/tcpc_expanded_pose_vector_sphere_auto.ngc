@@ -66,7 +66,7 @@ o<probe_cal_offset_default> endif
 #505 = [#503 + #504]
 
 #506 = 50.0           (probe feed)
-#507 = 600.0          (linear positioning feed)
+#507 = 1200.0         (linear positioning / transit feed)
 #508 = 16.0           (top probe vector length)
 #509 = 5.0            (top clearance past sphere+probe)
 #510 = 4.0            (side start clearance past sphere+probe)
@@ -83,7 +83,7 @@ o<probe_cal_offset_default> endif
 #704 = 0.0            (pause before each probing pose; 0 after first B0 check)
 #705 = 200.0          (rotary index feed)
 #706 = 1.0            (pause before each new B-angle block)
-#707 = 30.0           (next opposite-correction check: validate B +/-30 first)
+#707 = 30.0           (validate B +/-30 before expanding range)
 #708 = 0.0            (normal full B0 C sweep; 1.0 only for resume/extension)
 #709 = 10.0           (normal start after B0 group)
 #710 = 0.0            (normal path; nonzero values are temporary resume modes)

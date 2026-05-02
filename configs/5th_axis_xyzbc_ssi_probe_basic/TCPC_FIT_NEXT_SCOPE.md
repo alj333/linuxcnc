@@ -150,8 +150,8 @@ Before collecting more machine data:
   calibration WCS
 - keep probing feeds at `50 mm/min` slow and `100 mm/min` fast
 - for the current TCPC fixed-tip checks, operator-approved linear positioning
-  feed is `600 mm/min`; use lower feeds again if clearance or setup confidence
-  changes
+  feed is `1200 mm/min`; use lower feeds again if clearance or setup
+  confidence changes
 - rerun closing `B0 C0` with the two-pass routine as the first clean check
 - after launching the TCPC config, confirm the candidate geometry loaded in
   `headheadkins` before running fixed-tip validation
@@ -1465,3 +1465,67 @@ setp headheadkins.cal-b-to-tool.z 0.815000
 setp headheadkins.b-zero-offset 0.000000
 setp headheadkins.c-zero-offset -0.024500
 ```
+
+## Opposite Test Rejected, Reverted - 2026-05-02
+
+The empirical opposite-half correction was tested twice. The first run was
+accidentally run at 200% feed override and was treated as diagnostic only. The
+second run at 100% feed override still failed against the prior validated
+candidate:
+
+- B `+/-30` RMS was about `0.138 mm`, max about `0.193 mm`, worse than the
+  prior validated B `+/-30` result of RMS `0.115 mm`, max `0.163 mm`.
+- The B0 C-only sweep also worsened, with RMS about `0.179 mm` and max about
+  `0.227 mm`.
+- The result confirms the opposite-half correction should not be kept.
+
+Action applied after the failed run:
+
+- `5th_axis_xyzbc_ssi_tcpc_probe_basic.hal` has been reverted to the prior
+  validated candidate:
+  `cal-c-to-b.x=-0.065000`, `cal-c-to-b.y=0.014000`,
+  `cal-b-to-tool.x=0.000000`, `cal-b-to-tool.z=0.815000`,
+  `c-zero-offset=-0.024500`.
+- The same values are mirrored to `headheadtwp.*`.
+- `tcpc_expanded_pose_vector_sphere_auto.ngc` is set for B `+/-30` validation
+  only with probe feed `F50`, linear transit/positioning `F1200`, rotary index
+  `F200`, and `#707 = 30.0`.
+
+The attempted rerun after reverting was stopped during the B-30 group because
+the wireless probe showed a constant flash, indicating batteries need
+replacement. Treat that interrupted run as non-usable for TCPC fitting or
+comparison.
+
+Next resume after new probe batteries:
+
+1. Restart the TCPC Probe Basic config and confirm only one LinuxCNC instance
+   is running.
+2. Home all axes, verify probe tool/diameter/calibration offset state, and set
+   up over the calibration sphere at B0 C0.
+3. Run the expanded program as currently configured for B `+/-30` only at 100%
+   feed override.
+4. Compare the clean run against the prior validated B `+/-30` target: RMS
+   about `0.115 mm`, max about `0.163 mm`, and B0 closure about `0.009 mm`.
+5. Only expand back to B `+/-50` after the reverted B `+/-30` result matches
+   the prior candidate.
+
+## Shutdown Handover - 2026-05-02 20:50 +07
+
+Machine TCPC calibration is paused for several days while replacement wireless
+probe batteries are on order. The PC may be fully shut down.
+
+Do not continue TCPC probing with the current probe battery state. The constant
+flash seen during the B-30 group indicates the probe signal is not trustworthy
+enough for fitting data. Existing gated-probe handling remains useful for
+post-contact double flashes, but it is not a substitute for a healthy probe
+battery.
+
+Resume sequence after battery replacement:
+
+1. Start the TCPC Probe Basic config from the desktop launcher or
+   `launch_xyzbc_ssi_tcpc_probe_basic.sh`.
+2. Confirm only one LinuxCNC/Probe Basic instance is running.
+3. Home all axes and verify the probe setup over the calibration sphere.
+4. Run the current B `+/-30` validation program at 100% feed override.
+5. Treat the interrupted low-battery B-30 run as invalid and compare only the
+   clean post-battery run against the prior validated candidate.

@@ -771,3 +771,45 @@ Next-session rule:
   `c-zero-offset=-0.024500`
 - if B `+/-30` improves, extend deliberately to B `+/-50`; do not run B60
   until B50 confirms the direction
+
+## Current Hold Status - 2026-05-02
+
+The opposite empirical half-step was rejected after the 100% feed override
+rerun. B `+/-30` and the B0 C-only sweep were both worse than the prior
+validated candidate, so the TCPC test config has been reverted to:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.065000
+setp headheadkins.cal-c-to-b.y 0.014000
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024500
+```
+
+The same values are mirrored to `headheadtwp.*`.
+
+The active expanded program is prepared for a clean B `+/-30` validation rerun
+only:
+
+```ngc
+#506 = 50.0
+#507 = 1200.0
+#705 = 200.0
+#707 = 30.0
+```
+
+The first reverted rerun was stopped during the B-30 group because the wireless
+probe showed a constant low-battery flash. Do not use that interrupted run for
+TCPC fitting. Resume TCPC calibration only after new probe batteries are fitted,
+then rerun B `+/-30` at 100% feed override before expanding range again.
+
+Shutdown handover, 2026-05-02 20:50 +07:
+
+- replacement probe batteries are several days away
+- PC shutdown is safe from the repository/config side
+- after restart, launch only one TCPC Probe Basic instance, home, verify probe
+  parameters, and rerun the current B `+/-30` validation before any further
+  fitting
