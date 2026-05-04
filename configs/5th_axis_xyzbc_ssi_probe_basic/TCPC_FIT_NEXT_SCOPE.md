@@ -1879,3 +1879,50 @@ Next live work:
 3. Use the new high-B rows to fit B-axis vector/skew, B zero, tool/probe vector
    angle, and any machine-fixed linear-axis contribution after the large B0
    C-center orbit has been removed.
+
+## Corrected B90 C-Quadrant Rerun - 2026-05-04
+
+The restored B90 C-quadrant run completed with the validated C-center
+correction still active. Result rows are lines `54-93` in
+`tcpc-b90-c-quadrant-diagnostic-2pass-results.csv`.
+
+Probe-quality caveat:
+
+- The operator paused and reset/settled the wireless probe during the run
+  because it was false-pulsing too often.
+- All rows were still logged and pass-2 checks remained inside the programmed
+  limits, but use this dataset with caution in fitting.
+
+Data quality:
+
+- pass-2 max residuals: U `0.061250 mm`, V `0.007500 mm`
+- pass-2 corrected diameter ranges:
+  - U `30.158000..30.205020`
+  - V `30.160141..30.244667`
+- X/Y/Z motor following errors in the accepted high-B rows were effectively
+  zero.
+
+High-B deltas versus adjacent B0 closures after the C-center correction:
+
+| Pose | dX | dY | dZ | 3D drift |
+| --- | ---: | ---: | ---: | ---: |
+| `B+90 C0` | `-0.052875` | `-0.198228` | `+0.069230` | `0.216525` |
+| `B-90 C0` | `-0.203375` | `-0.137813` | `+0.659229` | `0.703518` |
+| `B+90 C90` | `-0.094271` | `-0.242146` | `-0.084833` | `0.273347` |
+| `B-90 C90` | `-0.012100` | `+0.421370` | `+0.886208` | `0.981358` |
+| `B+90 C180` | `-0.112354` | `-0.220592` | `-0.012021` | `0.247848` |
+| `B-90 C180` | `+0.022229` | `+0.169999` | `+0.712771` | `0.733100` |
+| `B+90 C270` | `-0.223969` | `+0.539925` | `+0.170062` | `0.608771` |
+| `B-90 C270` | `-0.149642` | `-0.115378` | `+0.633603` | `0.661179` |
+
+High-B delta RMS/max: `0.610965 / 0.981358 mm`.
+
+Interpretation:
+
+- The C-center correction remains validated, but high-B error remains large.
+- B-90 positive Z error is still the dominant signature.
+- Side-quadrant Y-extreme poses are still large, especially `B-90 C90` and
+  `B+90 C270`.
+- Do not spend more machine time on this same long run until the wireless probe
+  is stable. Next step is offline fitting with this corrected dataset plus a
+  probe-quality flag.

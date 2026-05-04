@@ -3295,3 +3295,71 @@ Recommended next live run:
 - This will show high-B residuals after removing the large B0 C-axis center
   orbit, and should be the next data used for expanded B-axis / linear-axis
   fitting.
+
+## 2026-05-04 B90 C-Quadrant Rerun With C-Center Active
+
+The restored B90 C-quadrant diagnostic completed at `12:41:29 +07` after
+operator-paused probe settling/recovery. Treat the pause/reset actions as probe
+recovery, not as automatic program causes.
+
+End state:
+
+- `halui.program.is-idle = TRUE`
+- `motion.digital-out-00 = FALSE`
+- `motion.digital-out-01 = FALSE`
+- `motion.probe-input = FALSE`
+- live C-center correction still active:
+  - `headheadkins.cal-c-to-b.x = +0.035886006`
+  - `headheadkins.cal-c-to-b.y = +0.009526306`
+
+Latest appended result rows:
+
+- `tcpc-b90-c-quadrant-diagnostic-2pass-results.csv` lines `54-93`
+- `40` rows total, `20` pass-2 accepted centers
+
+Data quality:
+
+- all expected rows were logged
+- pass-2 corrected diameter ranges:
+  - U `30.158000..30.205020`
+  - V `30.160141..30.244667`
+- pass-2 max residuals:
+  - U `0.061250 mm`
+  - V `0.007500 mm`
+- the `0.061250 mm` U residual is below the `0.10 mm` abort threshold but
+  should be treated cautiously because the wireless probe was misbehaving
+
+B0 closure/orbit by C from this rerun:
+
+| C | n | mean X | mean Y | mean Z | X range | Y range | Z range | RMS |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `0` | `3` | `468.895029` | `323.664227` | `-858.979290` | `0.082500` | `0.041041` | `0.003875` | `0.038723` |
+| `90` | `3` | `468.889161` | `323.729115` | `-858.962581` | `0.008092` | `0.025292` | `0.003416` | `0.011711` |
+| `180` | `3` | `468.793108` | `323.706769` | `-858.945872` | `0.033751` | `0.007988` | `0.003626` | `0.014299` |
+| `270` | `3` | `468.824505` | `323.592605` | `-858.952150` | `0.019969` | `0.026720` | `0.003875` | `0.014945` |
+
+High-B deltas versus adjacent B0 closures:
+
+| Pose | dX | dY | dZ | 3D drift |
+| --- | ---: | ---: | ---: | ---: |
+| `B+90 C0` | `-0.052875` | `-0.198228` | `+0.069230` | `0.216525` |
+| `B-90 C0` | `-0.203375` | `-0.137813` | `+0.659229` | `0.703518` |
+| `B+90 C90` | `-0.094271` | `-0.242146` | `-0.084833` | `0.273347` |
+| `B-90 C90` | `-0.012100` | `+0.421370` | `+0.886208` | `0.981358` |
+| `B+90 C180` | `-0.112354` | `-0.220592` | `-0.012021` | `0.247848` |
+| `B-90 C180` | `+0.022229` | `+0.169999` | `+0.712771` | `0.733100` |
+| `B+90 C270` | `-0.223969` | `+0.539925` | `+0.170062` | `0.608771` |
+| `B-90 C270` | `-0.149642` | `-0.115378` | `+0.633603` | `0.661179` |
+
+High-B delta RMS/max: `0.610965 / 0.981358 mm`.
+
+Immediate interpretation:
+
+- The validated C-center correction fixed the B0 C-axis orbit, but it did not
+  solve the high-B error.
+- The large remaining pattern is still dominated by B-90 positive Z residuals
+  and side-quadrant Y-extreme poses.
+- X/Y/Z following errors at the logged accepted rows are effectively zero, so
+  servo following error is not the explanation.
+- Stop long probing until the probe is stable. The next work should be offline
+  fitting with this corrected high-B dataset, using the probe-quality caveat.

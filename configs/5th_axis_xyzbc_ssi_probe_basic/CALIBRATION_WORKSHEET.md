@@ -616,3 +616,27 @@ The diagnostic NGC was restored to B90 defaults after the run:
 
 Next data to collect is the restored B90 C-quadrant run with the validated
 C-center correction still active.
+
+## 2026-05-04 Corrected B90 C-Quadrant Rerun
+
+The restored B90 C-quadrant run completed with the live C-center correction
+active. The wireless probe was false-pulsing and required operator
+pause/reset/settle recovery, so keep a probe-quality caveat on this dataset.
+
+Result rows:
+
+- `tcpc-b90-c-quadrant-diagnostic-2pass-results.csv` lines `54-93`
+
+Quality summary:
+
+- pass-2 max residuals: U `0.061250 mm`, V `0.007500 mm`
+- pass-2 corrected diameters:
+  - U `30.158000..30.205020`
+  - V `30.160141..30.244667`
+- final controller state was idle with both probe gates false
+
+High-B residuals remain large after removing the C-center orbit. High-B delta
+RMS/max versus adjacent B0 closures is `0.610965 / 0.981358 mm`. The dominant
+features are still B-90 positive Z error and large side-quadrant Y-extreme
+poses. Use offline fitting next; do not rerun the same long diagnostic until
+the probe is stable.
