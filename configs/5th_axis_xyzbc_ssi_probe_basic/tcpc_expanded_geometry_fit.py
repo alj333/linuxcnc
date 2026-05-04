@@ -100,6 +100,14 @@ PARAM_BOUNDS = {
 
 B_HARMONIC_TERMS = ["sin_b", "omc_b", "sin_2b"]
 B_HARMONIC_AXES = ["x", "y", "z"]
+B_CROSS_TERMS = ["sinb_sinc", "omcb_sinc", "omcb_sin2c", "sinb_cosc", "omcb_cosc"]
+B_CROSS_TERM_PINS = [
+    ("sinb_sinc", "sinb-sinc"),
+    ("omcb_sinc", "omcb-sinc"),
+    ("omcb_sin2c", "omcb-sin2c"),
+    ("sinb_cosc", "sinb-cosc"),
+    ("omcb_cosc", "omcb-cosc"),
+]
 
 
 def harmonic_param_names(prefix: str) -> list[str]:
@@ -112,8 +120,13 @@ def harmonic_param_names(prefix: str) -> list[str]:
 
 B_HARMONIC_MACHINE_PARAMS = harmonic_param_names("mb")
 B_HARMONIC_CFRAME_PARAMS = harmonic_param_names("cf")
+B_CROSS_MACHINE_PARAMS = [
+    f"bc_{term}_{axis}"
+    for term in B_CROSS_TERMS
+    for axis in B_HARMONIC_AXES
+]
 
-for harmonic_param in B_HARMONIC_MACHINE_PARAMS + B_HARMONIC_CFRAME_PARAMS:
+for harmonic_param in B_HARMONIC_MACHINE_PARAMS + B_HARMONIC_CFRAME_PARAMS + B_CROSS_MACHINE_PARAMS:
     PARAM_BOUNDS[harmonic_param] = (-1.5, 1.5)
 
 
@@ -127,6 +140,8 @@ MODEL_FAMILIES = {
     "b_harmonic_machine_no_cxy": B_HARMONIC_MACHINE_PARAMS,
     "b_harmonic_cframe_no_cxy": B_HARMONIC_CFRAME_PARAMS,
     "b_harmonic_machine_cframe_no_cxy": B_HARMONIC_MACHINE_PARAMS + B_HARMONIC_CFRAME_PARAMS,
+    "b_cross_machine_no_cxy": B_CROSS_MACHINE_PARAMS,
+    "b_harmonic_machine_bcross_no_cxy": B_HARMONIC_MACHINE_PARAMS + B_CROSS_MACHINE_PARAMS,
     "c_tilt_b_harmonic_cframe_no_cxy": [
         "c_tilt_x",
         "c_tilt_y",
@@ -196,6 +211,8 @@ HIGH_B_MODELS = [
     "b_harmonic_machine_no_cxy",
     "b_harmonic_cframe_no_cxy",
     "b_harmonic_machine_cframe_no_cxy",
+    "b_cross_machine_no_cxy",
+    "b_harmonic_machine_bcross_no_cxy",
     "c_tilt_b_harmonic_cframe_no_cxy",
     "c_tilt_b_harmonic_machine_cframe_no_cxy",
     "axis_vectors_no_cxy",
@@ -368,6 +385,30 @@ def b_harmonic_offset(b_deg: float, c_deg: float, params: dict[str, float]) -> n
     return machine_fixed + cframe_rotating
 
 
+def b_cross_offset(b_deg: float, c_deg: float, params: dict[str, float]) -> np.ndarray:
+    b_eff = b_deg + BASE_B_ZERO_DEG + params["b_zero"]
+    c_eff = c_deg + BASE_C_ZERO_DEG + params["c_zero"]
+    b_rad = math.radians(b_eff)
+    c_rad = math.radians(c_eff)
+    terms = {
+        "sinb_sinc": math.sin(b_rad) * math.sin(c_rad),
+        "omcb_sinc": (1.0 - math.cos(b_rad)) * math.sin(c_rad),
+        "omcb_sin2c": (1.0 - math.cos(b_rad)) * math.sin(c_rad) * math.sin(c_rad),
+        "sinb_cosc": math.sin(b_rad) * math.cos(c_rad),
+        "omcb_cosc": (1.0 - math.cos(b_rad)) * math.cos(c_rad),
+    }
+    correction = np.zeros(3)
+    for term, value in terms.items():
+        correction += value * np.array(
+            [
+                params[f"bc_{term}_x"],
+                params[f"bc_{term}_y"],
+                params[f"bc_{term}_z"],
+            ]
+        )
+    return correction
+
+
 def linear_matrix(params: dict[str, float]) -> np.ndarray:
     return np.eye(3) + np.array(
         [
@@ -384,6 +425,7 @@ def physical_estimate(obs: Observation, params: dict[str, float]) -> np.ndarray:
         (linear_matrix(params) @ linear_position)
         + expanded_offset(obs.b_deg, obs.c_deg, params)
         + b_harmonic_offset(obs.b_deg, obs.c_deg, params)
+        + b_cross_offset(obs.b_deg, obs.c_deg, params)
     )
 
 
@@ -440,6 +482,46 @@ def fit_suite(
     fixed_params: dict[str, float] | None = None,
 ) -> dict[str, FitResult]:
     return {name: fit_model(name, observations, fixed_params) for name in model_names}
+
+
+def direct_residual_vector(
+    names: list[str],
+    values: np.ndarray,
+    data_sets: list[list[Observation]],
+    fixed_params: dict[str, float] | None,
+) -> np.ndarray:
+    params = as_params(names, values, fixed_params)
+    residuals = []
+    for observations in data_sets:
+        _, rows = b_angle_delta_rows(observations, params)
+        for _, delta in rows:
+            residuals.extend(delta)
+    return np.array(residuals)
+
+
+def fit_direct_model(
+    name: str,
+    data_sets: list[list[Observation]],
+    fixed_params: dict[str, float] | None = None,
+) -> FitResult:
+    names = MODEL_FAMILIES[name]
+    if not names:
+        params = as_params([], np.array([]), fixed_params)
+        return FitResult(model=name, params=params, result=None)
+    lower = np.array([PARAM_BOUNDS[param][0] for param in names])
+    upper = np.array([PARAM_BOUNDS[param][1] for param in names])
+    result = least_squares(
+        lambda values: direct_residual_vector(names, values, data_sets, fixed_params),
+        np.zeros(len(names)),
+        bounds=(lower, upper),
+        loss="linear",
+        x_scale="jac",
+        max_nfev=50000,
+        ftol=1e-12,
+        xtol=1e-12,
+        gtol=1e-12,
+    )
+    return FitResult(model=name, params=as_params(names, result.x, fixed_params), result=result)
 
 
 def metrics(observations: list[Observation], params: dict[str, float]) -> dict[str, float]:
@@ -564,6 +646,13 @@ def b_harmonic_sim_hal_block(params: dict[str, float]) -> list[str]:
                     f"setp headheadkins.bharm-{family_pin}.{term_pin}.{axis} "
                     f"{params[name]:.9f}"
                 )
+    for term_key, term_pin in B_CROSS_TERM_PINS:
+        for axis in B_HARMONIC_AXES:
+            name = f"bc_{term_key}_{axis}"
+            lines.append(
+                f"setp headheadkins.bcross.{term_pin}.{axis} "
+                f"{params[name]:.9f}"
+            )
     lines.append("setp headheadkins.sim-bharm-enable 1")
     lines.append("```")
     return lines
@@ -752,6 +841,9 @@ def write_report(
     }
     selected_candidate_incremental_cframe = candidate_validation_by_label[
         "incremental C-frame on live candidate"
+    ]
+    selected_candidate_bcross = candidate_validation_by_label[
+        "direct B/C cross on live candidate"
     ]
     selected_candidate_combo = candidate_validation_by_label[
         "replacement machine plus C-frame"
@@ -1031,10 +1123,23 @@ def write_report(
             ],
         ),
         "",
-        "The incremental C-frame terms improve the side quadrants but regress",
-        "C0/C180 and still leave too much side error for a live candidate. Adding",
-        "C-axis tilt coupling improves the side result further, but the fit is",
-        "still too large and too flexible to trust live.",
+        "The direct B/C cross fit is the first side-aware candidate that improves",
+        "C0, C180, and C90/C270 together without an ill-conditioned Jacobian. It",
+        "is fitted as an incremental layer on top of the already tested",
+        "machine-fixed B-harmonic candidate.",
+        "",
+        "### Candidate-On Direct B/C Cross Parameters",
+        "",
+        *format_params(
+            selected_candidate_bcross.params,
+            B_CROSS_MACHINE_PARAMS,
+        ),
+        "",
+        "Simulation-only HAL load block for the next diagnostic candidate:",
+        "",
+        *b_harmonic_sim_hal_block(selected_candidate_bcross.params),
+        "",
+        "### Candidate-On Incremental C-Frame Parameters",
         "",
         "### Candidate-On Incremental C-Frame Parameters",
         "",
@@ -1121,11 +1226,11 @@ def write_report(
         "  `C90/C270`, especially `B+90 C270`.",
         "- The tested machine-fixed correction is not a general solution by itself;",
         "  the side-quadrant validation is much worse than C0/C180.",
-        "- Refit with the side validation rows reduces the all-validation direct",
-        "  maximum only to `0.408958 mm`, and that result needs a flexible",
-        "  C-tilted replacement machine/C-frame fit.",
-        "- The better-conditioned incremental C-frame fit still leaves",
-        "  `0.494928 mm` maximum direct error and regresses C0/C180.",
+        "- The direct B/C cross candidate reduces all-validation direct RMS/max to",
+        f"  {b_angle_combined_delta_metric_text([candidate_on_c0, candidate_on_c180, candidate_on_side], selected_candidate_bcross.params)}.",
+        "- The same direct B/C cross candidate evaluates at",
+        f"  `{metric_text(post_cquad, selected_candidate_bcross.params)}` on the older corrected B90 run",
+        f"  and `{metric_text(baxis_holdout, selected_candidate_bcross.params)}` on the clean B-axis holdout.",
         "- Axis-vector terms help only modestly and still point at an incomplete",
         "  model.",
         "- Linear/affine terms improve the numerical fit but repeatedly hit bounds,",
@@ -1134,25 +1239,20 @@ def write_report(
         "## Next TCPC Math Work",
         "",
         "1. Keep the run-state-aware fitter as the source of truth for mixed data.",
-        "2. Add tool-frame debug output pins to `headheadkins` for the actual",
-        "   expanded U/V/W probe frame, not only tool and rotary axis vectors.",
-        "3. Add simulation-only machine-linear affine support with identity defaults:",
-        "   `reported_tcp = A * joint_xyz + rotary_offset` and inverse",
-        "   `joint_xyz = A^-1 * (requested_tcp - rotary_offset)`.",
-        "4. Implement the B-harmonic correction path in simulation only, with all",
-        "   coefficients defaulting to zero, then verify forward/inverse behavior.",
-        "5. Do not promote any current expanded-variable fit to live HAL.",
-        "6. Use the side validation rows to design a more constrained correction",
-        "   family around C-axis tilt coupling, then verify it in simulation",
-        "   before the next machine run.",
+        "2. Keep the direct B/C cross terms simulation-gated with zero defaults.",
+        "3. Verify the B/C cross candidate in non-GUI math and LinuxCNC sim before",
+        "   any machine test.",
+        "4. Do not promote any B-harmonic or B/C cross correction to persistent",
+        "   startup HAL until the live validation passes.",
         "",
         "## Next Live Data",
         "",
-        "Do not run another live probe pass yet. The side-quadrant validation has",
-        "shown that the current machine-fixed B-harmonic candidate is not enough.",
+        "Do not run another live probe pass until the B/C cross candidate has",
+        "passed simulation verification and the updated kinematics have been",
+        "restarted.",
         "",
-        "Next work is reducing the C-tilt/harmonic model to a smaller constrained",
-        "candidate and verifying it in simulation before returning to the machine.",
+        "The next live test should be a limited diagnostic candidate-on validation,",
+        "not a long C-quadrant run.",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
@@ -1302,6 +1402,14 @@ def main() -> int:
                 model="current_live_candidate",
                 params=as_params([], np.array([]), live_candidate_fixed_params),
                 result=None,
+            ),
+        ),
+        (
+            "direct B/C cross on live candidate",
+            fit_direct_model(
+                "b_cross_machine_no_cxy",
+                [candidate_on_c0, candidate_on_c180, candidate_on_side],
+                live_candidate_fixed_params,
             ),
         ),
         (

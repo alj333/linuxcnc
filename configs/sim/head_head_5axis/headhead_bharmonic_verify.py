@@ -34,6 +34,7 @@ class BHarmonic:
     enabled: bool
     machine: dict[str, tuple[float, float, float]]
     cframe: dict[str, tuple[float, float, float]]
+    bcross: dict[str, tuple[float, float, float]]
 
 
 ACTIVE_GEOMETRY = Geometry(
@@ -66,6 +67,13 @@ ZERO_HARMONIC = BHarmonic(
         "omc": (0.0, 0.0, 0.0),
         "sin2": (0.0, 0.0, 0.0),
     },
+    bcross={
+        "sinb-sinc": (0.0, 0.0, 0.0),
+        "omcb-sinc": (0.0, 0.0, 0.0),
+        "omcb-sin2c": (0.0, 0.0, 0.0),
+        "sinb-cosc": (0.0, 0.0, 0.0),
+        "omcb-cosc": (0.0, 0.0, 0.0),
+    },
 )
 
 MACHINE_FIXED_CANDIDATE = BHarmonic(
@@ -76,12 +84,27 @@ MACHINE_FIXED_CANDIDATE = BHarmonic(
         "sin2": (-0.032225192, 0.005230194, -0.190772593),
     },
     cframe=ZERO_HARMONIC.cframe,
+    bcross=ZERO_HARMONIC.bcross,
 )
 
 MACHINE_FIXED_DISABLED = BHarmonic(
     enabled=False,
     machine=MACHINE_FIXED_CANDIDATE.machine,
     cframe=MACHINE_FIXED_CANDIDATE.cframe,
+    bcross=MACHINE_FIXED_CANDIDATE.bcross,
+)
+
+BCROSS_CANDIDATE = BHarmonic(
+    enabled=True,
+    machine=MACHINE_FIXED_CANDIDATE.machine,
+    cframe=ZERO_HARMONIC.cframe,
+    bcross={
+        "sinb-sinc": (0.002528625, 0.322704792, 0.129756713),
+        "omcb-sinc": (-0.075154781, 0.002088037, -0.001416604),
+        "omcb-sin2c": (0.015430253, -0.178186533, -0.027922013),
+        "sinb-cosc": (-0.047944843, -0.063115561, -0.018569166),
+        "omcb-cosc": (-0.033954526, 0.071241728, -0.000964915),
+    },
 )
 
 POSES = [
@@ -221,6 +244,26 @@ def b_harmonic_vector(
     return out
 
 
+def b_cross_vector(
+    coeffs: dict[str, tuple[float, float, float]],
+    b_eff: float,
+    c_eff: float,
+) -> tuple[float, float, float]:
+    b_rad = math.radians(b_eff)
+    c_rad = math.radians(c_eff)
+    terms = {
+        "sinb-sinc": math.sin(b_rad) * math.sin(c_rad),
+        "omcb-sinc": (1.0 - math.cos(b_rad)) * math.sin(c_rad),
+        "omcb-sin2c": (1.0 - math.cos(b_rad)) * math.sin(c_rad) * math.sin(c_rad),
+        "sinb-cosc": math.sin(b_rad) * math.cos(c_rad),
+        "omcb-cosc": (1.0 - math.cos(b_rad)) * math.cos(c_rad),
+    }
+    out = (0.0, 0.0, 0.0)
+    for term_name, term_value in terms.items():
+        out = vec_add(out, vec_scale(term_value, coeffs[term_name]))
+    return out
+
+
 def b_harmonic_offset_world(
     geometry: Geometry,
     harmonic: BHarmonic,
@@ -235,7 +278,7 @@ def b_harmonic_offset_world(
     machine_fixed = b_harmonic_vector(harmonic.machine, b_eff)
     cframe_local = b_harmonic_vector(harmonic.cframe, b_eff)
     cframe_world = c_frame_to_world(geometry, rotate_z(c_eff, cframe_local))
-    return vec_add(machine_fixed, cframe_world)
+    return vec_add(vec_add(machine_fixed, cframe_world), b_cross_vector(harmonic.bcross, b_eff, c_eff))
 
 
 def tool_offset_world(
@@ -300,7 +343,12 @@ def assert_close(label: str, value: float, tolerance: float) -> None:
 
 def verify_zero_default() -> float:
     max_delta = 0.0
-    zero_enabled = BHarmonic(enabled=True, machine=ZERO_HARMONIC.machine, cframe=ZERO_HARMONIC.cframe)
+    zero_enabled = BHarmonic(
+        enabled=True,
+        machine=ZERO_HARMONIC.machine,
+        cframe=ZERO_HARMONIC.cframe,
+        bcross=ZERO_HARMONIC.bcross,
+    )
     for b_deg, c_deg in POSES:
         baseline = tool_offset_world(ACTIVE_GEOMETRY, ZERO_HARMONIC, b_deg, c_deg)
         enabled_zero = tool_offset_world(ACTIVE_GEOMETRY, zero_enabled, b_deg, c_deg)
@@ -343,9 +391,10 @@ def verify_forward_inverse() -> float:
     )
     for target in targets:
         for b_deg, c_deg in POSES:
-            joints = inverse_tcp(ACTIVE_GEOMETRY, MACHINE_FIXED_CANDIDATE, target, b_deg, c_deg)
-            returned = forward_tcp(ACTIVE_GEOMETRY, MACHINE_FIXED_CANDIDATE, joints, b_deg, c_deg)
-            max_roundtrip = max(max_roundtrip, norm(vec_sub(returned, target)))
+            for harmonic in (MACHINE_FIXED_CANDIDATE, BCROSS_CANDIDATE):
+                joints = inverse_tcp(ACTIVE_GEOMETRY, harmonic, target, b_deg, c_deg)
+                returned = forward_tcp(ACTIVE_GEOMETRY, harmonic, joints, b_deg, c_deg)
+                max_roundtrip = max(max_roundtrip, norm(vec_sub(returned, target)))
     assert_close("candidate forward/inverse round-trip", max_roundtrip, EPS)
     return max_roundtrip
 
@@ -353,7 +402,7 @@ def verify_forward_inverse() -> float:
 def harmonic_offsets_for_c0() -> list[tuple[float, tuple[float, float, float]]]:
     rows = []
     for b_deg in (-90.0, -60.0, -30.0, 0.0, 30.0, 60.0, 90.0):
-        rows.append((b_deg, b_harmonic_offset_world(ACTIVE_GEOMETRY, MACHINE_FIXED_CANDIDATE, b_deg, 0.0)))
+        rows.append((b_deg, b_harmonic_offset_world(ACTIVE_GEOMETRY, BCROSS_CANDIDATE, b_deg, 0.0)))
     return rows
 
 
@@ -372,7 +421,7 @@ def main() -> int:
     print(f"tool-frame orthogonality max error : {frame_orthogonality:.12g}")
     print(f"candidate forward/inverse max error: {roundtrip:.12g} mm")
     print("")
-    print("machine-fixed candidate harmonic offsets at C0:")
+    print("B/C cross candidate harmonic offsets at C0:")
     print("| B deg | dX | dY | dZ |")
     print("| ---: | ---: | ---: | ---: |")
     for b_deg, offset in harmonic_offsets_for_c0():

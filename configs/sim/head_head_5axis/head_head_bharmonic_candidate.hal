@@ -1,4 +1,4 @@
-# Simulation-only B-harmonic diagnostic candidate for headheadkins.
+# Simulation-only B/C cross-harmonic diagnostic candidate for headheadkins.
 #
 # Do not include this file in a real machine config.
 # The enable pin is deliberately left false by default; set it true only in a
@@ -6,7 +6,7 @@
 
 setp headheadkins.sim-bharm-enable 0
 
-# Machine-fixed candidate from TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md.
+# Machine-fixed candidate from the C0/C180 validation baseline.
 setp headheadkins.bharm-m.sin.x 0.003457595
 setp headheadkins.bharm-m.sin.y 0.071987315
 setp headheadkins.bharm-m.sin.z 0.318267363
@@ -27,6 +27,25 @@ setp headheadkins.bharm-c.omc.z 0.000000000
 setp headheadkins.bharm-c.sin2.x 0.000000000
 setp headheadkins.bharm-c.sin2.y 0.000000000
 setp headheadkins.bharm-c.sin2.z 0.000000000
+
+# Incremental machine-world B/C cross terms fitted from the completed
+# C0/C180/C90/C270 candidate-on validation rows. These terms are also zero at
+# B0, so enabling at B0 should not move the TCP.
+setp headheadkins.bcross.sinb-sinc.x 0.002528625
+setp headheadkins.bcross.sinb-sinc.y 0.322704792
+setp headheadkins.bcross.sinb-sinc.z 0.129756713
+setp headheadkins.bcross.omcb-sinc.x -0.075154781
+setp headheadkins.bcross.omcb-sinc.y 0.002088037
+setp headheadkins.bcross.omcb-sinc.z -0.001416604
+setp headheadkins.bcross.omcb-sin2c.x 0.015430253
+setp headheadkins.bcross.omcb-sin2c.y -0.178186533
+setp headheadkins.bcross.omcb-sin2c.z -0.027922013
+setp headheadkins.bcross.sinb-cosc.x -0.047944843
+setp headheadkins.bcross.sinb-cosc.y -0.063115561
+setp headheadkins.bcross.sinb-cosc.z -0.018569166
+setp headheadkins.bcross.omcb-cosc.x -0.033954526
+setp headheadkins.bcross.omcb-cosc.y 0.071241728
+setp headheadkins.bcross.omcb-cosc.z -0.000964915
 
 # Simulation-only manual enable:
 # setp headheadkins.sim-bharm-enable 1

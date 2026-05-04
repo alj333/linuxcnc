@@ -2448,9 +2448,47 @@ Side-quadrant refit results:
 
 Next scope:
 
-- no further live probing is requested now
+- the next live probing candidate is now the B/C cross-harmonic candidate, but
+  only after the TCPC config is restarted so the new pins exist
 - keep the validated C-center correction
 - keep all B-harmonic / expanded-variable results diagnostic-only
-- continue offline work on a smaller constrained C-tilt/harmonic correction
-  family that explains side-quadrant behavior without losing C0/C180
-- verify any new candidate in simulation before enabling it on the machine
+- load the candidate manually from
+  `configs/sim/head_head_5axis/head_head_bharmonic_candidate.hal`
+- verify any candidate in simulation or non-GUI math before enabling it on the
+  machine
+
+## B/C Cross-Harmonic Candidate - 2026-05-04
+
+The next candidate is an incremental layer on top of the previous
+machine-fixed B-harmonic terms. It adds machine-world B/C cross terms:
+
+- `sin(B) * sin(C)`
+- `(1-cos(B)) * sin(C)`
+- `(1-cos(B)) * sin(C)^2`
+- `sin(B) * cos(C)`
+- `(1-cos(B)) * cos(C)`
+
+Predicted direct validation:
+
+| Set | RMS | Max |
+| --- | ---: | ---: |
+| C0 | `0.078760 mm` | `0.116901 mm` |
+| C180 | `0.111771 mm` | `0.166446 mm` |
+| C90/C270 side | `0.085480 mm` | `0.085480 mm` |
+| all validation | `0.094009 mm` | `0.166446 mm` |
+
+Prepared validation program:
+
+- `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- current mode: `#711 = 4.0`
+- runs C0, C180, then C90/C270 side high-B check
+
+Before running:
+
+- close and restart the TCPC Probe Basic config to load the rebuilt
+  `headheadkins`
+- confirm `headheadkins.bcross.sinb-sinc.y` exists after restart
+- confirm `headheadkins.sim-bharm-enable = FALSE`
+- load the candidate HAL while idle
+- enable only immediately before cycle start
+- disable `headheadkins.sim-bharm-enable` immediately after completion

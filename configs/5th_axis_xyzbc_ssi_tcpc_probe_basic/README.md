@@ -833,13 +833,14 @@ LinuxCNC sim fixed-tip smoke test with `0.000000000 mm` disabled/enabled TCP
 error, but it is still diagnostic-only. Do not make it persistent in this real
 machine config.
 
-Current live decision after the C0/C180/C90/C270 candidate-on validations:
+Current live decision after the C0/C180/C90/C270 candidate-on validations and
+offline B/C cross fitting:
 
 - keep only the validated C-center correction
 - keep `headheadkins.sim-bharm-enable = FALSE`
-- do not make the B-harmonic candidate persistent
-- do not run another probe cycle until a smaller constrained side-aware model
-  has been fitted offline and verified in simulation
+- do not make any B-harmonic or B/C cross candidate persistent
+- restart this config before the next candidate test so the new
+  `headheadkins.bcross.*` pins exist
 
 Reason:
 
@@ -849,3 +850,18 @@ Reason:
   `0.408282 / 0.615783 mm`
 - the side result shows the machine-fixed B-harmonic candidate is not a general
   TCPC correction
+
+Next candidate:
+
+- manual HAL file:
+  `configs/sim/head_head_5axis/head_head_bharmonic_candidate.hal`
+- predicted B/C cross candidate all-validation RMS/max:
+  `0.094009 / 0.166446 mm`
+- validation NGC:
+  `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- current NGC mode:
+  `#711 = 4.0`, which runs C0, C180, and C90/C270 side validation
+
+Do not enable `headheadkins.sim-bharm-enable` until the candidate coefficients
+are loaded, the machine is idle at the safe start position, probe input is
+false, and both probe gate outputs are false.

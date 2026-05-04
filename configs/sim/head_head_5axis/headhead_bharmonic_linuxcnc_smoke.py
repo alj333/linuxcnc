@@ -174,6 +174,8 @@ def main() -> int:
     mdi(command, status, error_channel, "G43.4")
     if not bool(hal.get_value("headheadkins.tcpc-enable")):
         fail("TCPC did not enable")
+    if abs(hal.get_value("headheadkins.bcross.sinb-sinc.y") - 0.322704792) > 1e-9:
+        fail("B/C cross candidate coefficients did not load")
 
     disabled_error = run_pose_set(command, status, error_channel, enable=False)
     enabled_error = run_pose_set(command, status, error_channel, enable=True)

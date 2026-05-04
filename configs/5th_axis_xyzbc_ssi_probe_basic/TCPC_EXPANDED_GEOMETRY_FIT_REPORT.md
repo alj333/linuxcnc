@@ -58,6 +58,8 @@ rows.
 | `b_harmonic_machine_no_cxy` | `0.2022 / 0.5183` | `0.1155 / 0.2034` | `0.0157 / 0.0201` | 6 | inf |
 | `b_harmonic_cframe_no_cxy` | `0.1823 / 0.3837` | `0.1703 / 0.3541` | `0.0157 / 0.0201` | 6 | inf |
 | `b_harmonic_machine_cframe_no_cxy` | `0.1704 / 0.3925` | `0.1531 / 0.2682` | `0.0157 / 0.0201` | 10 | inf |
+| `b_cross_machine_no_cxy` | `0.2730 / 0.6008` | `0.2686 / 0.5241` | `0.0157 / 0.0201` | 15 | 1.12e+00 |
+| `b_harmonic_machine_bcross_no_cxy` | `0.0671 / 0.0989` | `0.0667 / 0.1239` | `0.0157 / 0.0201` | 21 | 1.40e+17 |
 | `c_tilt_b_harmonic_cframe_no_cxy` | `0.1780 / 0.3846` | `0.1622 / 0.3150` | `0.0140 / 0.0175` | 8 | inf |
 | `c_tilt_b_harmonic_machine_cframe_no_cxy` | `0.1595 / 0.3658` | `0.1533 / 0.2736` | `0.0108 / 0.0177` | 14 | inf |
 | `axis_vectors_no_cxy` | `0.2384 / 0.4667` | `0.2581 / 0.4010` | `0.1752 / 0.2177` | 10 | 2.96e+06 |
@@ -78,6 +80,8 @@ Fit target: corrected B90 C-quadrant plus clean B90 C0/C180 rows
 | `b_harmonic_machine_no_cxy` | `0.2042 / 0.5595` | `0.0961 / 0.1838` | `0.1958 / 0.5866` | `0.0157 / 0.0201` | 6 | inf |
 | `b_harmonic_cframe_no_cxy` | `0.1876 / 0.4412` | `0.1390 / 0.2942` | `0.1864 / 0.4684` | `0.0157 / 0.0201` | 6 | inf |
 | `b_harmonic_machine_cframe_no_cxy` | `0.1778 / 0.4950` | `0.1032 / 0.1794` | `0.1731 / 0.5256` | `0.0157 / 0.0201` | 10 | inf |
+| `b_cross_machine_no_cxy` | `0.2731 / 0.6133` | `0.2677 / 0.5102` | `0.2364 / 0.5544` | `0.0157 / 0.0201` | 15 | 1.58e+00 |
+| `b_harmonic_machine_bcross_no_cxy` | `0.0706 / 0.1007` | `0.0446 / 0.0770` | `0.0534 / 0.1133` | `0.0157 / 0.0201` | 21 | 2.49e+17 |
 | `c_tilt_b_harmonic_cframe_no_cxy` | `0.1835 / 0.4504` | `0.1278 / 0.2510` | `0.1802 / 0.4710` | `0.0136 / 0.0175` | 8 | inf |
 | `c_tilt_b_harmonic_machine_cframe_no_cxy` | `0.1675 / 0.4778` | `0.1023 / 0.1816` | `0.1630 / 0.4896` | `0.0108 / 0.0175` | 14 | inf |
 | `axis_vectors_no_cxy` | `0.2423 / 0.5253` | `0.2395 / 0.3492` | `0.2445 / 0.4828` | `0.1549 / 0.1931` | 10 | 1.87e+06 |
@@ -98,6 +102,8 @@ Fit target: all valid B90 C-quadrant and clean B90 rows
 | `b_harmonic_machine_no_cxy` | `0.2043 / 0.5400` | `0.0987 / 0.1811` | `0.1937 / 0.5654` | `0.0157 / 0.0201` | 6 | inf |
 | `b_harmonic_cframe_no_cxy` | `0.1858 / 0.4227` | `0.1478 / 0.3105` | `0.1820 / 0.4383` | `0.0157 / 0.0201` | 6 | inf |
 | `b_harmonic_machine_cframe_no_cxy` | `0.1750 / 0.4498` | `0.1187 / 0.2023` | `0.1673 / 0.4797` | `0.0157 / 0.0201` | 10 | inf |
+| `b_cross_machine_no_cxy` | `0.2733 / 0.6170` | `0.2676 / 0.5068` | `0.2360 / 0.5515` | `0.0157 / 0.0201` | 15 | 1.37e+00 |
+| `b_harmonic_machine_bcross_no_cxy` | `0.0735 / 0.1001` | `0.0411 / 0.0679` | `0.0459 / 0.0864` | `0.0157 / 0.0201` | 21 | 1.02e+17 |
 | `c_tilt_b_harmonic_cframe_no_cxy` | `0.1817 / 0.4238` | `0.1379 / 0.2701` | `0.1751 / 0.4389` | `0.0139 / 0.0176` | 8 | inf |
 | `c_tilt_b_harmonic_machine_cframe_no_cxy` | `0.1646 / 0.4362` | `0.1177 / 0.2028` | `0.1568 / 0.4454` | `0.0108 / 0.0175` | 14 | inf |
 | `axis_vectors_no_cxy` | `0.2428 / 0.5203` | `0.2419 / 0.3681` | `0.2400 / 0.4742` | `0.1382 / 0.1728` | 10 | 9.12e+05 |
@@ -157,6 +163,8 @@ Fit target: C0 B-angle scaling data only (`8` points).
 | `b_harmonic_machine_no_cxy` | `0.0166 / 0.0277` | `0.2316 / 0.6278` | `0.1036 / 0.2805` | `0.0157 / 0.0201` | 9 | 2.34e+00 |
 | `b_harmonic_cframe_no_cxy` | `0.0166 / 0.0277` | `0.2469 / 0.6846` | `0.1632 / 0.4341` | `0.0157 / 0.0201` | 9 | 2.34e+00 |
 | `b_harmonic_machine_cframe_no_cxy` | `0.0166 / 0.0277` | `0.2179 / 0.6023` | `0.1098 / 0.3005` | `0.0157 / 0.0201` | 15 | 4.37e+16 |
+| `b_cross_machine_no_cxy` | `0.0784 / 0.1080` | `1.1577 / 3.0418` | `0.3963 / 1.0701` | `0.0157 / 0.0201` | 13 | 6.95e+16 |
+| `b_harmonic_machine_bcross_no_cxy` | `0.0166 / 0.0277` | `1.3813 / 3.7469` | `0.2240 / 0.6135` | `0.0157 / 0.0201` | 19 | 9.88e+22 |
 | `c_tilt_b_harmonic_cframe_no_cxy` | `0.0166 / 0.0277` | `0.2675 / 0.6374` | `0.1642 / 0.3774` | `0.0145 / 0.0207` | 11 | 9.99e+05 |
 | `c_tilt_b_harmonic_machine_cframe_no_cxy` | `0.0166 / 0.0277` | `0.2646 / 0.6855` | `0.1598 / 0.3818` | `0.0148 / 0.0201` | 20 | 5.33e+07 |
 | `axis_vectors_no_cxy` | `0.1589 / 0.3149` | `1.3268 / 1.6073` | `1.3432 / 1.5900` | `1.2970 / 1.5831` | 10 | 5.37e+06 |
@@ -177,6 +185,8 @@ scaling (`38` total points, three run groups).
 | `b_harmonic_machine_no_cxy` | `0.0651 / 0.1221` | `0.2058 / 0.5687` | `0.0917 / 0.1630` | `0.1969 / 0.5944` | `0.0157 / 0.0201` | 9 | 2.52e+00 |
 | `b_harmonic_cframe_no_cxy` | `0.0912 / 0.1935` | `0.1910 / 0.4678` | `0.1332 / 0.3049` | `0.1893 / 0.4680` | `0.0157 / 0.0201` | 9 | 2.52e+00 |
 | `b_harmonic_machine_cframe_no_cxy` | `0.0642 / 0.1247` | `0.1825 / 0.5210` | `0.0909 / 0.1788` | `0.1772 / 0.5497` | `0.0157 / 0.0201` | 15 | 7.31e+16 |
+| `b_cross_machine_no_cxy` | `0.1945 / 0.4415` | `0.2774 / 0.7351` | `0.2735 / 0.6055` | `0.2398 / 0.6557` | `0.0157 / 0.0201` | 15 | 1.94e+00 |
+| `b_harmonic_machine_bcross_no_cxy` | `0.0263 / 0.0530` | `0.0719 / 0.1005` | `0.0418 / 0.0799` | `0.0539 / 0.1183` | `0.0157 / 0.0201` | 24 | 2.93e+00 |
 | `c_tilt_b_harmonic_cframe_no_cxy` | `0.0864 / 0.1943` | `0.1874 / 0.4740` | `0.1202 / 0.2560` | `0.1827 / 0.4761` | `0.0135 / 0.0175` | 11 | 1.56e+01 |
 | `c_tilt_b_harmonic_machine_cframe_no_cxy` | `0.0626 / 0.1214` | `0.1723 / 0.5056` | `0.0906 / 0.1822` | `0.1678 / 0.5168` | `0.0108 / 0.0175` | 20 | 1.61e+07 |
 | `axis_vectors_no_cxy` | `0.1953 / 0.2936` | `0.2476 / 0.5565` | `0.2350 / 0.3507` | `0.2490 / 0.5124` | `0.1531 / 0.1909` | 10 | 5.11e+06 |
@@ -197,6 +207,8 @@ Fit target: all curated B90 rows plus C0 B-angle scaling
 | `b_harmonic_machine_no_cxy` | `0.0720 / 0.1298` | `0.2051 / 0.5476` | `0.0951 / 0.1674` | `0.1943 / 0.5725` | `0.0157 / 0.0201` | 9 | 2.98e+00 |
 | `b_harmonic_cframe_no_cxy` | `0.1028 / 0.2222` | `0.1874 / 0.4424` | `0.1425 / 0.3145` | `0.1835 / 0.4408` | `0.0157 / 0.0201` | 9 | 2.98e+00 |
 | `b_harmonic_machine_cframe_no_cxy` | `0.0825 / 0.1560` | `0.1774 / 0.4718` | `0.1086 / 0.2023` | `0.1697 / 0.5003` | `0.0157 / 0.0201` | 15 | 1.38e+17 |
+| `b_cross_machine_no_cxy` | `0.2069 / 0.4656` | `0.2759 / 0.7048` | `0.2707 / 0.5749` | `0.2378 / 0.6254` | `0.0157 / 0.0201` | 15 | 1.58e+00 |
+| `b_harmonic_machine_bcross_no_cxy` | `0.0293 / 0.0626` | `0.0742 / 0.1007` | `0.0388 / 0.0707` | `0.0464 / 0.0909` | `0.0157 / 0.0201` | 24 | 3.26e+00 |
 | `c_tilt_b_harmonic_cframe_no_cxy` | `0.0970 / 0.2146` | `0.1838 / 0.4443` | `0.1315 / 0.2704` | `0.1765 / 0.4453` | `0.0138 / 0.0176` | 11 | 1.80e+01 |
 | `c_tilt_b_harmonic_machine_cframe_no_cxy` | `0.0822 / 0.1549` | `0.1671 / 0.4590` | `0.1077 / 0.2029` | `0.1595 / 0.4678` | `0.0108 / 0.0175` | 20 | 9.65e+06 |
 | `axis_vectors_no_cxy` | `0.2067 / 0.3038` | `0.2454 / 0.5428` | `0.2373 / 0.3727` | `0.2421 / 0.4959` | `0.1376 / 0.1721` | 10 | 7.16e+05 |
@@ -292,6 +304,7 @@ offline model to the measured rows.
 | model | all direct RMS/max | C0 direct RMS/max | C180 direct RMS/max | C90/C270 direct RMS/max | residual RMS/max | rank | Jacobian cond |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | current live candidate | `0.232339 / 0.615783 mm` | `0.108201 / 0.189342 mm` | `0.145308 / 0.228885 mm` | `0.408282 / 0.615783 mm` | `0.1757 / 0.5147` | 0 | n/a |
+| direct B/C cross on live candidate | `0.094009 / 0.166446 mm` | `0.078760 / 0.116901 mm` | `0.111771 / 0.166446 mm` | `0.085480 / 0.085480 mm` | `0.0671 / 0.1134` | 15 | 1.41e+00 |
 | incremental C-frame on live candidate | `0.202139 / 0.494928 mm` | `0.129914 / 0.210126 mm` | `0.164097 / 0.238455 mm` | `0.312621 / 0.494928 mm` | `0.1509 / 0.3950` | 9 | 2.07e+00 |
 | C-tilted C-frame on live candidate | `0.203360 / 0.522719 mm` | `0.122635 / 0.212177 mm` | `0.159771 / 0.224519 mm` | `0.323377 / 0.522719 mm` | `0.1491 / 0.4018` | 11 | 1.03e+01 |
 | replacement machine only | `0.227425 / 0.550588 mm` | `0.140954 / 0.220488 mm` | `0.136431 / 0.194951 mm` | `0.386220 / 0.550588 mm` | `0.1719 / 0.4720` | 9 | 2.07e+00 |
@@ -300,10 +313,70 @@ offline model to the measured rows.
 | C-tilted replacement machine plus C-frame | `0.185867 / 0.408958 mm` | `0.146922 / 0.243771 mm` | `0.167960 / 0.265483 mm` | `0.251974 / 0.408958 mm` | `0.1369 / 0.3290` | 20 | 4.78e+06 |
 | axis vector plus linear diagonal | `0.247448 / 0.444382 mm` | `0.140272 / 0.200504 mm` | `0.270120 / 0.384459 mm` | `0.325516 / 0.444382 mm` | `0.1648 / 0.2741` | 13 | 4.33e+07 |
 
-The incremental C-frame terms improve the side quadrants but regress
-C0/C180 and still leave too much side error for a live candidate. Adding
-C-axis tilt coupling improves the side result further, but the fit is
-still too large and too flexible to trust live.
+The direct B/C cross fit is the first side-aware candidate that improves
+C0, C180, and C90/C270 together without an ill-conditioned Jacobian. It
+is fitted as an incremental layer on top of the already tested
+machine-fixed B-harmonic candidate.
+
+### Candidate-On Direct B/C Cross Parameters
+
+- `bc_sinb_sinc_x` = `0.002528625`
+- `bc_sinb_sinc_y` = `0.322704792`
+- `bc_sinb_sinc_z` = `0.129756713`
+- `bc_omcb_sinc_x` = `-0.075154781`
+- `bc_omcb_sinc_y` = `0.002088037`
+- `bc_omcb_sinc_z` = `-0.001416604`
+- `bc_omcb_sin2c_x` = `0.015430253`
+- `bc_omcb_sin2c_y` = `-0.178186533`
+- `bc_omcb_sin2c_z` = `-0.027922013`
+- `bc_sinb_cosc_x` = `-0.047944843`
+- `bc_sinb_cosc_y` = `-0.063115561`
+- `bc_sinb_cosc_z` = `-0.018569166`
+- `bc_omcb_cosc_x` = `-0.033954526`
+- `bc_omcb_cosc_y` = `0.071241728`
+- `bc_omcb_cosc_z` = `-0.000964915`
+
+Simulation-only HAL load block for the next diagnostic candidate:
+
+```hal
+setp headheadkins.sim-bharm-enable 0
+setp headheadkins.bharm-m.sin.x 0.003457595
+setp headheadkins.bharm-m.sin.y 0.071987315
+setp headheadkins.bharm-m.sin.z 0.318267363
+setp headheadkins.bharm-m.omc.x 0.108123741
+setp headheadkins.bharm-m.omc.y 0.034446993
+setp headheadkins.bharm-m.omc.z -0.364472105
+setp headheadkins.bharm-m.sin2.x -0.032225192
+setp headheadkins.bharm-m.sin2.y 0.005230194
+setp headheadkins.bharm-m.sin2.z -0.190772593
+setp headheadkins.bharm-c.sin.x 0.000000000
+setp headheadkins.bharm-c.sin.y 0.000000000
+setp headheadkins.bharm-c.sin.z 0.000000000
+setp headheadkins.bharm-c.omc.x 0.000000000
+setp headheadkins.bharm-c.omc.y 0.000000000
+setp headheadkins.bharm-c.omc.z 0.000000000
+setp headheadkins.bharm-c.sin2.x 0.000000000
+setp headheadkins.bharm-c.sin2.y 0.000000000
+setp headheadkins.bharm-c.sin2.z 0.000000000
+setp headheadkins.bcross.sinb-sinc.x 0.002528625
+setp headheadkins.bcross.sinb-sinc.y 0.322704792
+setp headheadkins.bcross.sinb-sinc.z 0.129756713
+setp headheadkins.bcross.omcb-sinc.x -0.075154781
+setp headheadkins.bcross.omcb-sinc.y 0.002088037
+setp headheadkins.bcross.omcb-sinc.z -0.001416604
+setp headheadkins.bcross.omcb-sin2c.x 0.015430253
+setp headheadkins.bcross.omcb-sin2c.y -0.178186533
+setp headheadkins.bcross.omcb-sin2c.z -0.027922013
+setp headheadkins.bcross.sinb-cosc.x -0.047944843
+setp headheadkins.bcross.sinb-cosc.y -0.063115561
+setp headheadkins.bcross.sinb-cosc.z -0.018569166
+setp headheadkins.bcross.omcb-cosc.x -0.033954526
+setp headheadkins.bcross.omcb-cosc.y 0.071241728
+setp headheadkins.bcross.omcb-cosc.z -0.000964915
+setp headheadkins.sim-bharm-enable 1
+```
+
+### Candidate-On Incremental C-Frame Parameters
 
 ### Candidate-On Incremental C-Frame Parameters
 
@@ -482,6 +555,21 @@ setp headheadkins.bharm-c.omc.z 0.000000000
 setp headheadkins.bharm-c.sin2.x 0.000000000
 setp headheadkins.bharm-c.sin2.y 0.000000000
 setp headheadkins.bharm-c.sin2.z 0.000000000
+setp headheadkins.bcross.sinb-sinc.x 0.000000000
+setp headheadkins.bcross.sinb-sinc.y 0.000000000
+setp headheadkins.bcross.sinb-sinc.z 0.000000000
+setp headheadkins.bcross.omcb-sinc.x 0.000000000
+setp headheadkins.bcross.omcb-sinc.y 0.000000000
+setp headheadkins.bcross.omcb-sinc.z 0.000000000
+setp headheadkins.bcross.omcb-sin2c.x 0.000000000
+setp headheadkins.bcross.omcb-sin2c.y 0.000000000
+setp headheadkins.bcross.omcb-sin2c.z 0.000000000
+setp headheadkins.bcross.sinb-cosc.x 0.000000000
+setp headheadkins.bcross.sinb-cosc.y 0.000000000
+setp headheadkins.bcross.sinb-cosc.z 0.000000000
+setp headheadkins.bcross.omcb-cosc.x 0.000000000
+setp headheadkins.bcross.omcb-cosc.y 0.000000000
+setp headheadkins.bcross.omcb-cosc.z 0.000000000
 setp headheadkins.sim-bharm-enable 1
 ```
 
@@ -538,11 +626,11 @@ setp headheadkins.sim-bharm-enable 1
   `C90/C270`, especially `B+90 C270`.
 - The tested machine-fixed correction is not a general solution by itself;
   the side-quadrant validation is much worse than C0/C180.
-- Refit with the side validation rows reduces the all-validation direct
-  maximum only to `0.408958 mm`, and that result needs a flexible
-  C-tilted replacement machine/C-frame fit.
-- The better-conditioned incremental C-frame fit still leaves
-  `0.494928 mm` maximum direct error and regresses C0/C180.
+- The direct B/C cross candidate reduces all-validation direct RMS/max to
+  `0.094009 / 0.166446 mm`.
+- The same direct B/C cross candidate evaluates at
+  `0.0775 / 0.1067` on the older corrected B90 run
+  and `0.0578 / 0.1167` on the clean B-axis holdout.
 - Axis-vector terms help only modestly and still point at an incomplete
   model.
 - Linear/affine terms improve the numerical fit but repeatedly hit bounds,
@@ -551,22 +639,17 @@ setp headheadkins.sim-bharm-enable 1
 ## Next TCPC Math Work
 
 1. Keep the run-state-aware fitter as the source of truth for mixed data.
-2. Add tool-frame debug output pins to `headheadkins` for the actual
-   expanded U/V/W probe frame, not only tool and rotary axis vectors.
-3. Add simulation-only machine-linear affine support with identity defaults:
-   `reported_tcp = A * joint_xyz + rotary_offset` and inverse
-   `joint_xyz = A^-1 * (requested_tcp - rotary_offset)`.
-4. Implement the B-harmonic correction path in simulation only, with all
-   coefficients defaulting to zero, then verify forward/inverse behavior.
-5. Do not promote any current expanded-variable fit to live HAL.
-6. Use the side validation rows to design a more constrained correction
-   family around C-axis tilt coupling, then verify it in simulation
-   before the next machine run.
+2. Keep the direct B/C cross terms simulation-gated with zero defaults.
+3. Verify the B/C cross candidate in non-GUI math and LinuxCNC sim before
+   any machine test.
+4. Do not promote any B-harmonic or B/C cross correction to persistent
+   startup HAL until the live validation passes.
 
 ## Next Live Data
 
-Do not run another live probe pass yet. The side-quadrant validation has
-shown that the current machine-fixed B-harmonic candidate is not enough.
+Do not run another live probe pass until the B/C cross candidate has
+passed simulation verification and the updated kinematics have been
+restarted.
 
-Next work is reducing the C-tilt/harmonic model to a smaller constrained
-candidate and verifying it in simulation before returning to the machine.
+The next live test should be a limited diagnostic candidate-on validation,
+not a long C-quadrant run.

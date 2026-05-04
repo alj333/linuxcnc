@@ -827,3 +827,25 @@ Current calibration decision:
 - keep the B-harmonic candidate diagnostic-only
 - do not run another live probing pass until a new constrained model is
   simulation-verified
+
+B/C cross-harmonic candidate:
+
+- added zero-default `headheadkins.bcross.*` pins behind
+  `headheadkins.sim-bharm-enable`
+- candidate file:
+  `configs/sim/head_head_5axis/head_head_bharmonic_candidate.hal`
+- predicted all-validation direct RMS/max:
+  `0.094009 / 0.166446 mm`
+- predicted side direct RMS/max:
+  `0.085480 / 0.085480 mm`
+- non-GUI math verification passed with forward/inverse max error
+  `8.04e-14 mm`
+- `make -j2` and `sudo make setuid` completed
+
+Next machine test:
+
+- restart the TCPC config before testing, because the current running config
+  does not have the new `bcross.*` pins loaded
+- reload `tcpc_b_angle_scaling_diagnostic.ngc`
+- use `#711 = 4.0` for C0 + C180 + side validation
+- keep the B/C cross candidate non-persistent until this live validation passes

@@ -27,6 +27,7 @@
 #define TWP_ROTARY_TOLERANCE_DEG 1e-3
 #define TOOL_FRAME_AXES 3
 #define B_HARMONIC_TERMS 3
+#define B_CROSS_TERMS 5
 
 struct haldata {
     hal_float_t *nominal_c_to_b_x;
@@ -70,6 +71,7 @@ struct haldata {
     hal_bit_t *sim_b_harmonic_enable;
     hal_float_t *b_harmonic_machine[B_HARMONIC_TERMS][3];
     hal_float_t *b_harmonic_cframe[B_HARMONIC_TERMS][3];
+    hal_float_t *b_cross_machine[B_CROSS_TERMS][3];
 
     hal_bit_t *tcpc_enable;
     hal_bit_t *twp_mode;
@@ -104,6 +106,13 @@ static const char *b_harmonic_term_names[B_HARMONIC_TERMS] = {
     "sin",
     "omc",
     "sin2",
+};
+static const char *b_cross_term_names[B_CROSS_TERMS] = {
+    "sinb-sinc",
+    "omcb-sinc",
+    "omcb-sin2c",
+    "sinb-cosc",
+    "omcb-cosc",
 };
 
 static double pinv(hal_float_t *pin)
@@ -364,10 +373,15 @@ static void b_harmonic_offset_world(double b_cmd, double c_cmd, double out[3])
 {
     double b_eff;
     double c_eff;
+    double b_rad;
+    double c_rad;
     double machine_fixed[3];
     double cframe_local[3];
     double c_rotated[3];
     double cframe_world[3];
+    double cross_terms[B_CROSS_TERMS];
+    int term;
+    int axis;
 
     out[0] = 0.0;
     out[1] = 0.0;
@@ -378,6 +392,8 @@ static void b_harmonic_offset_world(double b_cmd, double c_cmd, double out[3])
     }
 
     effective_angles(b_cmd, c_cmd, &b_eff, &c_eff);
+    b_rad = TO_RAD * b_eff;
+    c_rad = TO_RAD * c_eff;
 
     b_harmonic_vector(haldata->b_harmonic_machine, b_eff, machine_fixed);
     b_harmonic_vector(haldata->b_harmonic_cframe, b_eff, cframe_local);
@@ -387,6 +403,18 @@ static void b_harmonic_offset_world(double b_cmd, double c_cmd, double out[3])
     out[0] = machine_fixed[0] + cframe_world[0];
     out[1] = machine_fixed[1] + cframe_world[1];
     out[2] = machine_fixed[2] + cframe_world[2];
+
+    cross_terms[0] = sin(b_rad) * sin(c_rad);
+    cross_terms[1] = (1.0 - cos(b_rad)) * sin(c_rad);
+    cross_terms[2] = (1.0 - cos(b_rad)) * sin(c_rad) * sin(c_rad);
+    cross_terms[3] = sin(b_rad) * cos(c_rad);
+    cross_terms[4] = (1.0 - cos(b_rad)) * cos(c_rad);
+
+    for (term = 0; term < B_CROSS_TERMS; term++) {
+        for (axis = 0; axis < 3; axis++) {
+            out[axis] += cross_terms[term] * pinv(haldata->b_cross_machine[term][axis]);
+        }
+    }
 }
 
 static void tool_offset_world(double b_cmd, double c_cmd, double out[3])
@@ -671,6 +699,18 @@ static int init_b_harmonic_pins(void)
         }
     }
 
+    for (term = 0; term < B_CROSS_TERMS; term++) {
+        for (axis = 0; axis < 3; axis++) {
+            result = hal_pin_float_newf(HAL_IN,
+                                        &haldata->b_cross_machine[term][axis],
+                                        comp_id,
+                                        "headheadkins.bcross.%s.%s",
+                                        b_cross_term_names[term],
+                                        axis_names[axis]);
+            if (result < 0) return result;
+        }
+    }
+
     return 0;
 }
 
@@ -680,6 +720,7 @@ static int init_geometry_pins(void)
     int frame;
     int term;
     int axis;
+    int cross_term;
 
     result = new_hal_float_pin(&haldata->nominal_c_to_b_x, HAL_IN, "nominal-c-to-b.x");
     if (result < 0) return result;
@@ -820,6 +861,11 @@ static int init_geometry_pins(void)
         for (axis = 0; axis < 3; axis++) {
             *haldata->b_harmonic_machine[term][axis] = 0.0;
             *haldata->b_harmonic_cframe[term][axis] = 0.0;
+        }
+    }
+    for (cross_term = 0; cross_term < B_CROSS_TERMS; cross_term++) {
+        for (axis = 0; axis < 3; axis++) {
+            *haldata->b_cross_machine[cross_term][axis] = 0.0;
         }
     }
 

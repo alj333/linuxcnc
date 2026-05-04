@@ -4123,3 +4123,77 @@ Decision:
   too flexible and leaves too much side error
 - continue offline work on a smaller constrained C-tilt/harmonic correction
   family and simulation verification before returning to machine probing
+
+## 2026-05-04 B/C Cross-Harmonic Candidate Prepared
+
+Continued offline fitting after the machine was reported idle. The side error
+has a strong `sin(B) * sin(C)` signature in machine Y/Z, and a same-direction
+side residual is explained by `(1-cos(B)) * sin(C)^2`. These terms are zero at
+`B0`, so enabling the candidate at `B0` should not move the TCP.
+
+Added a simulation-gated machine-world B/C cross correction family to
+`headheadkins`:
+
+- existing gate: `headheadkins.sim-bharm-enable`
+- new pins:
+  - `headheadkins.bcross.sinb-sinc.x/y/z`
+  - `headheadkins.bcross.omcb-sinc.x/y/z`
+  - `headheadkins.bcross.omcb-sin2c.x/y/z`
+  - `headheadkins.bcross.sinb-cosc.x/y/z`
+  - `headheadkins.bcross.omcb-cosc.x/y/z`
+- all new pins default to zero
+- with `sim-bharm-enable = FALSE`, the path contributes zero
+
+The candidate is incremental on top of the previously tested machine-fixed
+B-harmonic terms. Offline direct-metric prediction:
+
+| Data set | current machine B-harmonic | next B/C cross candidate |
+| --- | ---: | ---: |
+| C0 candidate-on | `0.108201 / 0.189342 mm` | `0.078760 / 0.116901 mm` |
+| C180 candidate-on | `0.145308 / 0.228885 mm` | `0.111771 / 0.166446 mm` |
+| C90/C270 side candidate-on | `0.408282 / 0.615783 mm` | `0.085480 / 0.085480 mm` |
+| all candidate-on validation | `0.232339 / 0.615783 mm` | `0.094009 / 0.166446 mm` |
+
+Holdout-style checks:
+
+- original C0 scaling prediction: `0.073636 / 0.115399 mm`
+- corrected B90 C-quadrant prediction: `0.103511 / 0.148967 mm`
+- clean B-axis holdout prediction: `0.095375 / 0.132854 mm`
+
+Candidate coefficients are now in:
+
+- `configs/sim/head_head_5axis/head_head_bharmonic_candidate.hal`
+
+Verification completed:
+
+- `python3 -m py_compile` passed for the fitter and sim verification scripts
+- `python3 configs/sim/head_head_5axis/headhead_bharmonic_verify.py` passed:
+  - zero/default max offset delta: `0 mm`
+  - tool-frame formula max delta: `0`
+  - candidate forward/inverse max error: `8.04e-14 mm`
+- `make -j2` completed in `src`
+- `sudo make setuid` completed
+- `git diff --check` passed
+- RS274 preview parse passed for
+  `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- RS274 task-mode parse reached the first simulated probe move and aborted at
+  the expected no-contact probe check, so syntax before motion is valid
+
+Prepared next validation run:
+
+- `tcpc_b_angle_scaling_diagnostic.ngc` now supports `#711 = 4.0`
+- current file is set to `#711 = 4.0`
+- sequence:
+  - C0: `B0, B+30, B-30, B+60, B-60, B+90, B-90, B0`
+  - C180: `B0, B+30, B-30, B+60, B-60, B+90, B-90, B0`
+  - side: C90 and C270 with `B0, B+90, B-90, B0`
+
+Important handoff:
+
+- the running LinuxCNC session still has the old loaded kinematics module
+- close/restart the TCPC Probe Basic config before testing this candidate so
+  the new `bcross.*` pins exist
+- after restart, confirm `headheadkins.sim-bharm-enable = FALSE` before loading
+  coefficients
+- do not make the B/C cross candidate persistent until the live validation
+  passes
