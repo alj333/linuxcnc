@@ -2527,3 +2527,43 @@ Current scope:
   additional live probing
 - do not rerun the same long validation immediately unless repeatability of
   the candidate itself becomes the next question
+
+## Refined B/C Cross Candidate Ready For Next Test - 2026-05-04
+
+The live B/C-cross-active rows have now been folded into the run-state-aware
+offline fitter. The best constrained next diagnostic is a replacement fit of
+the existing machine-fixed B-harmonic plus B/C cross correction families. It
+does not add another kinematics family.
+
+Direct validation metrics:
+
+| Model | Combined live rows | Corrected B90 holdout | Clean B-axis holdout | Original C0 scaling |
+| --- | ---: | ---: | ---: | ---: |
+| current B/C cross | `0.095201 / 0.176626 mm` | `0.103511 / 0.148967 mm` | `0.095375 / 0.132854 mm` | `0.073636 / 0.115399 mm` |
+| refined B/C cross | `0.072421 / 0.133632 mm` | `0.098309 / 0.150983 mm` | `0.080505 / 0.100168 mm` | `0.042392 / 0.076438 mm` |
+
+Prepared next-candidate HAL:
+
+- `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`
+
+Verification passed:
+
+- non-GUI B-harmonic math verification
+- LinuxCNC sim fixed-tip smoke test:
+  - disabled max TCP error: `0.000000000 mm`
+  - enabled max TCP error: `0.000000000 mm`
+- sim HAL unloaded after the test
+
+Next live run:
+
+- launch the TCPC Probe Basic config fresh
+- confirm `headheadkins.sim-bharm-enable = FALSE`
+- source or include `head_head_bharmonic_refined_candidate.hal`
+- verify refined coefficients before enabling:
+  - `headheadkins.bharm-m.sin.z = 0.312123080`
+  - `headheadkins.bharm-m.omc.y = 0.111703959`
+  - `headheadkins.bcross.sinb-sinc.y = 0.325723886`
+  - `headheadkins.bcross.omcb-sin2c.y = -0.255875638`
+- run `tcpc_b_angle_scaling_diagnostic.ngc` with `#711 = 4.0`
+- disable `headheadkins.sim-bharm-enable` immediately after completion or any
+  stop/error

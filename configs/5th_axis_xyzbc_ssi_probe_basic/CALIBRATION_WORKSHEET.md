@@ -876,3 +876,27 @@ Current calibration decision:
 - keep it non-persistent and gated off until the new run is folded into the
   next offline fit
 - next work is offline fitting, not another immediate machine probe run
+
+Refined candidate after offline fold-in:
+
+- refined candidate HAL:
+  `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`
+- combined live direct RMS/max prediction:
+  `0.072421 / 0.133632 mm`
+- corrected B90 holdout direct RMS/max:
+  `0.098309 / 0.150983 mm`
+- clean B-axis holdout direct RMS/max:
+  `0.080505 / 0.100168 mm`
+- original C0 scaling direct RMS/max:
+  `0.042392 / 0.076438 mm`
+- non-GUI math verification passed
+- LinuxCNC sim fixed-tip smoke passed at `0.000000000 mm` disabled/enabled TCP
+  error
+
+Next machine task:
+
+- restart the TCPC Probe Basic config
+- load the refined candidate HAL while idle and gated off
+- run `tcpc_b_angle_scaling_diagnostic.ngc` with `#711 = 4.0`
+- disable `headheadkins.sim-bharm-enable` immediately after the run or any
+  stop/error

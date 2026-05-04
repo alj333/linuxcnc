@@ -4252,3 +4252,63 @@ Next action:
 - keep the B/C cross candidate non-persistent and gated off
 - continue offline fitting against the new B/C cross validation rows before
   selecting the next live probe task
+
+## 2026-05-04 Refined B/C Cross Candidate Prepared
+
+Continued offline work after the machine was shut down for the night. The new
+B/C-cross-active rows were used as an independent live-state data set, not
+merged blindly with the older B-harmonic-only rows.
+
+Refit result:
+
+- current B/C cross candidate on combined live rows:
+  `0.095201 / 0.176626 mm`
+- refined replacement machine plus B/C cross fit on combined live rows:
+  `0.072421 / 0.133632 mm`
+- corrected B90 holdout direct RMS/max with refined fit:
+  `0.098309 / 0.150983 mm`
+- clean B-axis holdout direct RMS/max with refined fit:
+  `0.080505 / 0.100168 mm`
+- original C0 scaling direct RMS/max with refined fit:
+  `0.042392 / 0.076438 mm`
+- direct fit rank/condition: `24 / 2.85e+00`
+
+Prepared files:
+
+- refined candidate HAL:
+  `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`
+- dedicated sim config now points at the refined HAL:
+  `configs/sim/head_head_5axis/head_head_bharmonic_sim.ini`
+- `tcpc_expanded_geometry_fit.py` and
+  `TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md` now include the post-B/C-cross refit
+  and the refined candidate parameters
+
+Verification completed:
+
+- `python3 -m py_compile` passed for the fitter and B-harmonic verification
+  scripts
+- `python3 configs/sim/head_head_5axis/headhead_bharmonic_verify.py` passed:
+  - zero/default max offset delta: `0 mm`
+  - tool-frame formula max delta: `0`
+  - candidate forward/inverse max error: `8.04e-14 mm`
+- dedicated LinuxCNC sim smoke test passed:
+  - disabled max fixed-tip TCP error: `0.000000000 mm`
+  - enabled max fixed-tip TCP error: `0.000000000 mm`
+- the temporary sim HAL session was stopped and unloaded afterward
+
+Next live task:
+
+- start the TCPC Probe Basic config fresh
+- confirm `headheadkins.sim-bharm-enable = FALSE`
+- load `head_head_bharmonic_refined_candidate.hal`, not the previous
+  `head_head_bharmonic_candidate.hal`
+- verify at least:
+  - `headheadkins.bharm-m.sin.z = 0.312123080`
+  - `headheadkins.bharm-m.omc.y = 0.111703959`
+  - `headheadkins.bcross.sinb-sinc.y = 0.325723886`
+  - `headheadkins.bcross.omcb-sin2c.y = -0.255875638`
+- enable `headheadkins.sim-bharm-enable` only immediately before cycle start
+- run `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with
+  `#711 = 4.0`
+- disable `headheadkins.sim-bharm-enable` immediately after completion or any
+  stop/error

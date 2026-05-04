@@ -433,6 +433,97 @@ B/C cross side-quadrant deltas:
 | `bcross_candidate_side_scaling:L119:B+90C270` | -0.033205 | +0.100509 | -0.005249 | 0.105982 |
 | `bcross_candidate_side_scaling:L121:B-90C270` | +0.034869 | -0.056644 | +0.008500 | 0.067057 |
 
+## Post B/C Cross Refit
+
+The live B/C cross validation rows are an independent check on the
+previous B/C cross fit. This refit keeps the validated C-center fixed
+and compares candidate families against both live states: the older
+B-harmonic-only rows and the new rows measured with B/C cross active.
+
+| model | train set | old B-harmonic-only live rows direct RMS/max | new B/C cross live rows direct RMS/max | combined live rows direct RMS/max | corrected B90 holdout direct RMS/max | clean B-axis holdout direct RMS/max | original C0 scaling direct RMS/max | rank | Jacobian cond |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| current B/C cross candidate | live-tested candidate | `0.094009 / 0.166446 mm` | `0.096378 / 0.176626 mm` | `0.095201 / 0.176626 mm` | `0.103511 / 0.148967 mm` | `0.095375 / 0.132854 mm` | `0.073636 / 0.115399 mm` | 0 | n/a |
+| refit B/C cross only | old+new live rows | `0.094302 / 0.168109 mm` | `0.095516 / 0.178259 mm` | `0.094911 / 0.178259 mm` | `0.100208 / 0.148116 mm` | `0.094523 / 0.132775 mm` | `0.072749 / 0.114445 mm` | 15 | 1.41e+00 |
+| refined replacement machine plus B/C cross | old+new live rows | `0.072368 / 0.133632 mm` | `0.072474 / 0.131970 mm` | `0.072421 / 0.133632 mm` | `0.098309 / 0.150983 mm` | `0.080505 / 0.100168 mm` | `0.042392 / 0.076438 mm` | 24 | 2.85e+00 |
+| replacement machine plus B/C cross from new rows only | new B/C cross rows | `0.074474 / 0.134173 mm` | `0.071759 / 0.132287 mm` | `0.073129 / 0.134173 mm` | `0.094820 / 0.149283 mm` | `0.081305 / 0.104391 mm` | `0.043288 / 0.074377 mm` | 24 | 2.85e+00 |
+| incremental C-frame on current B/C cross | new B/C cross rows | `0.091980 / 0.178812 mm` | `0.092310 / 0.187489 mm` | `0.092145 / 0.187489 mm` | `0.097416 / 0.141832 mm` | `0.090993 / 0.136585 mm` | `0.063826 / 0.096282 mm` | 9 | 2.07e+00 |
+
+The best next diagnostic is the refined replacement machine plus B/C
+cross fit. It is not a new kinematics family; it only retunes the
+already simulation-gated machine harmonic and B/C cross pins using the
+additional live validation rows.
+
+### Refined Replacement Machine Plus B/C Cross Parameters
+
+- `mb_sin_b_x` = `0.015577123`
+- `mb_sin_b_y` = `0.060508594`
+- `mb_sin_b_z` = `0.312123080`
+- `mb_omc_b_x` = `0.141330042`
+- `mb_omc_b_y` = `0.111703959`
+- `mb_omc_b_z` = `-0.338104991`
+- `mb_sin_2b_x` = `-0.013271805`
+- `mb_sin_2b_y` = `0.050707231`
+- `mb_sin_2b_z` = `-0.156014210`
+- `bc_sinb_sinc_x` = `-0.006371196`
+- `bc_sinb_sinc_y` = `0.325723886`
+- `bc_sinb_sinc_z` = `0.130042953`
+- `bc_omcb_sinc_x` = `-0.074687973`
+- `bc_omcb_sinc_y` = `0.012622224`
+- `bc_omcb_sinc_z` = `-0.001729459`
+- `bc_omcb_sin2c_x` = `-0.017723675`
+- `bc_omcb_sin2c_y` = `-0.255875638`
+- `bc_omcb_sin2c_z` = `-0.055414262`
+- `bc_sinb_cosc_x` = `-0.048238059`
+- `bc_sinb_cosc_y` = `-0.063070849`
+- `bc_sinb_cosc_z` = `-0.018239994`
+- `bc_omcb_cosc_x` = `-0.030283175`
+- `bc_omcb_cosc_y` = `0.071683484`
+- `bc_omcb_cosc_z` = `0.000165632`
+
+Simulation-only HAL load block for the refined diagnostic candidate:
+
+```hal
+setp headheadkins.sim-bharm-enable 0
+setp headheadkins.bharm-m.sin.x 0.015577123
+setp headheadkins.bharm-m.sin.y 0.060508594
+setp headheadkins.bharm-m.sin.z 0.312123080
+setp headheadkins.bharm-m.omc.x 0.141330042
+setp headheadkins.bharm-m.omc.y 0.111703959
+setp headheadkins.bharm-m.omc.z -0.338104991
+setp headheadkins.bharm-m.sin2.x -0.013271805
+setp headheadkins.bharm-m.sin2.y 0.050707231
+setp headheadkins.bharm-m.sin2.z -0.156014210
+setp headheadkins.bharm-c.sin.x 0.000000000
+setp headheadkins.bharm-c.sin.y 0.000000000
+setp headheadkins.bharm-c.sin.z 0.000000000
+setp headheadkins.bharm-c.omc.x 0.000000000
+setp headheadkins.bharm-c.omc.y 0.000000000
+setp headheadkins.bharm-c.omc.z 0.000000000
+setp headheadkins.bharm-c.sin2.x 0.000000000
+setp headheadkins.bharm-c.sin2.y 0.000000000
+setp headheadkins.bharm-c.sin2.z 0.000000000
+setp headheadkins.bcross.sinb-sinc.x -0.006371196
+setp headheadkins.bcross.sinb-sinc.y 0.325723886
+setp headheadkins.bcross.sinb-sinc.z 0.130042953
+setp headheadkins.bcross.omcb-sinc.x -0.074687973
+setp headheadkins.bcross.omcb-sinc.y 0.012622224
+setp headheadkins.bcross.omcb-sinc.z -0.001729459
+setp headheadkins.bcross.omcb-sin2c.x -0.017723675
+setp headheadkins.bcross.omcb-sin2c.y -0.255875638
+setp headheadkins.bcross.omcb-sin2c.z -0.055414262
+setp headheadkins.bcross.sinb-cosc.x -0.048238059
+setp headheadkins.bcross.sinb-cosc.y -0.063070849
+setp headheadkins.bcross.sinb-cosc.z -0.018239994
+setp headheadkins.bcross.omcb-cosc.x -0.030283175
+setp headheadkins.bcross.omcb-cosc.y 0.071683484
+setp headheadkins.bcross.omcb-cosc.z 0.000165632
+setp headheadkins.sim-bharm-enable 1
+```
+
+Dedicated HAL file for the refined candidate:
+
+- `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`
+
 ### Candidate-On Incremental C-Frame Parameters
 
 - `cf_sin_b_x` = `0.124599147`
@@ -680,6 +771,9 @@ setp headheadkins.sim-bharm-enable 1
   `0.096378 / 0.176626 mm`.
 - B/C cross candidate side-quadrant non-B0 RMS/max is
   `0.079909 / 0.105982 mm`.
+- The refined replacement machine plus B/C cross fit reduces combined
+  live-state direct RMS/max to
+  `0.072421 / 0.133632 mm`.
 - With the B-harmonic-only candidate, C180 still had a `0.228885 mm`
   maximum at `B+60 C180`.
 - With the B/C cross candidate active, the current maximum is `0.176626 mm`.
@@ -705,16 +799,19 @@ setp headheadkins.sim-bharm-enable 1
 ## Next TCPC Math Work
 
 1. Keep the run-state-aware fitter as the source of truth for mixed data.
-2. Fold the live B/C cross validation rows into the next candidate search.
-3. Keep the direct B/C cross terms simulation-gated with zero defaults.
+2. Use the refined replacement machine plus B/C cross candidate as
+   the next simulation-gated live diagnostic.
+3. Keep the B-harmonic and B/C cross terms simulation-gated with zero
+   defaults.
 4. Do not promote any B-harmonic or B/C cross correction to persistent
    startup HAL until the validation rows have been reviewed and a
    persistent-candidate decision is made.
 
 ## Next Live Data
 
-Do not run another live probe pass until the B/C cross validation has
-been folded into the offline fit.
+The next live probe pass should use the refined candidate HAL file above
+with `headheadkins.sim-bharm-enable` still normally `FALSE`.
 
-The next live test should be selected from the refined fit rather than
-rerunning this same long validation immediately.
+Use `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with
+`#711 = 4.0` for the next validation so the refined candidate is checked
+against C0, C180, and the C90/C270 side poses.

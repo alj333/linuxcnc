@@ -13,6 +13,7 @@ import linuxcnc
 
 TIMEOUT = 90.0
 TCP_TOL = 1e-4
+EXPECTED_BCROSS_SINB_SINC_Y = 0.325723886
 TARGET = (1500.0, 850.0, -600.0)
 POSES = [
     (0.0, 0.0),
@@ -174,8 +175,8 @@ def main() -> int:
     mdi(command, status, error_channel, "G43.4")
     if not bool(hal.get_value("headheadkins.tcpc-enable")):
         fail("TCPC did not enable")
-    if abs(hal.get_value("headheadkins.bcross.sinb-sinc.y") - 0.322704792) > 1e-9:
-        fail("B/C cross candidate coefficients did not load")
+    if abs(hal.get_value("headheadkins.bcross.sinb-sinc.y") - EXPECTED_BCROSS_SINB_SINC_Y) > 1e-9:
+        fail("refined B/C cross candidate coefficients did not load")
 
     disabled_error = run_pose_set(command, status, error_channel, enable=False)
     enabled_error = run_pose_set(command, status, error_channel, enable=True)

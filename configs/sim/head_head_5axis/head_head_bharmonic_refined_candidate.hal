@@ -1,0 +1,54 @@
+# Simulation-only refined B/C cross-harmonic diagnostic candidate for headheadkins.
+#
+# Do not include this file in a real machine config.
+# The enable pin is deliberately left false by default; set it true only for a
+# controlled diagnostic run after loading and inspecting the pins.
+#
+# This is a replacement fit of the existing machine-fixed B-harmonic plus B/C
+# cross correction families. It was fitted from both live states:
+# - B-harmonic-only validation rows
+# - B-harmonic plus B/C cross validation rows
+
+setp headheadkins.sim-bharm-enable 0
+
+# Refined machine-fixed B-harmonic terms.
+setp headheadkins.bharm-m.sin.x 0.015577123
+setp headheadkins.bharm-m.sin.y 0.060508594
+setp headheadkins.bharm-m.sin.z 0.312123080
+setp headheadkins.bharm-m.omc.x 0.141330042
+setp headheadkins.bharm-m.omc.y 0.111703959
+setp headheadkins.bharm-m.omc.z -0.338104991
+setp headheadkins.bharm-m.sin2.x -0.013271805
+setp headheadkins.bharm-m.sin2.y 0.050707231
+setp headheadkins.bharm-m.sin2.z -0.156014210
+
+# Keep the C-frame family zero for this diagnostic.
+setp headheadkins.bharm-c.sin.x 0.000000000
+setp headheadkins.bharm-c.sin.y 0.000000000
+setp headheadkins.bharm-c.sin.z 0.000000000
+setp headheadkins.bharm-c.omc.x 0.000000000
+setp headheadkins.bharm-c.omc.y 0.000000000
+setp headheadkins.bharm-c.omc.z 0.000000000
+setp headheadkins.bharm-c.sin2.x 0.000000000
+setp headheadkins.bharm-c.sin2.y 0.000000000
+setp headheadkins.bharm-c.sin2.z 0.000000000
+
+# Refined machine-world B/C cross terms.
+setp headheadkins.bcross.sinb-sinc.x -0.006371196
+setp headheadkins.bcross.sinb-sinc.y 0.325723886
+setp headheadkins.bcross.sinb-sinc.z 0.130042953
+setp headheadkins.bcross.omcb-sinc.x -0.074687973
+setp headheadkins.bcross.omcb-sinc.y 0.012622224
+setp headheadkins.bcross.omcb-sinc.z -0.001729459
+setp headheadkins.bcross.omcb-sin2c.x -0.017723675
+setp headheadkins.bcross.omcb-sin2c.y -0.255875638
+setp headheadkins.bcross.omcb-sin2c.z -0.055414262
+setp headheadkins.bcross.sinb-cosc.x -0.048238059
+setp headheadkins.bcross.sinb-cosc.y -0.063070849
+setp headheadkins.bcross.sinb-cosc.z -0.018239994
+setp headheadkins.bcross.omcb-cosc.x -0.030283175
+setp headheadkins.bcross.omcb-cosc.y 0.071683484
+setp headheadkins.bcross.omcb-cosc.z 0.000165632
+
+# Simulation-only manual enable:
+# setp headheadkins.sim-bharm-enable 1

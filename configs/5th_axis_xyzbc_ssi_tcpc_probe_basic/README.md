@@ -865,3 +865,13 @@ Latest B/C cross candidate result:
 Do not enable `headheadkins.sim-bharm-enable` for normal machine use. It should
 remain `FALSE` unless deliberately running a gated diagnostic candidate from
 the current offline plan.
+
+Next diagnostic candidate:
+
+- refined HAL file:
+  `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`
+- predicted combined live direct RMS/max:
+  `0.072421 / 0.133632 mm`
+- non-GUI verification and LinuxCNC sim fixed-tip smoke have passed
+- next machine run should use
+  `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with `#711 = 4.0`

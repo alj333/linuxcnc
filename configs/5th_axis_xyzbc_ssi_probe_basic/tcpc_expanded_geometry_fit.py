@@ -637,6 +637,30 @@ def format_candidate_validation_table(
     return lines
 
 
+def format_direct_refit_table(
+    fit_results: list[tuple[str, str, FitResult]],
+    eval_sets: list[tuple[str, list[Observation]]],
+) -> list[str]:
+    headers = " | ".join([f"{name} direct RMS/max" for name, _ in eval_sets])
+    align = " | ".join(["---:" for _ in eval_sets])
+    lines = [
+        f"| model | train set | {headers} | rank | Jacobian cond |",
+        f"| --- | --- | {align} | ---: | ---: |",
+    ]
+    for label, train_set, fit in fit_results:
+        rank, cond = jacobian_condition(fit.result)
+        cond_text = "n/a" if math.isnan(cond) else f"{cond:.2e}"
+        direct_cols = [
+            b_angle_combined_delta_metric_text([observations], fit.params)
+            for _, observations in eval_sets
+        ]
+        lines.append(
+            f"| {label} | {train_set} | {' | '.join(direct_cols)} | "
+            f"{rank} | {cond_text} |"
+        )
+    return lines
+
+
 def format_params(params: dict[str, float], names: list[str]) -> list[str]:
     lines = []
     for name in names:
@@ -843,6 +867,7 @@ def write_report(
     post_baxis_scaling_fit: dict[str, FitResult],
     all_scaling_fit: dict[str, FitResult],
     candidate_validation_fit: list[tuple[str, FitResult]],
+    bcross_refit_fit: list[tuple[str, str, FitResult]],
 ) -> None:
     base_params = as_params([], np.array([]))
     fixed_c_params = as_params([], np.array([]), FIXED_C_CENTER)
@@ -876,9 +901,18 @@ def write_report(
     selected_candidate_tilted_combo = candidate_validation_by_label[
         "C-tilted replacement machine plus C-frame"
     ]
+    bcross_refit_by_label = {
+        label: fit
+        for label, _, fit in bcross_refit_fit
+    }
+    selected_bcross_refined = bcross_refit_by_label[
+        "refined replacement machine plus B/C cross"
+    ]
+    old_candidate_validation = candidate_validation
     bcross_candidate_validation = (
         bcross_candidate_c0 + bcross_candidate_c180 + bcross_candidate_side
     )
+    combined_live_validation = old_candidate_validation + bcross_candidate_validation
     live_candidate_params = as_params(
         [],
         np.array([]),
@@ -1211,6 +1245,45 @@ def write_report(
         "| --- | ---: | ---: | ---: | ---: |",
         *b_angle_delta_summary(bcross_candidate_side),
         "",
+        "## Post B/C Cross Refit",
+        "",
+        "The live B/C cross validation rows are an independent check on the",
+        "previous B/C cross fit. This refit keeps the validated C-center fixed",
+        "and compares candidate families against both live states: the older",
+        "B-harmonic-only rows and the new rows measured with B/C cross active.",
+        "",
+        *format_direct_refit_table(
+            bcross_refit_fit,
+            [
+                ("old B-harmonic-only live rows", old_candidate_validation),
+                ("new B/C cross live rows", bcross_candidate_validation),
+                ("combined live rows", combined_live_validation),
+                ("corrected B90 holdout", post_cquad),
+                ("clean B-axis holdout", baxis_holdout),
+                ("original C0 scaling", c0_scaling),
+            ],
+        ),
+        "",
+        "The best next diagnostic is the refined replacement machine plus B/C",
+        "cross fit. It is not a new kinematics family; it only retunes the",
+        "already simulation-gated machine harmonic and B/C cross pins using the",
+        "additional live validation rows.",
+        "",
+        "### Refined Replacement Machine Plus B/C Cross Parameters",
+        "",
+        *format_params(
+            selected_bcross_refined.params,
+            B_HARMONIC_MACHINE_PARAMS + B_CROSS_MACHINE_PARAMS,
+        ),
+        "",
+        "Simulation-only HAL load block for the refined diagnostic candidate:",
+        "",
+        *b_harmonic_sim_hal_block(selected_bcross_refined.params),
+        "",
+        "Dedicated HAL file for the refined candidate:",
+        "",
+        "- `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`",
+        "",
         "### Candidate-On Incremental C-Frame Parameters",
         "",
         *format_params(
@@ -1295,6 +1368,9 @@ def write_report(
         f"  {b_angle_combined_delta_metric_text([bcross_candidate_c0, bcross_candidate_c180, bcross_candidate_side])}.",
         "- B/C cross candidate side-quadrant non-B0 RMS/max is",
         f"  {b_angle_combined_delta_metric_text([bcross_candidate_side])}.",
+        "- The refined replacement machine plus B/C cross fit reduces combined",
+        "  live-state direct RMS/max to",
+        f"  {b_angle_combined_delta_metric_text([combined_live_validation], selected_bcross_refined.params)}.",
         "- With the B-harmonic-only candidate, C180 still had a `0.228885 mm`",
         "  maximum at `B+60 C180`.",
         f"- With the B/C cross candidate active, the current maximum is `{max(np.linalg.norm(delta) for _, delta in b_angle_delta_rows(bcross_candidate_validation)[1]):.6f} mm`.",
@@ -1320,19 +1396,22 @@ def write_report(
         "## Next TCPC Math Work",
         "",
         "1. Keep the run-state-aware fitter as the source of truth for mixed data.",
-        "2. Fold the live B/C cross validation rows into the next candidate search.",
-        "3. Keep the direct B/C cross terms simulation-gated with zero defaults.",
+        "2. Use the refined replacement machine plus B/C cross candidate as",
+        "   the next simulation-gated live diagnostic.",
+        "3. Keep the B-harmonic and B/C cross terms simulation-gated with zero",
+        "   defaults.",
         "4. Do not promote any B-harmonic or B/C cross correction to persistent",
         "   startup HAL until the validation rows have been reviewed and a",
         "   persistent-candidate decision is made.",
         "",
         "## Next Live Data",
         "",
-        "Do not run another live probe pass until the B/C cross validation has",
-        "been folded into the offline fit.",
+        "The next live probe pass should use the refined candidate HAL file above",
+        "with `headheadkins.sim-bharm-enable` still normally `FALSE`.",
         "",
-        "The next live test should be selected from the refined fit rather than",
-        "rerunning this same long validation immediately.",
+        "Use `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with",
+        "`#711 = 4.0` for the next validation so the refined candidate is checked",
+        "against C0, C180, and the C90/C270 side poses.",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
@@ -1510,7 +1589,20 @@ def main() -> int:
         **FIXED_C_CENTER,
         **MACHINE_BHARMONIC_CANDIDATE,
     }
+    live_bcross_fixed_params = {
+        **FIXED_C_CENTER,
+        **BCROSS_CANDIDATE,
+    }
     candidate_validation = candidate_on_c0 + candidate_on_c180 + candidate_on_side
+    bcross_validation = bcross_candidate_c0 + bcross_candidate_c180 + bcross_candidate_side
+    combined_live_validation_sets = [
+        candidate_on_c0,
+        candidate_on_c180,
+        candidate_on_side,
+        bcross_candidate_c0,
+        bcross_candidate_c180,
+        bcross_candidate_side,
+    ]
     candidate_validation_fit = [
         (
             "current live candidate",
@@ -1573,6 +1665,53 @@ def main() -> int:
             fit_model("axis_vectors_linear_diag_no_cxy", candidate_validation, FIXED_C_CENTER),
         ),
     ]
+    bcross_refit_fit = [
+        (
+            "current B/C cross candidate",
+            "live-tested candidate",
+            FitResult(
+                model="current_bcross_candidate",
+                params=as_params([], np.array([]), live_bcross_fixed_params),
+                result=None,
+            ),
+        ),
+        (
+            "refit B/C cross only",
+            "old+new live rows",
+            fit_direct_model(
+                "b_cross_machine_no_cxy",
+                combined_live_validation_sets,
+                live_candidate_fixed_params,
+            ),
+        ),
+        (
+            "refined replacement machine plus B/C cross",
+            "old+new live rows",
+            fit_direct_model(
+                "b_harmonic_machine_bcross_no_cxy",
+                combined_live_validation_sets,
+                FIXED_C_CENTER,
+            ),
+        ),
+        (
+            "replacement machine plus B/C cross from new rows only",
+            "new B/C cross rows",
+            fit_direct_model(
+                "b_harmonic_machine_bcross_no_cxy",
+                [bcross_candidate_c0, bcross_candidate_c180, bcross_candidate_side],
+                FIXED_C_CENTER,
+            ),
+        ),
+        (
+            "incremental C-frame on current B/C cross",
+            "new B/C cross rows",
+            fit_direct_model(
+                "b_harmonic_cframe_no_cxy",
+                [bcross_candidate_c0, bcross_candidate_c180, bcross_candidate_side],
+                live_bcross_fixed_params,
+            ),
+        ),
+    ]
 
     write_report(
         args.report,
@@ -1595,6 +1734,7 @@ def main() -> int:
         post_baxis_scaling_fit,
         all_scaling_fit,
         candidate_validation_fit,
+        bcross_refit_fit,
     )
 
     fixed_c_params = as_params([], np.array([]), FIXED_C_CENTER)
@@ -1673,6 +1813,15 @@ def main() -> int:
             f"{label}, "
             f"{b_angle_combined_delta_metric_text([candidate_on_c0, candidate_on_c180, candidate_on_side], fit.params)}, "
             f"{metric_text(candidate_validation, fit.params)}"
+        )
+    print()
+    print("B/C cross refit, model, train set, old direct RMS/max, new direct RMS/max, combined direct RMS/max")
+    for label, train_set, fit in bcross_refit_fit:
+        print(
+            f"{label}, {train_set}, "
+            f"{b_angle_combined_delta_metric_text([candidate_on_c0, candidate_on_c180, candidate_on_side], fit.params)}, "
+            f"{b_angle_combined_delta_metric_text([bcross_candidate_c0, bcross_candidate_c180, bcross_candidate_side], fit.params)}, "
+            f"{b_angle_combined_delta_metric_text(combined_live_validation_sets, fit.params)}"
         )
     print()
     print(f"fixed C-center validation rms/max: {metric_text(validation_b0, fixed_c_params)}")

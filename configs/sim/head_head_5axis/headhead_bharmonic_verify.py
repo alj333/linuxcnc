@@ -107,6 +107,23 @@ BCROSS_CANDIDATE = BHarmonic(
     },
 )
 
+REFINED_BCROSS_CANDIDATE = BHarmonic(
+    enabled=True,
+    machine={
+        "sin": (0.015577123, 0.060508594, 0.312123080),
+        "omc": (0.141330042, 0.111703959, -0.338104991),
+        "sin2": (-0.013271805, 0.050707231, -0.156014210),
+    },
+    cframe=ZERO_HARMONIC.cframe,
+    bcross={
+        "sinb-sinc": (-0.006371196, 0.325723886, 0.130042953),
+        "omcb-sinc": (-0.074687973, 0.012622224, -0.001729459),
+        "omcb-sin2c": (-0.017723675, -0.255875638, -0.055414262),
+        "sinb-cosc": (-0.048238059, -0.063070849, -0.018239994),
+        "omcb-cosc": (-0.030283175, 0.071683484, 0.000165632),
+    },
+)
+
 POSES = [
     (b, c)
     for b in (-90.0, -60.0, -30.0, 0.0, 30.0, 60.0, 90.0)
@@ -391,7 +408,11 @@ def verify_forward_inverse() -> float:
     )
     for target in targets:
         for b_deg, c_deg in POSES:
-            for harmonic in (MACHINE_FIXED_CANDIDATE, BCROSS_CANDIDATE):
+            for harmonic in (
+                MACHINE_FIXED_CANDIDATE,
+                BCROSS_CANDIDATE,
+                REFINED_BCROSS_CANDIDATE,
+            ):
                 joints = inverse_tcp(ACTIVE_GEOMETRY, harmonic, target, b_deg, c_deg)
                 returned = forward_tcp(ACTIVE_GEOMETRY, harmonic, joints, b_deg, c_deg)
                 max_roundtrip = max(max_roundtrip, norm(vec_sub(returned, target)))
@@ -399,10 +420,12 @@ def verify_forward_inverse() -> float:
     return max_roundtrip
 
 
-def harmonic_offsets_for_c0() -> list[tuple[float, tuple[float, float, float]]]:
+def harmonic_offsets_for_c0(
+    harmonic: BHarmonic,
+) -> list[tuple[float, tuple[float, float, float]]]:
     rows = []
     for b_deg in (-90.0, -60.0, -30.0, 0.0, 30.0, 60.0, 90.0):
-        rows.append((b_deg, b_harmonic_offset_world(ACTIVE_GEOMETRY, BCROSS_CANDIDATE, b_deg, 0.0)))
+        rows.append((b_deg, b_harmonic_offset_world(ACTIVE_GEOMETRY, harmonic, b_deg, 0.0)))
     return rows
 
 
@@ -424,7 +447,13 @@ def main() -> int:
     print("B/C cross candidate harmonic offsets at C0:")
     print("| B deg | dX | dY | dZ |")
     print("| ---: | ---: | ---: | ---: |")
-    for b_deg, offset in harmonic_offsets_for_c0():
+    for b_deg, offset in harmonic_offsets_for_c0(BCROSS_CANDIDATE):
+        print(f"| {b_deg:+.0f} | {fmt_vec(offset).replace(', ', ' | ')} |")
+    print("")
+    print("Refined B/C cross candidate harmonic offsets at C0:")
+    print("| B deg | dX | dY | dZ |")
+    print("| ---: | ---: | ---: | ---: |")
+    for b_deg, offset in harmonic_offsets_for_c0(REFINED_BCROSS_CANDIDATE):
         print(f"| {b_deg:+.0f} | {fmt_vec(offset).replace(', ', ' | ')} |")
     return 0
 
