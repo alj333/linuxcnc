@@ -5,7 +5,13 @@ that machine Z remains the probe/tool vector after the head tilts.
 
 ## Current State
 
-- The active config is still `trivkins`; TCPC/TWP is not enabled yet.
+- 2026-05-03 update: this early B-axis vector probing plan is superseded for
+  live TCPC work by `TCPC_FIT_NEXT_SCOPE.md` and the clean B90 diagnostic
+  handoff. The historical routine notes below remain useful for understanding
+  the vector probing method, but the next live step is a B90 C-quadrant TCPC
+  diagnostic, not the early current-pose `trivkins` B-vector workflow.
+- The active TCPC calibration work now uses the dedicated TCPC Probe Basic
+  config, not the original `trivkins` phase.
 - The `B0` C-axis sweep is repeatable enough for the practical `0.10 mm`
   target.
 - Latest automatic C sweep uses side probing at `sphere_center_z + 1.5 mm`.

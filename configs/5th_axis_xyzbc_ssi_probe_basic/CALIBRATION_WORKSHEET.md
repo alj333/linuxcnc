@@ -524,3 +524,95 @@ Those deltas are the values you fit against when solving the rotary geometry.
    is repeatable under `0.20 mm` across the practical pose set; refine toward
    `0.10 mm` only after backlash/alignment work is characterized.
 7. Only after that start the TWP integration pass.
+
+## 2026-05-03 TCPC Geometry Resume Note
+
+The latest clean data shows repeatable high-B error that is larger than the
+current TCPC kinematics can correct with translation and zero-offset pins alone.
+
+Use the following rules for the next calibration session:
+
+- Trust SSI differential B/C angles unless future direct evidence contradicts
+  them.
+- Treat all machine geometry as variable: C/Z alignment, B/C orthogonality,
+  B-axis centering, tool/probe vector angle, and linear-axis scale/squareness.
+- Exclude the earlier corrupt B90 line `17` caused by probe reset.
+- Use the clean B90 rerun from
+  `tcpc-b90-b-axis-diagnostic-2pass-results.csv` lines `18-37` as valid data.
+- Do not rerun the same B90 C0/C180 test first; it repeated cleanly.
+- Next useful run is a B90 C-quadrant diagnostic with `B+90/B-90` at
+  `C0/C90/C180/C270` plus B0 closures.
+- Purpose of the quadrant run is to decide whether high-B residuals rotate with
+  C or stay fixed in machine XYZ.
+- Only after that should `headheadkins` be expanded for non-ideal C/B axis
+  directions, tool/probe vector angle, and possibly linear-axis affine or
+  volumetric compensation.
+
+## 2026-05-04 B90 C-Quadrant Result
+
+The B90 C-quadrant diagnostic completed after the probe false-top C90 resume.
+Use the completed data for offline analytics, but exclude the earlier bad
+accepted `B0 C90` row with diameters `29.700500/29.739667`.
+
+Useful accepted local B90 deltas versus adjacent B0 closures:
+
+| Pose | dX mm | dY mm | dZ mm | 3D drift mm |
+| --- | ---: | ---: | ---: | ---: |
+| `B+90 C0` | `-0.050270` | `-0.204791` | `+0.071000` | `0.222503` |
+| `B-90 C0` | `-0.165771` | `-0.126459` | `+0.617562` | `0.651809` |
+| `B+90 C90` | `-0.104999` | `-0.190271` | `-0.011188` | `0.217608` |
+| `B-90 C90` | `-0.011354` | `+0.496312` | `+0.810062` | `0.950082` |
+| `B+90 C180` | `-0.177021` | `-0.222083` | `+0.058604` | `0.289986` |
+| `B-90 C180` | `-0.057875` | `+0.183750` | `+0.630896` | `0.659654` |
+| `B+90 C270` | `-0.221946` | `+0.474761` | `+0.244541` | `0.578325` |
+| `B-90 C270` | `-0.161601` | `-0.178643` | `+0.550479` | `0.600879` |
+
+B0 C-quadrant mean centers show a clear C-axis orbit:
+
+- `C0`: `468.760084, 323.675216, -858.976929`
+- `C90`: `468.851656, 323.569747, -858.956054`
+- `C180`: `468.964434, 323.666878, -858.941637`
+- `C270`: `468.861386, 323.768933, -858.950276`
+
+Immediate conclusion:
+
+- Stop probing for now and fit offline.
+- First fit the C-axis center/orbit term from the B0 C sweep.
+- Then fit B90 residuals with B zero, B-axis vector/skew, and tool/probe vector
+  angular error as variables.
+- Only add machine-fixed linear-axis affine terms after checking whether the
+  remaining residual follows X/Y/Z motor position.
+
+## 2026-05-04 Live C-Center Validation
+
+The fitted C-center sign was loaded live after restart:
+
+- `headheadkins.cal-c-to-b.x = +0.035886006`
+- `headheadkins.cal-c-to-b.y = +0.009526306`
+- mirrored to `headheadtwp`
+- all new C/B axis-vector tilt pins stayed at zero
+
+The B0-only validation run completed without errors. Latest pass-2
+`B0 C0/C90/C180/C270` result:
+
+| Metric | Value |
+| --- | ---: |
+| 4-point XYZ RMS | `0.015700 mm` |
+| 4-point XYZ max | `0.018205 mm` |
+| 4-point XY RMS | `0.011276 mm` |
+| 4-point XY max | `0.016818 mm` |
+| final C0 closure, 3D | `0.005068 mm` |
+
+The previous B0 closure orbit from the B90 quadrant data was about
+`0.114023 mm` RMS, so the live sign and magnitude are confirmed. Remaining
+spread is mainly Z, about `0.030 mm` peak-to-peak across C quadrants.
+
+The diagnostic NGC was restored to B90 defaults after the run:
+
+- `#707 = 90.0`
+- `#708 = 1.0`
+- `#709 = 90.0`
+- `#710 = 0.0`
+
+Next data to collect is the restored B90 C-quadrant run with the validated
+C-center correction still active.

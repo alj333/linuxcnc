@@ -16,6 +16,7 @@
 # direction as positive, so this TCPC overlay also flips the B SSI feedback
 # scale and zero offset after the base HAL loads.
 loadrt rotaryunwrap names=c_ssi_unwrap
+loadrt oneshot names=tcpc_probe_gate_ignore,tcpc_probe_fault_pause
 
 # Temporary supervised TCPC calibration workaround for unreliable wireless probe
 # pulses. The base HAL still builds the raw probe/toolsetter mux as "probe-mux";
@@ -27,6 +28,40 @@ unlinkp hm2_7i95.0.ssr.00.out-02
 net probe-mux => and2.1.in0
 net tcpc-probe-gate-enable <= motion.digital-out-00 => and2.1.in1
 net tcpc-probe-gated <= and2.1.out => motion.probe-input hm2_7i95.0.ssr.00.out-02
+
+# Pause the running program on abnormal wireless probe activity without
+# feeding that noise into motion.probe-input. A short ignore window after M65
+# lets the valid G38 contact release before monitoring gate-closed pulses.
+setp tcpc_probe_gate_ignore.width 0.25
+setp tcpc_probe_gate_ignore.rising false
+setp tcpc_probe_gate_ignore.falling true
+setp tcpc_probe_gate_ignore.retriggerable true
+setp tcpc_probe_fault_pause.width 0.25
+setp tcpc_probe_fault_pause.rising true
+setp tcpc_probe_fault_pause.falling false
+setp tcpc_probe_fault_pause.retriggerable true
+
+net tcpc-probe-gate-enable => tcpc_probe_gate_ignore.in
+net tcpc-probe-ignore-active <= tcpc_probe_gate_ignore.out => not.2.in
+net tcpc-probe-ignore-inactive <= not.2.out => and2.3.in1
+net tcpc-probe-monitor-inhibit <= motion.digital-out-01 => not.3.in
+net tcpc-probe-monitor-active <= not.3.out => and2.4.in1
+net tcpc-probe-gate-enable => not.1.in
+net tcpc-probe-gate-closed <= not.1.out => and2.2.in1
+net t_probe-in => and2.2.in0
+net tcpc-probe-closed-raw <= and2.2.out => and2.3.in0
+net tcpc-probe-not-ignored <= and2.3.out => and2.4.in0
+net tcpc-probe-abnormal-level <= and2.4.out => tcpc_probe_fault_pause.in
+net tcpc-probe-fault-pause <= tcpc_probe_fault_pause.out
+
+addf tcpc_probe_gate_ignore servo-thread
+addf not.1 servo-thread
+addf and2.2 servo-thread
+addf not.2 servo-thread
+addf and2.3 servo-thread
+addf not.3 servo-thread
+addf and2.4 servo-thread
+addf tcpc_probe_fault_pause servo-thread
 
 setp c_ssi_unwrap.wrap-period 360.0
 setp hm2_7i95.0.ssi.00.abs.scale 2912.711111111111

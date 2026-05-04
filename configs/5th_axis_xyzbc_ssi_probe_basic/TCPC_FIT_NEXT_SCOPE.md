@@ -1,13 +1,11 @@
 # TCPC Fit Next Scope
 
-Status: TCPC direction checks, small-pose fixed-tip validation, wider mixed-pose
-validation, post-backlash symmetric validation, and the first expanded
-C-quadrant / B `+/-50 deg` matrix have run on the real machine. B/C LinuxCNC
-backlash compensation is disabled in the TCPC test config, and all TCPC
-calibration corrections remain zero. The expanded run shows tight `B0 C0`
-closures but pose-dependent error increasing with B angle, so the next work is
-offline sensitivity fitting and alignment diagnosis, not more direction-only
-checks. Current practical acceptance target is `0.2 mm`; refine toward
+Status: TCPC direction checks, fixed-tip validation, corrected expanded
+validation, B50 redo data, and a clean B90 diagnostic have now run on the real
+machine. The current live-fit guidance is the `2026-05-03` shutdown section
+below. Older early-fit sections remain in this document for provenance only and
+should not be treated as the next live sequence without checking the current
+shutdown status. Current practical acceptance target is `0.2 mm`; refine toward
 `0.1 mm` only after mechanical backlash, alignment, servo tuning, and
 thermal/return-path repeatability are better characterized.
 
@@ -19,6 +17,76 @@ config after the machine was stable again.
 `G55` is reserved for staff 3-axis setup work from this point. Do not select,
 probe, overwrite, or use `G55` for TCPC calibration/validation until the
 operator explicitly releases it.
+
+## Current Shutdown Status - 2026-05-03
+
+This section supersedes the older first-fit direction-test guidance below for
+the next TCPC session.
+
+The B90 diagnostic was rerun cleanly after the probe reset issue. The clean run
+starts at `tcpc-b90-b-axis-diagnostic-2pass-results.csv` line `18` and
+completed with no errors. The earlier line `17` `B0 C180` row is invalid
+because a probe reset produced corrected diameters of about `29.172/29.220 mm`
+and a Z center about `+4.10 mm` from normal.
+
+Clean B90 local deltas versus the nearest B0 baseline:
+
+| Pose | dX mm | dY mm | dZ mm | 3D drift mm |
+| --- | ---: | ---: | ---: | ---: |
+| `B+90 C0` | `-0.042834` | `-0.212500` | `+0.067708` | `0.227102` |
+| `B-90 C0` | `-0.190496` | `-0.123125` | `+0.620805` | `0.660944` |
+| `B+90 C180` | `-0.177921` | `-0.224257` | `+0.054792` | `0.291461` |
+| `B-90 C180` | `-0.052201` | `+0.177427` | `+0.632291` | `0.658785` |
+
+Repeatability checks:
+
+- accepted centers repeated against the earlier clean common B90 rows within
+  about `0.008-0.019 mm`
+- B0 closures in the clean B90 run stayed about `0.011-0.033 mm`
+- corrected diameters were inside the normal window
+- `motion.digital-out-00`, `motion.digital-out-01`, and `motion.probe-input`
+  were all `FALSE` after program end
+
+Interpretation:
+
+- The large `B-90` error is real and repeatable.
+- SSI differential angles should be trusted. The B/C encoder feedback is not
+  the primary explanation for the mm-scale TCP residuals.
+- B-axis centering is part of the problem space, but one static B-center offset
+  cannot fit the observed pattern. The implied B-center correction differs
+  strongly between `B+90` and `B-90`.
+- A C-axis center correction of roughly `-0.104 mm X`, `+0.009 mm Y` is visible
+  from B0 C180 versus B0 C0.
+- Existing `headheadkins` translation and zero-offset pins cannot correct the
+  full pattern; fits still leave about `0.5 mm` high-B residual.
+
+Next live diagnostic:
+
+- Do not rerun the same B90 C0/C180 sequence first.
+- Prepare a B90 C-quadrant diagnostic with `B+90/B-90` at
+  `C0/C90/C180/C270`, with B0 closures between groups.
+- Use this to separate rotary-frame errors from machine-fixed linear-axis
+  errors:
+  - residual rotating with C -> rotary head geometry / C/B angular model
+  - residual fixed in machine XYZ -> linear-axis scale/squareness/pitch or
+    volumetric compensation problem
+
+Expanded TCPC correction scope:
+
+- Treat all geometry as variable except the differential SSI angle readings,
+  unless later direct evidence contradicts them.
+- The current kinematics assumes ideal C and B axis directions. Expand the
+  model before attempting another final TCPC fit.
+- Add bounded fit variables/HAL pins for:
+  - C-axis tilt relative to machine Z
+  - B-axis direction/skew relative to the C frame
+  - B/C non-orthogonality
+  - B/C pivot translations and zero offsets
+  - tool/probe vector angular error
+  - optional machine-linear affine or map-based correction after the quadrant
+    diagnostic shows whether residuals are machine-fixed
+- Apply no live correction until an offline least-squares fit with held-out
+  poses improves mid-B and high-B residuals without degrading B0 C-only closure.
 
 ## Current Data Set
 
@@ -1529,3 +1597,285 @@ Resume sequence after battery replacement:
 4. Run the current B `+/-30` validation program at 100% feed override.
 5. Treat the interrupted low-battery B-30 run as invalid and compare only the
    clean post-battery run against the prior validated candidate.
+
+## B90 C-Quadrant Diagnostic Complete - 2026-05-04
+
+`tcpc_b90_c_quadrant_diagnostic.ngc` completed after a C90 resume. The program
+had previously stopped at `B+90 C90` because the preceding `B0 C90` pass 2 was
+corrupt: it false-touched high in Z and accepted corrected diameters
+`29.700500` and `29.739667`. That row remains in the CSV for traceability but
+must be excluded from fitting.
+
+Files:
+
+- results:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-2pass-results.csv`
+- raw points:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-2pass-raw-points.csv`
+- axis state:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-axis-state.csv`
+- rotary joint/SSI state:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-rotary-joint-state.csv`
+  and
+  `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-rotary-ssi-state.csv`
+
+Current live/reverted kinematics during this run:
+
+```hal
+setp headheadkins.cal-c-to-b.x -0.065000
+setp headheadkins.cal-c-to-b.y 0.014000
+setp headheadkins.cal-c-to-b.z 0.000000
+setp headheadkins.cal-b-to-tool.x 0.000000
+setp headheadkins.cal-b-to-tool.y 0.000000
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.000000
+setp headheadkins.c-zero-offset -0.024500
+```
+
+Exclude:
+
+- line `13` in the results CSV:
+  `B0 C90`, pass 2, center `468.839714,323.565782,-856.066624`,
+  diameters `29.700500/29.739667`.
+
+Valid B0 C-axis orbit from pass-2 accepted rows:
+
+| C | mean X | mean Y | mean Z | dX from C0 | dY from C0 | dZ from C0 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `0` | `468.760084` | `323.675216` | `-858.976929` | `0.000000` | `0.000000` | `0.000000` |
+| `90` | `468.851656` | `323.569747` | `-858.956054` | `+0.091572` | `-0.105469` | `+0.020875` |
+| `180` | `468.964434` | `323.666878` | `-858.941637` | `+0.204350` | `-0.008337` | `+0.035291` |
+| `270` | `468.861386` | `323.768933` | `-858.950276` | `+0.101302` | `+0.093717` | `+0.026653` |
+
+This is a strong C-axis center/orbit signature. In the current fit convention,
+the orbit corresponds to roughly `0.102 mm` X center error and very small Y
+error. Do not apply sign directly; verify by simulating `headheadkins` inverse
+behavior first.
+
+Valid B90 local deltas, each compared to the average of adjacent B0 closures at
+the same C:
+
+| Pose | dX | dY | dZ | 3D drift |
+| --- | ---: | ---: | ---: | ---: |
+| `B+90 C0` | `-0.050270` | `-0.204791` | `+0.071000` | `0.222503` |
+| `B-90 C0` | `-0.165771` | `-0.126459` | `+0.617562` | `0.651809` |
+| `B+90 C90` | `-0.104999` | `-0.190271` | `-0.011188` | `0.217608` |
+| `B-90 C90` | `-0.011354` | `+0.496312` | `+0.810062` | `0.950082` |
+| `B+90 C180` | `-0.177021` | `-0.222083` | `+0.058604` | `0.289986` |
+| `B-90 C180` | `-0.057875` | `+0.183750` | `+0.630896` | `0.659654` |
+| `B+90 C270` | `-0.221946` | `+0.474761` | `+0.244541` | `0.578325` |
+| `B-90 C270` | `-0.161601` | `-0.178643` | `+0.550479` | `0.600879` |
+
+Linear-axis command locations at the high-B accepted pass-2 log points:
+
+| Pose | X motor | Y motor | Z motor |
+| --- | ---: | ---: | ---: |
+| `B+90 C0` | `776.948` | `368.015` | `-589.568` |
+| `B-90 C0` | `160.502` | `368.366` | `-587.685` |
+| `B+90 C90` | `424.192` | `631.621` | `-589.627` |
+| `B-90 C90` | `424.024` | `15.963` | `-587.473` |
+| `B+90 C180` | `160.555` | `278.914` | `-589.545` |
+| `B-90 C180` | `777.003` | `279.041` | `-587.636` |
+| `B+90 C270` | `513.164` | `16.010` | `-589.366` |
+| `B-90 C270` | `513.496` | `631.689` | `-587.726` |
+
+Interpretation:
+
+- B0 closures are stable enough that the quadrant run is valid for analytics.
+- The C-only B0 orbit is cleaner than the tilted-B residuals and should be fit
+  first as a C-center/alignment term.
+- B-90 carries a repeatable large positive Z component. This may include B
+  zero, B-axis vector error, tool/probe vector angular error, or load/geometry
+  effects. Treat B zero as a fit variable now, even though SSI differential
+  angles remain trusted.
+- The side-quadrant high-B residuals are too large and too asymmetric for the
+  existing translation-only `headheadkins` model. Fitting current B-to-tool and
+  zero-offset variables to the local B90 deltas still leaves about
+  `0.49-0.61 mm` max residual.
+- The `Y`-extreme poses, especially `B-90 C90` and `B+90 C270`, should be
+  checked for machine-fixed linear-axis contribution after the rotary geometry
+  terms are fit.
+
+Next engineering scope:
+
+1. Do not collect more probe data until an offline fit report has been made
+   from this quadrant run.
+2. Build an offline model that separates:
+   - C center/orbit term from B0 C quadrants
+   - B zero and B-axis direction/skew from B90 quadrant residuals
+   - tool/probe vector angular error
+   - optional machine-fixed linear affine terms against X/Y/Z motor positions
+3. Expand `headheadkins` only after the fit shows bounded parameters with
+   held-out residual improvement.
+4. The likely kinematics expansion is small-angle axis-vector support:
+   - C-axis tilt about machine X/Y
+   - B-axis skew/tilt in the C frame
+   - retained C/B pivot translation and B/C zero offsets
+   - optional debug pins for effective axis vectors and modeled TCP offset
+
+## First Expanded Offline Fit - 2026-05-04
+
+Created reproducible analysis script:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc_expanded_geometry_fit.py`
+
+Generated report:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md`
+
+Fit setup:
+
+- training set: `20` valid pass-2 rows from the B90 C-quadrant diagnostic
+- holdout set: `10` valid pass-2 rows from the clean B90 C0/C180 rerun,
+  results CSV lines `18-37`
+- bad accepted false-top row remains excluded by the `29.9 mm` diameter floor
+- model equation treats each run as having its own unknown sphere location and
+  minimizes corrected center scatter within each run
+
+Cleanest identified parameter:
+
+- fitting only B0 C-quadrant rows gives:
+  - `dcx = +0.100886006 mm`
+  - `dcy = -0.004473694 mm`
+  - equivalent test-only `cal-c-to-b.x = +0.035886006`
+  - equivalent test-only `cal-c-to-b.y = +0.009526306`
+  - B0 C-orbit RMS/max improves from `0.102863 / 0.118339 mm` to
+    `0.019566 / 0.030016 mm`
+- This is the strongest current evidence and should be verified in simulation
+  as a C-center correction sign before any live test.
+
+Model comparison from the report:
+
+| Model | Train RMS | Train max | Holdout RMS | Holdout max |
+| --- | ---: | ---: | ---: | ---: |
+| current | `0.341093` | `0.760878` | `0.293278` | `0.554744` |
+| C-center XY only | `0.325863` | `0.813475` | `0.276565` | `0.540773` |
+| current pins only | `0.232722` | `0.503834` | `0.245820` | `0.490888` |
+| C/B axis vectors | `0.224540` | `0.489239` | `0.238502` | `0.471294` |
+| axis vectors plus linear diagonal | `0.164906` | `0.352968` | `0.149801` | `0.308334` |
+| axis vectors plus full linear affine | `0.149291` | `0.303645` | `0.149598` | `0.267016` |
+
+Interpretation:
+
+- Existing `headheadkins` pins are rank-deficient on this data and should not
+  be loaded as a new candidate.
+- Axis-vector expansion alone gives only modest improvement over current pins.
+  That means the high-B error is not only simple C/B skew.
+- Adding machine-fixed linear-axis terms improves both training and holdout,
+  but `lin_xx` hits the diagnostic bound and the Jacobian is ill-conditioned.
+  Treat this as a strong reason to test linear-axis geometry, not as an axis
+  compensation solution.
+- The next code step should separate the clean C-center correction from the
+  broader expanded model, then add simulation-only support for C/B axis-vector
+  terms before live testing.
+
+## Expanded Kinematics Scaffold Added - 2026-05-04
+
+Added zero-default expanded-axis support to `src/emc/kinematics/headheadkins.c`
+and rebuilt `rtlib/headheadkins.so`.
+
+New HAL input pins:
+
+```hal
+headheadkins.c-axis-tilt.x
+headheadkins.c-axis-tilt.y
+headheadkins.b-axis-tilt.x
+headheadkins.b-axis-tilt.z
+```
+
+New debug output pins:
+
+```hal
+headheadkins.c-axis-vector.x
+headheadkins.c-axis-vector.y
+headheadkins.c-axis-vector.z
+headheadkins.b-axis-vector.x
+headheadkins.b-axis-vector.y
+headheadkins.b-axis-vector.z
+```
+
+Behavior:
+
+- all new pins default to zero, so the current kinematics are unchanged until
+  nonzero values are deliberately set after a restart
+- `tool-offset.*`, `tool-vector.*`, and TWP plane axes now use the expanded
+  model path
+- the compiled module on disk is updated, but the currently running LinuxCNC
+  instance will not see the new pins until the TCPC config is restarted
+
+C-center sign check:
+
+- fitted sign RMS/max: `0.019566 / 0.030016 mm`
+- opposite sign RMS/max: `0.202916 / 0.219278 mm`
+- this confirms the offline-fit sign convention for the current model
+- the test-only C-center values remain:
+  - `headheadkins.cal-c-to-b.x = +0.035886006`
+  - `headheadkins.cal-c-to-b.y = +0.009526306`
+
+This caution was superseded later on 2026-05-04 by the live C-center validation
+below.
+
+## Live C-Center Validation - 2026-05-04
+
+The TCPC Probe Basic config was restarted and the expanded pins were confirmed
+present. The new axis-vector pins remained zero. The C-center correction was
+loaded live:
+
+```hal
+setp headheadkins.cal-c-to-b.x 0.035886006
+setp headheadkins.cal-c-to-b.y 0.009526306
+setp headheadtwp.cal_c_to_b_x 0.035886006
+setp headheadtwp.cal_c_to_b_y 0.009526306
+```
+
+Validation run:
+
+- temporary B0-only C sweep in `tcpc_b90_c_quadrant_diagnostic.ngc`
+- latest result rows are CSV lines `44-53`
+- run completed with no probe faults
+- LinuxCNC ended idle with both probe gates false
+
+Latest pass-2 centers:
+
+| Pose | X | Y | Z |
+| --- | ---: | ---: | ---: |
+| `B0 C0` | `468.855999` | `323.679659` | `-858.974582` |
+| `B0 C90` | `468.842667` | `323.659323` | `-858.959082` |
+| `B0 C180` | `468.861739` | `323.678084` | `-858.944415` |
+| `B0 C270` | `468.845904` | `323.677282` | `-858.953915` |
+| `B0 C0 closure` | `468.851946` | `323.676657` | `-858.975082` |
+
+Validation metrics:
+
+- four-quadrant XYZ RMS/max: `0.015700 / 0.018205 mm`
+- four-quadrant XY RMS/max: `0.011276 / 0.016818 mm`
+- previous B0 closure orbit before correction: `0.114023 mm` RMS
+- final C0 closure: `0.005068 mm` 3D, `0.005044 mm` XY
+- pass-2 max residuals: `0.003750 mm` U and `0.002500 mm` V
+- corrected diameter ranges: U `30.162167..30.207487`, V
+  `30.163016..30.243000`
+
+Interpretation:
+
+- The C-center sign is confirmed on the machine.
+- The C-center correction removes the dominant B0 C-axis orbit.
+- The remaining C-dependent spread is mostly Z, around `0.030 mm` peak-to-peak,
+  so the next fit should look at C-axis tilt, tool/probe vector angle, and
+  machine-fixed effects rather than another XY C-center adjustment.
+
+The diagnostic NGC has been restored to B90 defaults:
+
+```ngc
+#707 = 90.0
+#708 = 1.0
+#709 = 90.0
+#710 = 0.0
+```
+
+Next live work:
+
+1. Keep the validated live C-center correction active.
+2. Rerun the restored B90 C-quadrant diagnostic from the above-sphere start.
+3. Use the new high-B rows to fit B-axis vector/skew, B zero, tool/probe vector
+   angle, and any machine-fixed linear-axis contribution after the large B0
+   C-center orbit has been removed.

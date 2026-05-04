@@ -1,37 +1,32 @@
-(TCPC expanded-pose vector sphere validation)
-(Automated sequence for B/C geometry and alignment diagnostics.)
+(TCPC B90 C-quadrant vector sphere diagnostic)
+(Dedicated sequence for separating rotary-frame error from machine-fixed error.)
 (No WCS changes. No G43/G49 changes. TCPC must already be ON.)
 
 (Operator setup:)
 (1. Start at/near B0 C0 with the probe 3 to 8 mm clear from the 30 mm sphere.)
 (2. Keep hand on feed hold/stop for the full first run.)
-(3. This program uses C quadrants. Default max B range is +/-50 deg.)
-(4. Sphere post risk is C45 with B less than -10 deg. C225 is acceptable.)
-(5. This first expanded pass uses quadrants only and avoids direct C45 moves.)
-(6. Set #707 higher only for deliberate B +/-60 or B +/-90 expansion.)
-(7. Set #708 to 1.0 only for a deliberate resume/extension run.)
-(8. Set #709 to 50.0 or 60.0 only to skip proven lower B groups.)
+(3. This diagnostic uses C quadrants only; no C45 moves.)
+(4. Sequence returns to B0 between B+90 and B-90 checks at each C.)
 
 (Sequence:)
-(B0 C quadrants, B +/-10, B +/-30, B +/-50, optional B +/-60, with closures)
+(C0/C90/C180/C270: B0, B+90, B0, B-90, B0)
 
-(Handoff 2026-04-30 shutdown:)
-(Set for a conservative fresh full B +/-60 rerun in the morning.)
-(The sphere was moved after the late-night B60 false-trip attempts, so do)
-(not use resume mode. #704 disables per-pose pauses; #706 pauses at B blocks.)
+(Handoff 2026-05-04:)
+(This follows the clean B90 C0/C180 run. Use it to see whether high-B)
+(residuals rotate with C or stay fixed to machine XYZ.)
 
 (Accepted pass-2 centers log to:)
-(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-results.csv)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-2pass-results.csv)
 (High-resolution rotary state logs to:)
-(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-joint-state.csv)
-(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-ssi-state.csv)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-rotary-joint-state.csv)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-rotary-ssi-state.csv)
 (X/Y/Z axis state logs to:)
-(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-axis-state.csv)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-axis-state.csv)
 
 G21 G17 G40 G64 P0.001 G80 G90 G94
 
 o<preview_guard> if [#<_task> EQ 0]
-  (DEBUG, TCPC_EXPANDED_POSE_VECTOR preview only)
+  (DEBUG, TCPC_B90_C_QUADRANT_DIAGNOSTIC preview only)
   M2
 o<preview_guard> endif
 
@@ -88,9 +83,9 @@ o<probe_cal_offset_default> endif
 #704 = 0.0            (pause before each probing pose; 0 after first B0 check)
 #705 = 200.0          (rotary index feed)
 #706 = 0.0            (pause before each new B-angle block)
-#707 = 50.0           (normal analytics range; set higher only for B +/-60/B +/-90)
-#708 = 1.0            (B50 redo: fresh B0 C0 baseline, skip full B0 C sweep)
-#709 = 50.0           (B50 redo: skip B +/-10 and B +/-30 groups)
+#707 = 90.0           (run through B90 diagnostic groups)
+#708 = 1.0            (skip full B0 C sweep unless validating C-center only)
+#709 = 90.0           (skip B +/-10, +/-30, +/-50, and +/-60 groups)
 #710 = 0.0            (normal path; nonzero values are temporary resume modes)
 
 #540 = [#<_abs_x> - #<_x>]
@@ -409,7 +404,7 @@ o<tcpc_vector_sphere_pass> sub
   #194 = #<_hal[joint.2.motor-pos-fb]>
   #195 = [#194 - #193]
 
-  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-raw-points.csv)
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-2pass-raw-points.csv)
   #110 = #520
   #111 = #521
   #112 = #<pass_id>
@@ -441,7 +436,7 @@ o<tcpc_vector_sphere_pass> sub
   (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
   (LOGCLOSE)
 
-  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-2pass-results.csv)
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-2pass-results.csv)
   #80 = #520
   #81 = #521
   #82 = #<pass_id>
@@ -460,7 +455,7 @@ o<tcpc_vector_sphere_pass> sub
   (LOG,#80,#81,#82,#83,#84,#85,#86,#87,#88,#89,#90,#91,#92,#93,#94)
   (LOGCLOSE)
 
-  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-joint-state.csv)
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-rotary-joint-state.csv)
   #170 = #520
   #171 = #521
   #172 = #<pass_id>
@@ -476,7 +471,7 @@ o<tcpc_vector_sphere_pass> sub
   (LOG,#170,#171,#172,#173,#174,#175,#176,#177,#178,#179,#180,#181)
   (LOGCLOSE)
 
-  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-rotary-ssi-state.csv)
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-rotary-ssi-state.csv)
   #174 = #158
   #175 = #159
   #176 = #160
@@ -490,7 +485,7 @@ o<tcpc_vector_sphere_pass> sub
   (LOG,#170,#171,#172,#173,#174,#175,#176,#177,#178,#179,#180,#181,#182,#183)
   (LOGCLOSE)
 
-  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-expanded-pose-vector-axis-state.csv)
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b90-c-quadrant-diagnostic-axis-state.csv)
   (LOG,#520,#521,#<pass_id>,#<accepted>,#184,#185,#186,#187,#188,#189,#190,#191,#192,#193,#194,#195)
   (LOGCLOSE)
 
@@ -685,6 +680,14 @@ o<resume_after_bminus10_c90> elseif [[#710 GT 2.5] AND [#710 LT 3.5]]
   #702 = 323.985528
   #703 = -858.927998
   #709 = 61.0
+o<resume_after_bminus10_c90> elseif [[#710 GT 89.5] AND [#710 LT 90.5]]
+  (C90 resume after the invalid B0 C90 false-top pass.)
+  (Prior clean accepted center is the C0 B0 closure from this run.)
+  #700 = 1.0
+  #701 = 468.749293
+  #702 = 323.685077
+  #703 = -858.976290
+  #709 = 90.0
 o<resume_after_bminus10_c90> else
   o<tcpc_measure_pose> call [0.0] [0.0]
   o<run_full_b0_c_sweep> if [#708 LT 0.5]
@@ -844,27 +847,34 @@ o<run_b60_group> if [[#707 GT 59.5] AND [#709 LT 89.5]]
 o<run_b60_group> endif
 
 o<run_b90_group> if [#707 GT 89.5]
-  o<tcpc_measure_pose> call [90.0] [0.0]
+  (C0 B-axis reversal/closure diagnostic.)
+  o<run_c0_b90_group> if [#710 LT 89.5]
+    o<tcpc_measure_pose> call [90.0] [0.0]
+    o<tcpc_measure_pose> call [0.0] [0.0]
+    o<tcpc_measure_pose> call [-90.0] [0.0]
+    o<tcpc_measure_pose> call [0.0] [0.0]
+  o<run_c0_b90_group> endif
+
+  (C90 B-axis reversal/closure diagnostic.)
+  o<tcpc_measure_pose> call [0.0] [90.0]
   o<tcpc_measure_pose> call [90.0] [90.0]
-  o<tcpc_measure_pose> call [90.0] [180.0]
-  o<tcpc_measure_pose> call [90.0] [270.0]
-
-  o<pause_to_b_minus90> if [#706 GT 0.5]
-    (MSG, TCPC B +90 complete. Resume for B -90.)
-    M0
-  o<pause_to_b_minus90> endif
-
-  o<tcpc_measure_pose> call [-90.0] [0.0]
+  o<tcpc_measure_pose> call [0.0] [90.0]
   o<tcpc_measure_pose> call [-90.0] [90.0]
+  o<tcpc_measure_pose> call [0.0] [90.0]
+
+  (C180 B-axis reversal/closure diagnostic.)
+  o<tcpc_measure_pose> call [0.0] [180.0]
+  o<tcpc_measure_pose> call [90.0] [180.0]
+  o<tcpc_measure_pose> call [0.0] [180.0]
   o<tcpc_measure_pose> call [-90.0] [180.0]
+  o<tcpc_measure_pose> call [0.0] [180.0]
+
+  (C270 B-axis reversal/closure diagnostic.)
+  o<tcpc_measure_pose> call [0.0] [270.0]
+  o<tcpc_measure_pose> call [90.0] [270.0]
+  o<tcpc_measure_pose> call [0.0] [270.0]
   o<tcpc_measure_pose> call [-90.0] [270.0]
-
-  o<pause_to_b0_after_b90> if [#706 GT 0.5]
-    (MSG, TCPC B -90 complete. Resume for final B0 closure.)
-    M0
-  o<pause_to_b0_after_b90> endif
-
-  o<tcpc_measure_pose> call [0.0] [0.0]
+  o<tcpc_measure_pose> call [0.0] [270.0]
 o<run_b90_group> endif
 
 G90
@@ -873,5 +883,5 @@ G1 B0 C0
 
 M65 P0
 M65 P1
-(DEBUG, TCPC_EXPANDED_POSE_VECTOR complete)
+(DEBUG, TCPC_B90_C_QUADRANT_DIAGNOSTIC complete)
 M2

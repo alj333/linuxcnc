@@ -14,7 +14,9 @@ net pdnt.program.is-idle                  whb.halui.program.is-idle             
 net pdnt.program.is-paused                whb.halui.program.is-paused           halui.program.is-paused
 net pdnt.program-is-running               whb.halui.program.is-running          halui.program.is-running
 net pdnt.program.resume                   whb.halui.program.resume              halui.program.resume
-net pdnt.program.pause                    whb.halui.program.pause               halui.program.pause
+net pdnt.program.pause                    whb.halui.program.pause               or2.1.in0
+net tcpc-probe-fault-pause                                                        or2.1.in1
+net program-pause-request                                                         or2.1.out halui.program.pause
 net pdnt.program.run                      whb.halui.program.run                 halui.program.run
 net pdnt.program.stop                     whb.halui.program.stop                halui.program.stop
 

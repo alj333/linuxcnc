@@ -46,12 +46,23 @@ struct haldata {
     hal_float_t *b_zero_offset;
     hal_float_t *c_zero_offset;
 
+    hal_float_t *c_axis_tilt_x;
+    hal_float_t *c_axis_tilt_y;
+    hal_float_t *b_axis_tilt_x;
+    hal_float_t *b_axis_tilt_z;
+
     hal_float_t *tool_offset_x;
     hal_float_t *tool_offset_y;
     hal_float_t *tool_offset_z;
     hal_float_t *tool_vector_x;
     hal_float_t *tool_vector_y;
     hal_float_t *tool_vector_z;
+    hal_float_t *c_axis_vector_x;
+    hal_float_t *c_axis_vector_y;
+    hal_float_t *c_axis_vector_z;
+    hal_float_t *b_axis_vector_x;
+    hal_float_t *b_axis_vector_y;
+    hal_float_t *b_axis_vector_z;
 
     hal_bit_t *tcpc_enable;
     hal_bit_t *twp_mode;
@@ -95,6 +106,17 @@ static void setpin(hal_float_t *pin, double value)
     if (pin) {
         *pin = value;
     }
+}
+
+static void rotate_x(double angle_deg, const double in[3], double out[3])
+{
+    double angle = TO_RAD * angle_deg;
+    double c = cos(angle);
+    double s = sin(angle);
+
+    out[0] = in[0];
+    out[1] = (c * in[1]) - (s * in[2]);
+    out[2] = (s * in[1]) + (c * in[2]);
 }
 
 static void rotate_y(double angle_deg, const double in[3], double out[3])
@@ -145,6 +167,48 @@ static void vec_scale(double scale, const double in[3], double out[3])
     out[2] = scale * in[2];
 }
 
+static double vec_length(const double in[3])
+{
+    return sqrt(vec_dot(in, in));
+}
+
+static void vec_normalize(const double in[3], double out[3])
+{
+    double length = vec_length(in);
+
+    if (length <= 1e-12) {
+        out[0] = 0.0;
+        out[1] = 1.0;
+        out[2] = 0.0;
+        return;
+    }
+
+    out[0] = in[0] / length;
+    out[1] = in[1] / length;
+    out[2] = in[2] / length;
+}
+
+static void rotate_axis(const double axis[3], double angle_deg, const double in[3], double out[3])
+{
+    double normalized_axis[3];
+    double angle = TO_RAD * angle_deg;
+    double c = cos(angle);
+    double s = sin(angle);
+    double dot;
+    double cross[3];
+
+    vec_normalize(axis, normalized_axis);
+    dot = vec_dot(normalized_axis, in);
+
+    cross[0] = (normalized_axis[1] * in[2]) - (normalized_axis[2] * in[1]);
+    cross[1] = (normalized_axis[2] * in[0]) - (normalized_axis[0] * in[2]);
+    cross[2] = (normalized_axis[0] * in[1]) - (normalized_axis[1] * in[0]);
+
+    out[0] = (in[0] * c) + (cross[0] * s) + (normalized_axis[0] * dot * (1.0 - c));
+    out[1] = (in[1] * c) + (cross[1] * s) + (normalized_axis[1] * dot * (1.0 - c));
+    out[2] = (in[2] * c) + (cross[2] * s) + (normalized_axis[2] * dot * (1.0 - c));
+}
+
 static void rotate_about_plane_normal(const double x_axis[3],
                                       const double y_axis[3],
                                       double rotation_deg,
@@ -186,16 +250,66 @@ static void combined_b_to_tool(double out[3])
     out[2] = pinv(haldata->nominal_b_to_tool_z) + pinv(haldata->cal_b_to_tool_z);
 }
 
-static void tool_vector_world(double b_cmd, double c_cmd, double out[3])
+static void c_frame_to_world(const double in[3], double out[3])
+{
+    double x_tilted[3];
+
+    rotate_x(pinv(haldata->c_axis_tilt_x), in, x_tilted);
+    rotate_y(pinv(haldata->c_axis_tilt_y), x_tilted, out);
+}
+
+static void local_b_axis(double out[3])
+{
+    double skewed[3];
+
+    skewed[0] = tan(TO_RAD * pinv(haldata->b_axis_tilt_x));
+    skewed[1] = 1.0;
+    skewed[2] = tan(TO_RAD * pinv(haldata->b_axis_tilt_z));
+    vec_normalize(skewed, out);
+}
+
+static void rotary_vector_world(double b_cmd, double c_cmd, const double in[3], double out[3])
 {
     double b_eff;
     double c_eff;
-    double base_tool_axis[3] = {0.0, 0.0, -1.0};
+    double b_axis[3];
     double b_rotated[3];
+    double c_rotated[3];
 
     effective_angles(b_cmd, c_cmd, &b_eff, &c_eff);
-    rotate_y(b_eff, base_tool_axis, b_rotated);
-    rotate_z(c_eff, b_rotated, out);
+    local_b_axis(b_axis);
+    rotate_axis(b_axis, b_eff, in, b_rotated);
+    rotate_z(c_eff, b_rotated, c_rotated);
+    c_frame_to_world(c_rotated, out);
+}
+
+static void c_axis_world(double out[3])
+{
+    double base_axis[3] = {0.0, 0.0, 1.0};
+
+    c_frame_to_world(base_axis, out);
+}
+
+static void b_axis_world(double c_cmd, double out[3])
+{
+    double b_axis[3];
+    double c_rotated[3];
+    double b_eff;
+    double c_eff;
+
+    effective_angles(0.0, c_cmd, &b_eff, &c_eff);
+    (void)b_eff;
+
+    local_b_axis(b_axis);
+    rotate_z(c_eff, b_axis, c_rotated);
+    c_frame_to_world(c_rotated, out);
+}
+
+static void tool_vector_world(double b_cmd, double c_cmd, double out[3])
+{
+    double base_tool_axis[3] = {0.0, 0.0, -1.0};
+
+    rotary_vector_world(b_cmd, c_cmd, base_tool_axis, out);
 }
 
 static void tool_offset_world(double b_cmd, double c_cmd, double out[3])
@@ -206,27 +320,35 @@ static void tool_offset_world(double b_cmd, double c_cmd, double out[3])
     double b_to_tool[3];
     double b_rotated[3];
     double c_frame[3];
+    double c_rotated[3];
+    double b_axis[3];
 
     effective_angles(b_cmd, c_cmd, &b_eff, &c_eff);
     combined_c_to_b(c_to_b);
     combined_b_to_tool(b_to_tool);
+    local_b_axis(b_axis);
 
-    rotate_y(b_eff, b_to_tool, b_rotated);
+    rotate_axis(b_axis, b_eff, b_to_tool, b_rotated);
 
     c_frame[0] = c_to_b[0] + b_rotated[0];
     c_frame[1] = c_to_b[1] + b_rotated[1];
     c_frame[2] = c_to_b[2] + b_rotated[2];
 
-    rotate_z(c_eff, c_frame, out);
+    rotate_z(c_eff, c_frame, c_rotated);
+    c_frame_to_world(c_rotated, out);
 }
 
 static void update_debug_pins(double b_cmd, double c_cmd)
 {
     double offset[3];
     double vector[3];
+    double c_axis[3];
+    double b_axis[3];
 
     tool_offset_world(b_cmd, c_cmd, offset);
     tool_vector_world(b_cmd, c_cmd, vector);
+    c_axis_world(c_axis);
+    b_axis_world(c_cmd, b_axis);
 
     setpin(haldata->tool_offset_x, offset[0]);
     setpin(haldata->tool_offset_y, offset[1]);
@@ -234,33 +356,34 @@ static void update_debug_pins(double b_cmd, double c_cmd)
     setpin(haldata->tool_vector_x, vector[0]);
     setpin(haldata->tool_vector_y, vector[1]);
     setpin(haldata->tool_vector_z, vector[2]);
+    setpin(haldata->c_axis_vector_x, c_axis[0]);
+    setpin(haldata->c_axis_vector_y, c_axis[1]);
+    setpin(haldata->c_axis_vector_z, c_axis[2]);
+    setpin(haldata->b_axis_vector_x, b_axis[0]);
+    setpin(haldata->b_axis_vector_y, b_axis[1]);
+    setpin(haldata->b_axis_vector_z, b_axis[2]);
 }
 
 static void twp_plane_axes(double plane_x[3], double plane_y[3], double plane_z[3])
 {
-    double b_eff;
-    double c_eff;
     double base_x[3] = {1.0, 0.0, 0.0};
     double base_y[3] = {0.0, 1.0, 0.0};
     double base_z[3] = {0.0, 0.0, 1.0};
-    double rotated_x[3];
-    double rotated_y[3];
     double stored_plane_x[3];
     double stored_plane_y[3];
 
-    effective_angles(pinv(haldata->twp_b_angle),
-                     pinv(haldata->twp_c_angle),
-                     &b_eff,
-                     &c_eff);
-
-    rotate_y(b_eff, base_x, rotated_x);
-    rotate_z(c_eff, rotated_x, stored_plane_x);
-
-    rotate_y(b_eff, base_y, rotated_y);
-    rotate_z(c_eff, rotated_y, stored_plane_y);
-
-    rotate_y(b_eff, base_z, rotated_y);
-    rotate_z(c_eff, rotated_y, plane_z);
+    rotary_vector_world(pinv(haldata->twp_b_angle),
+                        pinv(haldata->twp_c_angle),
+                        base_x,
+                        stored_plane_x);
+    rotary_vector_world(pinv(haldata->twp_b_angle),
+                        pinv(haldata->twp_c_angle),
+                        base_y,
+                        stored_plane_y);
+    rotary_vector_world(pinv(haldata->twp_b_angle),
+                        pinv(haldata->twp_c_angle),
+                        base_z,
+                        plane_z);
 
     rotate_about_plane_normal(stored_plane_x,
                               stored_plane_y,
@@ -443,6 +566,15 @@ static int init_geometry_pins(void)
     result = new_hal_float_pin(&haldata->c_zero_offset, HAL_IN, "c-zero-offset");
     if (result < 0) return result;
 
+    result = new_hal_float_pin(&haldata->c_axis_tilt_x, HAL_IN, "c-axis-tilt.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->c_axis_tilt_y, HAL_IN, "c-axis-tilt.y");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->b_axis_tilt_x, HAL_IN, "b-axis-tilt.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->b_axis_tilt_z, HAL_IN, "b-axis-tilt.z");
+    if (result < 0) return result;
+
     result = new_hal_float_pin(&haldata->tool_offset_x, HAL_OUT, "tool-offset.x");
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->tool_offset_y, HAL_OUT, "tool-offset.y");
@@ -455,6 +587,18 @@ static int init_geometry_pins(void)
     result = new_hal_float_pin(&haldata->tool_vector_y, HAL_OUT, "tool-vector.y");
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->tool_vector_z, HAL_OUT, "tool-vector.z");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->c_axis_vector_x, HAL_OUT, "c-axis-vector.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->c_axis_vector_y, HAL_OUT, "c-axis-vector.y");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->c_axis_vector_z, HAL_OUT, "c-axis-vector.z");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->b_axis_vector_x, HAL_OUT, "b-axis-vector.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->b_axis_vector_y, HAL_OUT, "b-axis-vector.y");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->b_axis_vector_z, HAL_OUT, "b-axis-vector.z");
     if (result < 0) return result;
 
     result = new_hal_bit_pin(&haldata->tcpc_enable, HAL_IN, "tcpc-enable");
@@ -493,12 +637,23 @@ static int init_geometry_pins(void)
     *haldata->b_zero_offset = 0.0;
     *haldata->c_zero_offset = 0.0;
 
+    *haldata->c_axis_tilt_x = 0.0;
+    *haldata->c_axis_tilt_y = 0.0;
+    *haldata->b_axis_tilt_x = 0.0;
+    *haldata->b_axis_tilt_z = 0.0;
+
     *haldata->tool_offset_x = 0.0;
     *haldata->tool_offset_y = 25.0;
     *haldata->tool_offset_z = -180.0;
     *haldata->tool_vector_x = 0.0;
     *haldata->tool_vector_y = 0.0;
     *haldata->tool_vector_z = -1.0;
+    *haldata->c_axis_vector_x = 0.0;
+    *haldata->c_axis_vector_y = 0.0;
+    *haldata->c_axis_vector_z = 1.0;
+    *haldata->b_axis_vector_x = 0.0;
+    *haldata->b_axis_vector_y = 1.0;
+    *haldata->b_axis_vector_z = 0.0;
 
     *haldata->tcpc_enable = 1;
     *haldata->twp_mode = 0;
