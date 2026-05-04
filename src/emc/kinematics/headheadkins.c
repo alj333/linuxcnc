@@ -25,6 +25,8 @@
 
 #define REQUIRED_COORDINATES "XYZBC"
 #define TWP_ROTARY_TOLERANCE_DEG 1e-3
+#define TOOL_FRAME_AXES 3
+#define B_HARMONIC_TERMS 3
 
 struct haldata {
     hal_float_t *nominal_c_to_b_x;
@@ -57,12 +59,17 @@ struct haldata {
     hal_float_t *tool_vector_x;
     hal_float_t *tool_vector_y;
     hal_float_t *tool_vector_z;
+    hal_float_t *tool_frame[TOOL_FRAME_AXES][3];
     hal_float_t *c_axis_vector_x;
     hal_float_t *c_axis_vector_y;
     hal_float_t *c_axis_vector_z;
     hal_float_t *b_axis_vector_x;
     hal_float_t *b_axis_vector_y;
     hal_float_t *b_axis_vector_z;
+
+    hal_bit_t *sim_b_harmonic_enable;
+    hal_float_t *b_harmonic_machine[B_HARMONIC_TERMS][3];
+    hal_float_t *b_harmonic_cframe[B_HARMONIC_TERMS][3];
 
     hal_bit_t *tcpc_enable;
     hal_bit_t *twp_mode;
@@ -90,6 +97,14 @@ static int JY = -1;
 static int JZ = -1;
 static int JB = -1;
 static int JC = -1;
+
+static const char *tool_frame_names[TOOL_FRAME_AXES] = {"u", "v", "w"};
+static const char *axis_names[3] = {"x", "y", "z"};
+static const char *b_harmonic_term_names[B_HARMONIC_TERMS] = {
+    "sin",
+    "omc",
+    "sin2",
+};
 
 static double pinv(hal_float_t *pin)
 {
@@ -312,6 +327,68 @@ static void tool_vector_world(double b_cmd, double c_cmd, double out[3])
     rotary_vector_world(b_cmd, c_cmd, base_tool_axis, out);
 }
 
+static void tool_frame_world(double b_cmd, double c_cmd, double u_axis[3], double v_axis[3], double w_axis[3])
+{
+    double base_u[3] = {1.0, 0.0, 0.0};
+    double base_v[3] = {0.0, 1.0, 0.0};
+    double base_w[3] = {0.0, 0.0, -1.0};
+
+    rotary_vector_world(b_cmd, c_cmd, base_u, u_axis);
+    rotary_vector_world(b_cmd, c_cmd, base_v, v_axis);
+    rotary_vector_world(b_cmd, c_cmd, base_w, w_axis);
+}
+
+static void b_harmonic_vector(hal_float_t *coeffs[B_HARMONIC_TERMS][3], double b_eff, double out[3])
+{
+    double b_rad = TO_RAD * b_eff;
+    double terms[B_HARMONIC_TERMS] = {
+        sin(b_rad),
+        1.0 - cos(b_rad),
+        sin(2.0 * b_rad),
+    };
+    int term;
+    int axis;
+
+    out[0] = 0.0;
+    out[1] = 0.0;
+    out[2] = 0.0;
+
+    for (term = 0; term < B_HARMONIC_TERMS; term++) {
+        for (axis = 0; axis < 3; axis++) {
+            out[axis] += terms[term] * pinv(coeffs[term][axis]);
+        }
+    }
+}
+
+static void b_harmonic_offset_world(double b_cmd, double c_cmd, double out[3])
+{
+    double b_eff;
+    double c_eff;
+    double machine_fixed[3];
+    double cframe_local[3];
+    double c_rotated[3];
+    double cframe_world[3];
+
+    out[0] = 0.0;
+    out[1] = 0.0;
+    out[2] = 0.0;
+
+    if (!pinb(haldata->sim_b_harmonic_enable)) {
+        return;
+    }
+
+    effective_angles(b_cmd, c_cmd, &b_eff, &c_eff);
+
+    b_harmonic_vector(haldata->b_harmonic_machine, b_eff, machine_fixed);
+    b_harmonic_vector(haldata->b_harmonic_cframe, b_eff, cframe_local);
+    rotate_z(c_eff, cframe_local, c_rotated);
+    c_frame_to_world(c_rotated, cframe_world);
+
+    out[0] = machine_fixed[0] + cframe_world[0];
+    out[1] = machine_fixed[1] + cframe_world[1];
+    out[2] = machine_fixed[2] + cframe_world[2];
+}
+
 static void tool_offset_world(double b_cmd, double c_cmd, double out[3])
 {
     double b_eff;
@@ -322,6 +399,7 @@ static void tool_offset_world(double b_cmd, double c_cmd, double out[3])
     double c_frame[3];
     double c_rotated[3];
     double b_axis[3];
+    double harmonic[3];
 
     effective_angles(b_cmd, c_cmd, &b_eff, &c_eff);
     combined_c_to_b(c_to_b);
@@ -336,17 +414,27 @@ static void tool_offset_world(double b_cmd, double c_cmd, double out[3])
 
     rotate_z(c_eff, c_frame, c_rotated);
     c_frame_to_world(c_rotated, out);
+
+    b_harmonic_offset_world(b_cmd, c_cmd, harmonic);
+    out[0] += harmonic[0];
+    out[1] += harmonic[1];
+    out[2] += harmonic[2];
 }
 
 static void update_debug_pins(double b_cmd, double c_cmd)
 {
     double offset[3];
     double vector[3];
+    double tool_u[3];
+    double tool_v[3];
+    double tool_w[3];
     double c_axis[3];
     double b_axis[3];
+    int axis;
 
     tool_offset_world(b_cmd, c_cmd, offset);
     tool_vector_world(b_cmd, c_cmd, vector);
+    tool_frame_world(b_cmd, c_cmd, tool_u, tool_v, tool_w);
     c_axis_world(c_axis);
     b_axis_world(c_cmd, b_axis);
 
@@ -356,6 +444,11 @@ static void update_debug_pins(double b_cmd, double c_cmd)
     setpin(haldata->tool_vector_x, vector[0]);
     setpin(haldata->tool_vector_y, vector[1]);
     setpin(haldata->tool_vector_z, vector[2]);
+    for (axis = 0; axis < 3; axis++) {
+        setpin(haldata->tool_frame[0][axis], tool_u[axis]);
+        setpin(haldata->tool_frame[1][axis], tool_v[axis]);
+        setpin(haldata->tool_frame[2][axis], tool_w[axis]);
+    }
     setpin(haldata->c_axis_vector_x, c_axis[0]);
     setpin(haldata->c_axis_vector_y, c_axis[1]);
     setpin(haldata->c_axis_vector_z, c_axis[2]);
@@ -529,9 +622,64 @@ static int new_hal_bit_pin(hal_bit_t **pin, int dir, const char *name)
     return hal_pin_bit_newf(dir, pin, comp_id, "headheadkins.%s", name);
 }
 
+static int init_tool_frame_pins(void)
+{
+    int frame;
+    int axis;
+    int result;
+
+    for (frame = 0; frame < TOOL_FRAME_AXES; frame++) {
+        for (axis = 0; axis < 3; axis++) {
+            result = hal_pin_float_newf(HAL_OUT,
+                                        &haldata->tool_frame[frame][axis],
+                                        comp_id,
+                                        "headheadkins.tool-frame-%s.%s",
+                                        tool_frame_names[frame],
+                                        axis_names[axis]);
+            if (result < 0) return result;
+        }
+    }
+
+    return 0;
+}
+
+static int init_b_harmonic_pins(void)
+{
+    int term;
+    int axis;
+    int result;
+
+    result = new_hal_bit_pin(&haldata->sim_b_harmonic_enable, HAL_IN, "sim-bharm-enable");
+    if (result < 0) return result;
+
+    for (term = 0; term < B_HARMONIC_TERMS; term++) {
+        for (axis = 0; axis < 3; axis++) {
+            result = hal_pin_float_newf(HAL_IN,
+                                        &haldata->b_harmonic_machine[term][axis],
+                                        comp_id,
+                                        "headheadkins.bharm-m.%s.%s",
+                                        b_harmonic_term_names[term],
+                                        axis_names[axis]);
+            if (result < 0) return result;
+            result = hal_pin_float_newf(HAL_IN,
+                                        &haldata->b_harmonic_cframe[term][axis],
+                                        comp_id,
+                                        "headheadkins.bharm-c.%s.%s",
+                                        b_harmonic_term_names[term],
+                                        axis_names[axis]);
+            if (result < 0) return result;
+        }
+    }
+
+    return 0;
+}
+
 static int init_geometry_pins(void)
 {
     int result;
+    int frame;
+    int term;
+    int axis;
 
     result = new_hal_float_pin(&haldata->nominal_c_to_b_x, HAL_IN, "nominal-c-to-b.x");
     if (result < 0) return result;
@@ -588,6 +736,8 @@ static int init_geometry_pins(void)
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->tool_vector_z, HAL_OUT, "tool-vector.z");
     if (result < 0) return result;
+    result = init_tool_frame_pins();
+    if (result < 0) return result;
     result = new_hal_float_pin(&haldata->c_axis_vector_x, HAL_OUT, "c-axis-vector.x");
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->c_axis_vector_y, HAL_OUT, "c-axis-vector.y");
@@ -599,6 +749,8 @@ static int init_geometry_pins(void)
     result = new_hal_float_pin(&haldata->b_axis_vector_y, HAL_OUT, "b-axis-vector.y");
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->b_axis_vector_z, HAL_OUT, "b-axis-vector.z");
+    if (result < 0) return result;
+    result = init_b_harmonic_pins();
     if (result < 0) return result;
 
     result = new_hal_bit_pin(&haldata->tcpc_enable, HAL_IN, "tcpc-enable");
@@ -648,12 +800,28 @@ static int init_geometry_pins(void)
     *haldata->tool_vector_x = 0.0;
     *haldata->tool_vector_y = 0.0;
     *haldata->tool_vector_z = -1.0;
+    for (frame = 0; frame < TOOL_FRAME_AXES; frame++) {
+        for (axis = 0; axis < 3; axis++) {
+            *haldata->tool_frame[frame][axis] = 0.0;
+        }
+    }
+    *haldata->tool_frame[0][0] = 1.0;
+    *haldata->tool_frame[1][1] = 1.0;
+    *haldata->tool_frame[2][2] = -1.0;
     *haldata->c_axis_vector_x = 0.0;
     *haldata->c_axis_vector_y = 0.0;
     *haldata->c_axis_vector_z = 1.0;
     *haldata->b_axis_vector_x = 0.0;
     *haldata->b_axis_vector_y = 1.0;
     *haldata->b_axis_vector_z = 0.0;
+
+    *haldata->sim_b_harmonic_enable = 0;
+    for (term = 0; term < B_HARMONIC_TERMS; term++) {
+        for (axis = 0; axis < 3; axis++) {
+            *haldata->b_harmonic_machine[term][axis] = 0.0;
+            *haldata->b_harmonic_cframe[term][axis] = 0.0;
+        }
+    }
 
     *haldata->tcpc_enable = 1;
     *haldata->twp_mode = 0;

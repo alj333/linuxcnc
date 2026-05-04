@@ -1,0 +1,32 @@
+# Simulation-only B-harmonic diagnostic candidate for headheadkins.
+#
+# Do not include this file in a real machine config.
+# The enable pin is deliberately left false by default; set it true only in a
+# controlled simulation after loading and inspecting the pins.
+
+setp headheadkins.sim-bharm-enable 0
+
+# Machine-fixed candidate from TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md.
+setp headheadkins.bharm-m.sin.x 0.003457595
+setp headheadkins.bharm-m.sin.y 0.071987315
+setp headheadkins.bharm-m.sin.z 0.318267363
+setp headheadkins.bharm-m.omc.x 0.108123741
+setp headheadkins.bharm-m.omc.y 0.034446993
+setp headheadkins.bharm-m.omc.z -0.364472105
+setp headheadkins.bharm-m.sin2.x -0.032225192
+setp headheadkins.bharm-m.sin2.y 0.005230194
+setp headheadkins.bharm-m.sin2.z -0.190772593
+
+# Keep the C-frame family zero for the current machine-fixed diagnostic.
+setp headheadkins.bharm-c.sin.x 0.000000000
+setp headheadkins.bharm-c.sin.y 0.000000000
+setp headheadkins.bharm-c.sin.z 0.000000000
+setp headheadkins.bharm-c.omc.x 0.000000000
+setp headheadkins.bharm-c.omc.y 0.000000000
+setp headheadkins.bharm-c.omc.z 0.000000000
+setp headheadkins.bharm-c.sin2.x 0.000000000
+setp headheadkins.bharm-c.sin2.y 0.000000000
+setp headheadkins.bharm-c.sin2.z 0.000000000
+
+# Simulation-only manual enable:
+# setp headheadkins.sim-bharm-enable 1

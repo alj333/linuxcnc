@@ -813,3 +813,39 @@ Shutdown handover, 2026-05-02 20:50 +07:
 - after restart, launch only one TCPC Probe Basic instance, home, verify probe
   parameters, and rerun the current B `+/-30` validation before any further
   fitting
+
+## Current Probe Validation Handoff - 2026-05-04
+
+The 2026-05-02 hold status above has been superseded by later probe runs and
+offline fitting.
+
+Startup HAL is now prepared with the validated C-center correction:
+
+```hal
+setp headheadkins.cal-c-to-b.x 0.035886006
+setp headheadkins.cal-c-to-b.y 0.009526306
+setp headheadtwp.cal_c_to_b_x 0.035886006
+setp headheadtwp.cal_c_to_b_y 0.009526306
+```
+
+The high-B B-harmonic candidate has passed offline math checks and a dedicated
+LinuxCNC sim fixed-tip smoke test with `0.000000000 mm` disabled/enabled TCP
+error, but it is still diagnostic-only. Do not make it persistent in this real
+machine config.
+
+Current live decision after the C0/C180/C90/C270 candidate-on validations:
+
+- keep only the validated C-center correction
+- keep `headheadkins.sim-bharm-enable = FALSE`
+- do not make the B-harmonic candidate persistent
+- do not run another probe cycle until a smaller constrained side-aware model
+  has been fitted offline and verified in simulation
+
+Reason:
+
+- candidate-on C0/C180 combined non-B0 RMS/max was
+  `0.128105 / 0.228885 mm`
+- candidate-on C90/C270 side-quadrant RMS/max was
+  `0.408282 / 0.615783 mm`
+- the side result shows the machine-fixed B-harmonic candidate is not a general
+  TCPC correction

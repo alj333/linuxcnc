@@ -73,8 +73,8 @@ setp headheadkins.nominal-c-to-b.z -270.0
 setp headheadkins.nominal-b-to-tool.x -0.668710
 setp headheadkins.nominal-b-to-tool.y -26.721365
 setp headheadkins.nominal-b-to-tool.z -308.980001
-setp headheadkins.cal-c-to-b.x -0.065000
-setp headheadkins.cal-c-to-b.y 0.014000
+setp headheadkins.cal-c-to-b.x 0.035886006
+setp headheadkins.cal-c-to-b.y 0.009526306
 setp headheadkins.cal-c-to-b.z 0.0
 setp headheadkins.cal-b-to-tool.x 0.0
 setp headheadkins.cal-b-to-tool.y 0.0
@@ -115,8 +115,8 @@ setp headheadtwp.nominal_c_to_b_z -270.0
 setp headheadtwp.nominal_b_to_tool_x -0.668710
 setp headheadtwp.nominal_b_to_tool_y -26.721365
 setp headheadtwp.nominal_b_to_tool_z -308.980001
-setp headheadtwp.cal_c_to_b_x -0.065000
-setp headheadtwp.cal_c_to_b_y 0.014000
+setp headheadtwp.cal_c_to_b_x 0.035886006
+setp headheadtwp.cal_c_to_b_y 0.009526306
 setp headheadtwp.cal_c_to_b_z 0.0
 setp headheadtwp.cal_b_to_tool_x 0.0
 setp headheadtwp.cal_b_to_tool_y 0.0

@@ -1,0 +1,697 @@
+(TCPC B-angle scaling sphere diagnostic)
+(Short sequence for B-axis angle scaling and sign behavior.)
+(No WCS changes. No G43/G49 changes. TCPC must already be ON.)
+
+(Operator setup:)
+(1. Start at/near B0 C0 with the probe 3 to 8 mm clear from the 30 mm sphere.)
+(2. Keep hand on feed hold/stop for the full first run.)
+(3. #711 selects C-angle coverage: 0=C0 only, 1=C0 then C180, 2=C180 only,)
+(   3=C90/C270 side-quadrant high-B check only.)
+(4. This diagnostic uses C0 and optional C180 only; no C45 moves.)
+(5. B0 is probed only at open and close to reduce runtime.)
+
+(Sequence:)
+(C0: B0, B+30, B-30, B+60, B-60, B+90, B-90, B0)
+(Optional C180 repeat: B0, B+30, B-30, B+60, B-60, B+90, B-90, B0)
+
+(Handoff 2026-05-04:)
+(Use after the validated C-center correction is active.)
+(This avoids the older long B90/C-quadrant diagnostic and removes intermediate)
+(B0 probe cycles because the B0 closure data has been consistent.)
+
+(Accepted pass-2 centers log to:)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-2pass-results.csv)
+(High-resolution rotary state logs to:)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-rotary-joint-state.csv)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-rotary-ssi-state.csv)
+(X/Y/Z axis state logs to:)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-axis-state.csv)
+
+G21 G17 G40 G64 P0.001 G80 G90 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_B_ANGLE_SCALING_DIAGNOSTIC preview only)
+  M2
+o<preview_guard> endif
+
+(TCPC test config gates motion.probe-input with motion.digital-out-00.)
+(Keep the gate disabled except during the actual G38 probe move.)
+(motion.digital-out-01 inhibits the abnormal-pulse pause monitor during)
+(the valid touch and immediate retract/clear move.)
+M65 P0
+M65 P1
+
+#500 = #3014
+o<probe_tool_default> if [#500 LE 0]
+  #500 = #5400
+o<probe_tool_default> endif
+
+o<probe_tool_loaded> if [#5400 NE #500]
+  (abort, Specified probe tool is not in spindle)
+o<probe_tool_loaded> endif
+
+#501 = #5410
+(In the TCPC test config #5410 may report the loaded tool diameter in the)
+(wrong unit/scale before Probe Basic state is fully synchronized. Use the)
+(known wireless probe diameter as a bounded fallback for this validation.)
+o<probe_diameter_low> if [#501 LT 1.0]
+  #501 = 6.0
+o<probe_diameter_low> endif
+o<probe_diameter_high> if [#501 GT 12.0]
+  #501 = 6.0
+o<probe_diameter_high> endif
+
+#502 = #3032          (probe calibration offset)
+o<probe_cal_offset_default> if [#502 LE 0.0]
+  #502 = 0.134533
+o<probe_cal_offset_default> endif
+#503 = 15.0           (sphere radius, 30 mm sphere)
+#504 = [[#501 / 2.0] - #502]
+#505 = [#503 + #504]
+
+#506 = 50.0           (probe feed)
+#507 = 1200.0         (linear positioning / transit feed)
+#508 = 16.0           (top probe vector length)
+#509 = 5.0            (top clearance past sphere+probe)
+#510 = 4.0            (side start clearance past sphere+probe)
+#511 = 6.0            (side probe vector length)
+#512 = 3.0            (side retract vector length)
+#513 = [#505 + #509]
+#514 = [#505 + #510]
+#515 = 25.0           (machine-Z lift for high-B C-index transit moves)
+
+#700 = 0.0            (last accepted center valid)
+#701 = 0.0            (last accepted center abs X)
+#702 = 0.0            (last accepted center abs Y)
+#703 = 0.0            (last accepted center abs Z)
+#704 = 0.0            (pause before each probing pose; 0 after first B0 check)
+#705 = 200.0          (rotary index feed)
+#706 = 0.0            (reserved; no intermediate B-block pauses by default)
+#707 = 90.0           (maximum B angle for this scaling run)
+#708 = 1.0            (reserved)
+#709 = 90.0           (reserved)
+#710 = 0.0            (reserved)
+#711 = 3.0            (C coverage; 0=C0, 1=C0+C180, 2=C180, 3=C90/C270 high-B)
+
+#540 = [#<_abs_x> - #<_x>]
+#541 = [#<_abs_y> - #<_y>]
+#542 = [#<_abs_z> - #<_z>]
+
+o<tcpc_vector_sphere_pass> sub
+  #<pass_id> = #1
+  #<start_x> = #2
+  #<start_y> = #3
+  #<start_z> = #4
+  #<accepted> = #5
+
+  G90
+  F#507
+  G1 X#<start_x> Y#<start_y> Z#<start_z>
+
+  (Top touch along W.)
+  #122 = [#530 * #508]
+  #123 = [#531 * #508]
+  #124 = [#532 * #508]
+  G91
+  F#506
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
+
+  o<top_fail> if [#5070 EQ 0]
+    G90
+    F#507
+    G1 X#<start_x> Y#<start_y> Z#<start_z>
+    (abort, Top vector touch did not record point data)
+  o<top_fail> endif
+
+  #<top_x> = #5061
+  #<top_y> = #5062
+  #<top_z> = #5063
+  #<top_abs_x> = [#<top_x> + #540]
+  #<top_abs_y> = [#<top_y> + #541]
+  #<top_abs_z> = [#<top_z> + #542]
+
+  #<top_center_x> = [#<top_x> + [#530 * #505]]
+  #<top_center_y> = [#<top_y> + [#531 * #505]]
+  #<top_center_z> = [#<top_z> + [#532 * #505]]
+
+  #<top_clear_x> = [#<top_center_x> - [#530 * #513]]
+  #<top_clear_y> = [#<top_center_y> - [#531 * #513]]
+  #<top_clear_z> = [#<top_center_z> - [#532 * #513]]
+
+  G90
+  F#507
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  M65 P1
+
+  (Probe from -U side toward +U.)
+  #<um_start_x> = [#<top_center_x> - [#533 * #514]]
+  #<um_start_y> = [#<top_center_y> - [#534 * #514]]
+  #<um_start_z> = [#<top_center_z> - [#535 * #514]]
+  #<um_clear_x> = [#<um_start_x> - [#530 * #513]]
+  #<um_clear_y> = [#<um_start_y> - [#531 * #513]]
+  #<um_clear_z> = [#<um_start_z> - [#532 * #513]]
+  G90
+  F#507
+  G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+  G1 X#<um_start_x> Y#<um_start_y> Z#<um_start_z>
+  #122 = [#533 * #511]
+  #123 = [#534 * #511]
+  #124 = [#535 * #511]
+  G91
+  F#506
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
+  o<um_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    (abort, -U side touch did not record point data)
+  o<um_fail> endif
+  #<um_x> = #5061
+  #<um_y> = #5062
+  #<um_z> = #5063
+  #125 = [-#533 * #512]
+  #126 = [-#534 * #512]
+  #127 = [-#535 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  M65 P1
+
+  (Probe from +U side toward -U.)
+  #<up_start_x> = [#<top_center_x> + [#533 * #514]]
+  #<up_start_y> = [#<top_center_y> + [#534 * #514]]
+  #<up_start_z> = [#<top_center_z> + [#535 * #514]]
+  #<up_clear_x> = [#<up_start_x> - [#530 * #513]]
+  #<up_clear_y> = [#<up_start_y> - [#531 * #513]]
+  #<up_clear_z> = [#<up_start_z> - [#532 * #513]]
+  G90
+  F#507
+  G1 X#<up_clear_x> Y#<up_clear_y> Z#<up_clear_z>
+  G1 X#<up_start_x> Y#<up_start_y> Z#<up_start_z>
+  #122 = [-#533 * #511]
+  #123 = [-#534 * #511]
+  #124 = [-#535 * #511]
+  G91
+  F#506
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
+  o<up_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    (abort, +U side touch did not record point data)
+  o<up_fail> endif
+  #<up_x> = #5061
+  #<up_y> = #5062
+  #<up_z> = #5063
+  #125 = [#533 * #512]
+  #126 = [#534 * #512]
+  #127 = [#535 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<up_clear_x> Y#<up_clear_y> Z#<up_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  M65 P1
+
+  (Probe from -V side toward +V.)
+  #<vm_start_x> = [#<top_center_x> - [#536 * #514]]
+  #<vm_start_y> = [#<top_center_y> - [#537 * #514]]
+  #<vm_start_z> = [#<top_center_z> - [#538 * #514]]
+  #<vm_clear_x> = [#<vm_start_x> - [#530 * #513]]
+  #<vm_clear_y> = [#<vm_start_y> - [#531 * #513]]
+  #<vm_clear_z> = [#<vm_start_z> - [#532 * #513]]
+  G90
+  F#507
+  G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+  G1 X#<vm_start_x> Y#<vm_start_y> Z#<vm_start_z>
+  #122 = [#536 * #511]
+  #123 = [#537 * #511]
+  #124 = [#538 * #511]
+  G91
+  F#506
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
+  o<vm_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    (abort, -V side touch did not record point data)
+  o<vm_fail> endif
+  #<vm_x> = #5061
+  #<vm_y> = #5062
+  #<vm_z> = #5063
+  #125 = [-#536 * #512]
+  #126 = [-#537 * #512]
+  #127 = [-#538 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  M65 P1
+
+  (Probe from +V side toward -V.)
+  #<vp_start_x> = [#<top_center_x> + [#536 * #514]]
+  #<vp_start_y> = [#<top_center_y> + [#537 * #514]]
+  #<vp_start_z> = [#<top_center_z> + [#538 * #514]]
+  #<vp_clear_x> = [#<vp_start_x> - [#530 * #513]]
+  #<vp_clear_y> = [#<vp_start_y> - [#531 * #513]]
+  #<vp_clear_z> = [#<vp_start_z> - [#532 * #513]]
+  G90
+  F#507
+  G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+  G1 X#<vp_start_x> Y#<vp_start_y> Z#<vp_start_z>
+  #122 = [-#536 * #511]
+  #123 = [-#537 * #511]
+  #124 = [-#538 * #511]
+  G91
+  F#506
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
+  o<vp_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    (abort, +V side touch did not record point data)
+  o<vp_fail> endif
+  #<vp_x> = #5061
+  #<vp_y> = #5062
+  #<vp_z> = #5063
+  #125 = [#536 * #512]
+  #126 = [#537 * #512]
+  #127 = [#538 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+
+  G90
+  F#507
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  M65 P1
+
+  #<um_abs_x> = [#<um_x> + #540]
+  #<um_abs_y> = [#<um_y> + #541]
+  #<um_abs_z> = [#<um_z> + #542]
+  #<up_abs_x> = [#<up_x> + #540]
+  #<up_abs_y> = [#<up_y> + #541]
+  #<up_abs_z> = [#<up_z> + #542]
+  #<vm_abs_x> = [#<vm_x> + #540]
+  #<vm_abs_y> = [#<vm_y> + #541]
+  #<vm_abs_z> = [#<vm_z> + #542]
+  #<vp_abs_x> = [#<vp_x> + #540]
+  #<vp_abs_y> = [#<vp_y> + #541]
+  #<vp_abs_z> = [#<vp_z> + #542]
+
+  #<top_center_abs_x> = [#<top_center_x> + #540]
+  #<top_center_abs_y> = [#<top_center_y> + #541]
+  #<top_center_abs_z> = [#<top_center_z> + #542]
+
+  #<uc_x> = [[#<um_abs_x> + #<up_abs_x>] / 2.0]
+  #<uc_y> = [[#<um_abs_y> + #<up_abs_y>] / 2.0]
+  #<uc_z> = [[#<um_abs_z> + #<up_abs_z>] / 2.0]
+  #<vc_x> = [[#<vm_abs_x> + #<vp_abs_x>] / 2.0]
+  #<vc_y> = [[#<vm_abs_y> + #<vp_abs_y>] / 2.0]
+  #<vc_z> = [[#<vm_abs_z> + #<vp_abs_z>] / 2.0]
+
+  #<u_err_x> = [#<uc_x> - #<top_center_abs_x>]
+  #<u_err_y> = [#<uc_y> - #<top_center_abs_y>]
+  #<u_err_z> = [#<uc_z> - #<top_center_abs_z>]
+  #<v_err_x> = [#<vc_x> - #<top_center_abs_x>]
+  #<v_err_y> = [#<vc_y> - #<top_center_abs_y>]
+  #<v_err_z> = [#<vc_z> - #<top_center_abs_z>]
+
+  #600 = #<top_center_x>
+  #601 = #<top_center_y>
+  #602 = #<top_center_z>
+  #603 = [[#<uc_x> + #<vc_x>] / 2.0]
+  #604 = [[#<uc_y> + #<vc_y>] / 2.0]
+  #605 = [[#<uc_z> + #<vc_z>] / 2.0]
+  #606 = [[#<u_err_x> * #533] + [#<u_err_y> * #534] + [#<u_err_z> * #535]]
+  #607 = [[#<v_err_x> * #536] + [#<v_err_y> * #537] + [#<v_err_z> * #538]]
+
+  #<u_dx> = [#<up_abs_x> - #<um_abs_x>]
+  #<u_dy> = [#<up_abs_y> - #<um_abs_y>]
+  #<u_dz> = [#<up_abs_z> - #<um_abs_z>]
+  #<v_dx> = [#<vp_abs_x> - #<vm_abs_x>]
+  #<v_dy> = [#<vp_abs_y> - #<vm_abs_y>]
+  #<v_dz> = [#<vp_abs_z> - #<vm_abs_z>]
+
+  #608 = [[#<u_dx> * #533] + [#<u_dy> * #534] + [#<u_dz> * #535]]
+  #609 = [[#<v_dx> * #536] + [#<v_dy> * #537] + [#<v_dz> * #538]]
+  #610 = [#608 - [2.0 * #504]]
+  #611 = [#609 - [2.0 * #504]]
+
+  (Capture rotary command/feedback at full useful resolution.)
+  #150 = #<_hal[joint.3.pos-cmd]>
+  #151 = #<_hal[joint.3.pos-fb]>
+  #152 = #<_hal[joint.3.motor-pos-cmd]>
+  #153 = #<_hal[joint.3.motor-pos-fb]>
+  #154 = #<_hal[joint.4.pos-cmd]>
+  #155 = #<_hal[joint.4.pos-fb]>
+  #156 = #<_hal[joint.4.motor-pos-cmd]>
+  #157 = #<_hal[joint.4.motor-pos-fb]>
+  #158 = #<_hal[b-ssi-abs-position]>
+  #159 = #<_hal[b-ssi-zeroed-position]>
+  #160 = #<_hal[c-ssi-abs-position]>
+  #161 = #<_hal[c-ssi-zeroed-position]>
+  #162 = #<_hal[hm2_7i95.0.ssi.00.abs.rawcounts]>
+  #163 = #<_hal[hm2_7i95.0.ssi.01.abs.rawcounts]>
+  #164 = [[#151 - #150] * 1000000.0]
+  #165 = [[#155 - #154] * 1000000.0]
+  #166 = [#151 * 1000000.0]
+  #167 = [#155 * 1000000.0]
+
+  (Capture X/Y/Z command and feedback for axis-mechanics diagnostics.)
+  #184 = #<_abs_x>
+  #185 = #<_abs_y>
+  #186 = #<_abs_z>
+  #187 = #<_hal[joint.0.motor-pos-cmd]>
+  #188 = #<_hal[joint.0.motor-pos-fb]>
+  #189 = [#188 - #187]
+  #190 = #<_hal[joint.1.motor-pos-cmd]>
+  #191 = #<_hal[joint.1.motor-pos-fb]>
+  #192 = [#191 - #190]
+  #193 = #<_hal[joint.2.motor-pos-cmd]>
+  #194 = #<_hal[joint.2.motor-pos-fb]>
+  #195 = [#194 - #193]
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-2pass-raw-points.csv)
+  #110 = #520
+  #111 = #521
+  #112 = #<pass_id>
+  #113 = #<accepted>
+  #114 = 1.0
+  #115 = #<top_abs_x>
+  #116 = #<top_abs_y>
+  #117 = #<top_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  #114 = 2.0
+  #115 = #<um_abs_x>
+  #116 = #<um_abs_y>
+  #117 = #<um_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  #114 = 3.0
+  #115 = #<up_abs_x>
+  #116 = #<up_abs_y>
+  #117 = #<up_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  #114 = 4.0
+  #115 = #<vm_abs_x>
+  #116 = #<vm_abs_y>
+  #117 = #<vm_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  #114 = 5.0
+  #115 = #<vp_abs_x>
+  #116 = #<vp_abs_y>
+  #117 = #<vp_abs_z>
+  (LOG,#110,#111,#112,#113,#114,#115,#116,#117)
+  (LOGCLOSE)
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-2pass-results.csv)
+  #80 = #520
+  #81 = #521
+  #82 = #<pass_id>
+  #83 = #<accepted>
+  #84 = #500
+  #85 = #502
+  #86 = #603
+  #87 = #604
+  #88 = #605
+  #89 = #606
+  #90 = #607
+  #91 = #608
+  #92 = #609
+  #93 = #610
+  #94 = #611
+  (LOG,#80,#81,#82,#83,#84,#85,#86,#87,#88,#89,#90,#91,#92,#93,#94)
+  (LOGCLOSE)
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-rotary-joint-state.csv)
+  #170 = #520
+  #171 = #521
+  #172 = #<pass_id>
+  #173 = #<accepted>
+  #174 = #150
+  #175 = #151
+  #176 = #152
+  #177 = #153
+  #178 = #154
+  #179 = #155
+  #180 = #156
+  #181 = #157
+  (LOG,#170,#171,#172,#173,#174,#175,#176,#177,#178,#179,#180,#181)
+  (LOGCLOSE)
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-rotary-ssi-state.csv)
+  #174 = #158
+  #175 = #159
+  #176 = #160
+  #177 = #161
+  #178 = #162
+  #179 = #163
+  #180 = #164
+  #181 = #165
+  #182 = #166
+  #183 = #167
+  (LOG,#170,#171,#172,#173,#174,#175,#176,#177,#178,#179,#180,#181,#182,#183)
+  (LOGCLOSE)
+
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-axis-state.csv)
+  (LOG,#520,#521,#<pass_id>,#<accepted>,#184,#185,#186,#187,#188,#189,#190,#191,#192,#193,#194,#195)
+  (LOGCLOSE)
+
+  (DEBUG, TCPC_VECTOR pass #<pass_id> accepted #<accepted>)
+  (DEBUG, TCPC_VECTOR center #603 #604 #605)
+  (DEBUG, TCPC_VECTOR err_u=#606 err_v=#607)
+  (DEBUG, TCPC_VECTOR diam_u=#610 diam_v=#611)
+
+o<tcpc_vector_sphere_pass> endsub
+
+o<tcpc_measure_pose> sub
+  #<target_b> = #1
+  #<target_c> = #2
+
+  (For later poses, retract along current W to the known top-clear point,)
+  (then lift in machine Z, index, XY, and lower Z. A Z-only lift is not)
+  (a safe pull-away when B is near +/-90.)
+  o<use_high_z_transit> if [#700 GT 0.5]
+    #540 = [#<_abs_x> - #<_x>]
+    #541 = [#<_abs_y> - #<_y>]
+    #542 = [#<_abs_z> - #<_z>]
+
+    #<current_b> = #<_abs_b>
+    #<current_c> = #<_abs_c>
+    #<current_w_x> = [-SIN[#<current_b>] * COS[#<current_c>]]
+    #<current_w_y> = [-SIN[#<current_b>] * SIN[#<current_c>]]
+    #<current_w_z> = [-COS[#<current_b>]]
+    #<current_clear_x> = [#701 - #540 - [#<current_w_x> * #513]]
+    #<current_clear_y> = [#702 - #541 - [#<current_w_y> * #513]]
+    #<current_clear_z> = [#703 - #542 - [#<current_w_z> * #513]]
+
+    G90
+    F#507
+    G1 X#<current_clear_x> Y#<current_clear_y> Z#<current_clear_z>
+
+    #<safe_z> = [#<_z> + #515]
+    G1 Z#<safe_z>
+
+    F#705
+    G1 B#<target_b> C#<target_c>
+
+    #540 = [#<_abs_x> - #<_x>]
+    #541 = [#<_abs_y> - #<_y>]
+    #542 = [#<_abs_z> - #<_z>]
+
+    #<start_w_x> = [-SIN[#<target_b>] * COS[#<target_c>]]
+    #<start_w_y> = [-SIN[#<target_b>] * SIN[#<target_c>]]
+    #<start_w_z> = [-COS[#<target_b>]]
+    #<next_start_x> = [#701 - #540 - [#<start_w_x> * #513]]
+    #<next_start_y> = [#702 - #541 - [#<start_w_y> * #513]]
+    #<next_start_z> = [#703 - #542 - [#<start_w_z> * #513]]
+    F#507
+    G1 X#<next_start_x> Y#<next_start_y>
+    G1 Z#<next_start_z>
+  o<use_high_z_transit> else
+    (First pose starts from the operator-set position near the sphere.)
+    G90
+    F#705
+    G1 B#<target_b> C#<target_c>
+
+    #540 = [#<_abs_x> - #<_x>]
+    #541 = [#<_abs_y> - #<_y>]
+    #542 = [#<_abs_z> - #<_z>]
+  o<use_high_z_transit> endif
+
+  o<pause_before_probe> if [#704 GT 0.5]
+    (MSG, TCPC expanded-pose check paused before probing)
+    M0
+  o<pause_before_probe> endif
+
+  #520 = #<_abs_b>
+  #521 = #<_abs_c>
+
+  (W points along the probe vector toward the table at this B/C pose.)
+  #530 = [-SIN[#520] * COS[#521]]
+  #531 = [-SIN[#520] * SIN[#521]]
+  #532 = [-COS[#520]]
+
+  (U is perpendicular to W in the tilt plane.)
+  #533 = [COS[#520] * COS[#521]]
+  #534 = [COS[#520] * SIN[#521]]
+  #535 = [-SIN[#520]]
+
+  (V is perpendicular to W and U.)
+  #536 = [-SIN[#521]]
+  #537 = [COS[#521]]
+  #538 = 0.0
+
+  #550 = #<_x>
+  #551 = #<_y>
+  #552 = #<_z>
+
+  (Run first pass from the current/operator start point.)
+  o<tcpc_vector_sphere_pass> call [1.0] [#550] [#551] [#552] [0.0]
+
+  (Pass 1 sanity checks before any automatic correction move.)
+  o<safe_u_move> if [ABS[#606] GT 2.0]
+    (abort, Pass 1 U centering correction over 2 mm)
+  o<safe_u_move> endif
+  o<safe_v_move> if [ABS[#607] GT 2.0]
+    (abort, Pass 1 V centering correction over 2 mm)
+  o<safe_v_move> endif
+  o<safe_u_diam_low> if [#610 LT 29.9]
+    (abort, Pass 1 U corrected diameter below safe range)
+  o<safe_u_diam_low> endif
+  o<safe_u_diam_high> if [#610 GT 30.5]
+    (abort, Pass 1 U corrected diameter above safe range)
+  o<safe_u_diam_high> endif
+  o<safe_v_diam_low> if [#611 LT 29.9]
+    (abort, Pass 1 V corrected diameter below safe range)
+  o<safe_v_diam_low> endif
+  o<safe_v_diam_high> if [#611 GT 30.5]
+    (abort, Pass 1 V corrected diameter above safe range)
+  o<safe_v_diam_high> endif
+
+  (Build corrected center from local U/V midpoint errors.)
+  #620 = [[#606 * #533] + [#607 * #536]]
+  #621 = [[#606 * #534] + [#607 * #537]]
+  #622 = [[#606 * #535] + [#607 * #538]]
+  #623 = [#600 + #620]
+  #624 = [#601 + #621]
+  #625 = [#602 + #622]
+
+  (Start pass 2 at top clearance above the corrected center.)
+  #626 = [#623 - [#530 * #513]]
+  #627 = [#624 - [#531 * #513]]
+  #628 = [#625 - [#532 * #513]]
+
+  (DEBUG, TCPC_VECTOR correction #620 #621 #622)
+  o<tcpc_vector_sphere_pass> call [2.0] [#626] [#627] [#628] [1.0]
+
+  (Pass 2 sanity checks before accepting this center for the next pose.)
+  o<safe_p2_u_move> if [ABS[#606] GT 0.10]
+    (abort, Pass 2 U centering residual over 0.10 mm)
+  o<safe_p2_u_move> endif
+  o<safe_p2_v_move> if [ABS[#607] GT 0.10]
+    (abort, Pass 2 V centering residual over 0.10 mm)
+  o<safe_p2_v_move> endif
+  o<safe_p2_u_diam_low> if [#610 LT 29.9]
+    (abort, Pass 2 U corrected diameter below safe range)
+  o<safe_p2_u_diam_low> endif
+  o<safe_p2_u_diam_high> if [#610 GT 30.5]
+    (abort, Pass 2 U corrected diameter above safe range)
+  o<safe_p2_u_diam_high> endif
+  o<safe_p2_v_diam_low> if [#611 LT 29.9]
+    (abort, Pass 2 V corrected diameter below safe range)
+  o<safe_p2_v_diam_low> endif
+  o<safe_p2_v_diam_high> if [#611 GT 30.5]
+    (abort, Pass 2 V corrected diameter above safe range)
+  o<safe_p2_v_diam_high> endif
+
+  #700 = 1.0
+  #701 = #603
+  #702 = #604
+  #703 = #605
+
+o<tcpc_measure_pose> endsub
+
+(Run the short B-angle scaling sequence.)
+(#711=0 runs C0 only. #711=1 runs C0 then C180. #711=2 runs C180 only.)
+(#711=3 runs only C90/C270 with B0, B+90, B-90, B0 at each C.)
+o<run_c0_sequence> if [#711 LT 1.5]
+  o<tcpc_measure_pose> call [0.0] [0.0]
+  o<tcpc_measure_pose> call [30.0] [0.0]
+  o<tcpc_measure_pose> call [-30.0] [0.0]
+  o<tcpc_measure_pose> call [60.0] [0.0]
+  o<tcpc_measure_pose> call [-60.0] [0.0]
+  o<tcpc_measure_pose> call [90.0] [0.0]
+  o<tcpc_measure_pose> call [-90.0] [0.0]
+  o<tcpc_measure_pose> call [0.0] [0.0]
+o<run_c0_sequence> endif
+
+o<run_c180_repeat> if [#711 GT 0.5]
+  o<run_c180_when_not_side_only> if [#711 LT 2.5]
+    o<tcpc_measure_pose> call [0.0] [180.0]
+    o<tcpc_measure_pose> call [30.0] [180.0]
+    o<tcpc_measure_pose> call [-30.0] [180.0]
+    o<tcpc_measure_pose> call [60.0] [180.0]
+    o<tcpc_measure_pose> call [-60.0] [180.0]
+    o<tcpc_measure_pose> call [90.0] [180.0]
+    o<tcpc_measure_pose> call [-90.0] [180.0]
+    o<tcpc_measure_pose> call [0.0] [180.0]
+  o<run_c180_when_not_side_only> endif
+o<run_c180_repeat> endif
+
+o<run_side_high_b> if [#711 GT 2.5]
+  o<tcpc_measure_pose> call [0.0] [90.0]
+  o<tcpc_measure_pose> call [90.0] [90.0]
+  o<tcpc_measure_pose> call [-90.0] [90.0]
+  o<tcpc_measure_pose> call [0.0] [90.0]
+  o<tcpc_measure_pose> call [0.0] [270.0]
+  o<tcpc_measure_pose> call [90.0] [270.0]
+  o<tcpc_measure_pose> call [-90.0] [270.0]
+  o<tcpc_measure_pose> call [0.0] [270.0]
+o<run_side_high_b> endif
+
+G90
+F#705
+G1 B0 C0
+
+M65 P0
+M65 P1
+(DEBUG, TCPC_B_ANGLE_SCALING_DIAGNOSTIC complete)
+M2

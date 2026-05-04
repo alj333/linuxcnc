@@ -1,13 +1,14 @@
 # TCPC Fit Next Scope
 
 Status: TCPC direction checks, fixed-tip validation, corrected expanded
-validation, B50 redo data, and a clean B90 diagnostic have now run on the real
-machine. The current live-fit guidance is the `2026-05-03` shutdown section
-below. Older early-fit sections remain in this document for provenance only and
-should not be treated as the next live sequence without checking the current
-shutdown status. Current practical acceptance target is `0.2 mm`; refine toward
-`0.1 mm` only after mechanical backlash, alignment, servo tuning, and
-thermal/return-path repeatability are better characterized.
+validation, B50 redo data, clean B90 diagnostics, and the C0 B-angle scaling
+run have now run on the real machine. The current guidance is the
+`C0 Scaling Folded Into Offline Fit - 2026-05-04` section near the end of this
+document. Older early-fit sections remain for provenance only and should not be
+treated as the next live sequence without checking the latest status. Current
+practical acceptance target is `0.2 mm`; refine toward `0.1 mm` only after
+mechanical backlash, alignment, servo tuning, and thermal/return-path
+repeatability are better characterized.
 
 Earlier on 2026-04-27 staff started epoxy preparation on a mold on the machine,
 and the start was bumped near the end of the B-axis session. TCPC work was
@@ -1926,3 +1927,530 @@ Interpretation:
 - Do not spend more machine time on this same long run until the wireless probe
   is stable. Next step is offline fitting with this corrected dataset plus a
   probe-quality flag.
+
+## Run-State-Aware Offline Fit - 2026-05-04
+
+`tcpc_expanded_geometry_fit.py` now models the kinematic state active during
+each run before applying any candidate correction. This matters because the
+latest CSV contains both old-C-center rows and validated-C-center rows.
+
+Active data boundaries:
+
+- pre-correction B90 C-quadrant: CSV lines `2-43`, old C-center, bad line
+  `13` excluded
+- B0 C-center validation: CSV lines `44-53`, validated C-center
+- corrected B90 C-quadrant: CSV lines `54-93`, validated C-center
+- clean B90 C0/C180 holdout: B-axis diagnostic CSV lines `18-37`, old
+  C-center
+
+Generated report:
+
+- `TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md`
+
+Current decision:
+
+- Keep `headheadkins.cal-c-to-b.x = +0.035886006`.
+- Keep `headheadkins.cal-c-to-b.y = +0.009526306`.
+- Do not load any high-B fit values.
+- With C-center fixed, current pins reduce the corrected B90 RMS/max only to
+  `0.2440 / 0.4898 mm`.
+- Axis-vector terms improve only to `0.2384 / 0.4667 mm`.
+- Axis-vector plus linear-diagonal terms improve to about
+  `0.1825 / 0.3374 mm`, but the fit hits bounds, so it is diagnostic only.
+
+Next math/code scope:
+
+1. Add debug pins for the actual expanded U/V/W probe frame used by TCPC.
+2. Add a simulation-only machine-linear affine family with identity defaults.
+3. Keep the C-center fixed while fitting high-B terms.
+4. Use the next B-angle scaling data to separate `sin(B)`, `1-cos(B)`, and
+   machine-position effects before attempting another live correction.
+
+Proposed `headheadkins` code order:
+
+1. Debug-only frame pins, zero behavior risk:
+   - add `headheadkins.tool-frame-u.x/y/z`
+   - add `headheadkins.tool-frame-v.x/y/z`
+   - add `headheadkins.tool-frame-w.x/y/z`
+   - compute them from the same `rotary_vector_world()` path used by
+     `tool-offset.*`, TWP plane axes, and current `tool-vector.*`
+   - make `tool-frame-w.*` match the current stylus/tool vector direction
+2. Simulation-only affine pins, disabled by default:
+   - add an enable bit plus small delta pins for a 3x3 matrix
+   - with enable false, forward/inverse kinematics remain byte-for-byte
+     equivalent in behavior
+   - with enable true in simulation:
+     `reported_tcp = A * joint_xyz + rotary_offset`
+   - inverse:
+     `joint_xyz = A^-1 * (requested_tcp - rotary_offset)`
+3. Do not load affine or axis-vector fit values on the real machine until the
+   B-angle scaling data shows bounded terms and the B0 C-center validation
+   remains good as a held-out check.
+
+Next live data after wireless probe stabilization:
+
+- C0 reduced sequence:
+  `B0, B+30, B-30, B+60, B-60, B+90, B-90, B0`
+- repeat at C180 only if C0 is clean
+- keep the current C-center correction active
+- avoid another long B90 C-quadrant rerun until probe behavior is stable
+- Do not use `tcpc_b90_b_axis_diagnostic.ngc` as-is for this next run. Its
+  B30/B60 blocks probe all C quadrants and the older B50 path; create a
+  dedicated short B-angle scaling NGC first.
+- Because the B0 closure rows are now repeatable, use opening and closing B0
+  checks at each C angle rather than returning to B0 between every B sign. This
+  still gives a drift/sphere-shift check while cutting probe time.
+
+Prepared short run:
+
+- `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- default `#711 = 0.0`, so it runs C0 only
+- C0 sequence:
+  `B0, B+30, B-30, B+60, B-60, B+90, B-90, B0`
+- set `#711 = 1.0` only after C0 is clean and LinuxCNC is idle if a C180
+  repeat is wanted
+- no LinuxCNC restart is required if the live C-center correction is still
+  active
+- The first interrupted attempt exposed a high-B transit problem: the inherited
+  routine used a machine-Z-only lift before indexing B. The short program now
+  first moves back along the current pose W vector to the last accepted
+  top-clear point, then lifts Z, then indexes B/C. Reload the NGC before
+  rerunning.
+- To avoid rerunning the completed points, use
+  `nc_files/calibration/tcpc_b_angle_scaling_resume_bminus90_c0.ngc` for this
+  specific interruption. It appends to the same logs and only runs `B-90 C0`
+  plus the closing `B0 C0`, seeded from the latest accepted B0 C0 center
+  `X468.863916 Y323.669451 Z-858.972978`.
+
+The resume tail completed. Use these final accepted pass-2 C0 scaling rows:
+
+- CSV lines `9, 11, 13, 15, 17, 19, 22, 24`
+- exclude earlier interrupted/restart rows before line `9`
+- exclude abandoned `B-90 C0` pass-1 row at line `20`
+
+Opening/closing B0 drift was `0.026145 mm` 3D, so the reduced-B0 approach is
+acceptable for this run.
+
+Key C0 deltas relative to average B0:
+
+| Pose | dX | dY | dZ | 3D drift |
+| --- | ---: | ---: | ---: | ---: |
+| `B+30 C0` | `+0.011100` | `-0.071876` | `+0.035380` | `0.080877` |
+| `B-30 C0` | `-0.027891` | `+0.017707` | `+0.045435` | `0.056176` |
+| `B+60 C0` | `-0.008984` | `-0.170210` | `+0.060754` | `0.180950` |
+| `B-60 C0` | `-0.072179` | `-0.045002` | `+0.259367` | `0.272958` |
+| `B+90 C0` | `-0.047512` | `-0.203335` | `+0.056451` | `0.216307` |
+| `B-90 C0` | `-0.172126` | `-0.115625` | `+0.640271` | `0.673010` |
+
+Do not collect more probe data immediately. Fold this C0 scaling set into the
+offline fitter first.
+
+## C0 Scaling Folded Into Offline Fit - 2026-05-04
+
+The C0 B-angle scaling set has been added to
+`tcpc_expanded_geometry_fit.py` and the expanded report was regenerated:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md`
+
+Fit inputs now include:
+
+- pre-correction B90 C-quadrant rows: `20`
+- B0 C-center validation rows: `5`
+- corrected B90 C-quadrant rows: `20`
+- clean B90 C0/C180 holdout rows: `10`
+- C0 B-angle scaling rows: `8`
+
+Main results:
+
+- C0 scaling only can be reduced from `0.2265 / 0.5219 mm` RMS/max to
+  `0.0166 / 0.0277 mm` with bounded B-harmonic terms.
+- The flexible linear-diagonal model can reduce the C0-only sequence, but it
+  evaluates at about `4.46 mm` RMS on the corrected B90 quadrant data, so it is
+  not a compensation candidate.
+- Corrected B90 plus clean holdout plus C0 scaling with axis-vector plus
+  linear-diagonal terms gives:
+  - C0 scaling: `0.1092 / 0.1492 mm`
+  - corrected B90: `0.1854 / 0.3527 mm`
+  - clean B90 holdout: `0.1723 / 0.2816 mm`
+- Corrected B90 plus clean holdout plus C0 scaling with a machine-fixed
+  B-harmonic model gives:
+  - C0 scaling: `0.0651 / 0.1221 mm`
+  - corrected B90: `0.2058 / 0.5687 mm`
+  - clean B90 holdout: `0.0917 / 0.1630 mm`
+  - rank `9`, condition `2.52e+00`
+- The C-frame B-harmonic model is slightly better on corrected B90
+  (`0.1910 / 0.4678 mm`) but weaker on the clean holdout
+  (`0.1332 / 0.3049 mm`).
+- The combined machine/C-frame harmonic fit is too ill-conditioned to trust
+  with the current data.
+- All curated data plus C0 scaling gives a similar balanced result, but the
+  fit remains bound-limited and ill-conditioned.
+
+Decision:
+
+- Keep the validated C-center correction active.
+- Do not apply a high-B correction to the real machine yet.
+- Current kinematics pins still cannot represent the missing high-B behavior
+  cleanly.
+- The machine-fixed B-harmonic model is now the strongest bounded non-affine
+  diagnostic, but it must be implemented and verified in simulation before any
+  live test.
+- The next task is offline math/code, not probing:
+  - add/debug the actual U/V/W tool-frame output in `headheadkins`
+  - add simulation-only B-harmonic support with zero defaults
+  - verify forward/inverse behavior before exposing live HAL pins
+  - keep C-center fixed while fitting high-B terms
+- Run a C180 B-angle scaling pass only if the next offline model cannot
+  disambiguate rotary-frame and machine-fixed terms from the current data.
+
+## Headheadkins Diagnostic Pin Update - 2026-05-04
+
+`src/emc/kinematics/headheadkins.c` now includes the first offline code support
+for the next diagnostic step.
+
+Added debug outputs:
+
+- `headheadkins.tool-frame-u.x/y/z`
+- `headheadkins.tool-frame-v.x/y/z`
+- `headheadkins.tool-frame-w.x/y/z`
+
+These expose the same U/V/W convention used by the vector sphere probing
+programs. At `B0 C0`, U is `+X`, V is `+Y`, and W is `-Z`.
+
+Added simulation-gated B-harmonic pins:
+
+- `headheadkins.sim-bharm-enable`
+- `headheadkins.bharm-m.sin.x/y/z`
+- `headheadkins.bharm-m.omc.x/y/z`
+- `headheadkins.bharm-m.sin2.x/y/z`
+- `headheadkins.bharm-c.sin.x/y/z`
+- `headheadkins.bharm-c.omc.x/y/z`
+- `headheadkins.bharm-c.sin2.x/y/z`
+
+Defaults:
+
+- enable pin is `FALSE`
+- all coefficients are zero
+- no live behavior changes unless the enable pin is deliberately set true
+
+Runtime check:
+
+- rebuilt `headheadkins.so`
+- ran `sudo make setuid`
+- loaded `headheadkins coordinates=XYZBC` in `halrun`
+- confirmed tool-frame pins and representative B-harmonic pins exist
+- unloaded the `halrun` realtime session after the check
+
+Next offline task:
+
+- run the head-head sim with `sim-bharm-enable = 0` and confirm old TCPC/TWP
+  behavior is unchanged
+- then enable the machine-fixed B-harmonic candidate from
+  `TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md` in simulation only
+- verify forward/inverse consistency and fixed-tip behavior before considering
+  any live-machine test
+
+## Offline B-Harmonic Verification Script - 2026-05-04
+
+Added non-GUI offline verification:
+
+- `configs/sim/head_head_5axis/headhead_bharmonic_verify.py`
+- `configs/sim/head_head_5axis/head_head_bharmonic_candidate.hal`
+- `configs/sim/head_head_5axis/tcp_bharmonic_candidate_sequence.ngc`
+
+Script result:
+
+- zero/default max offset delta: `0 mm`
+- tool-frame formula max delta: `0`
+- active tool-frame orthogonality max error: `5.55e-17`
+- candidate forward/inverse round-trip max error: `8.04e-14 mm`
+
+Candidate HAL file behavior:
+
+- loads the current machine-fixed candidate coefficients
+- leaves `headheadkins.sim-bharm-enable` false
+- was sourced successfully in `halrun` after loading `headheadkins`
+
+Next offline task:
+
+- launch the head-head sim only, not the real machine config
+- source or include `head_head_bharmonic_candidate.hal`
+- first verify behavior with `sim-bharm-enable = 0`
+- then set `sim-bharm-enable = 1` in sim and run
+  `tcp_bharmonic_candidate_sequence.ngc`
+- do not apply the candidate to the real machine until the sim checks are
+  complete and reviewed
+
+## Full LinuxCNC B-Harmonic Sim Smoke - 2026-05-04
+
+Added:
+
+- `configs/sim/head_head_5axis/head_head_bharmonic_sim.ini`
+- `configs/sim/head_head_5axis/headhead_bharmonic_linuxcnc_smoke.py`
+
+The sim INI loads the B-harmonic candidate HAL file but leaves
+`headheadkins.sim-bharm-enable` false by default.
+
+Smoke result:
+
+- disabled max fixed-tip TCP error: `0.000000000 mm`
+- enabled max fixed-tip TCP error: `0.000000000 mm`
+
+Notes:
+
+- sequential homing was not reliable for this sim because Z remained in
+  homing state; the smoke script now uses home-all
+- Z has a home motor offset in this sim, so fixed-tip verification uses
+  `joint.N.pos-fb + headheadkins.tool-offset.*`
+- after the smoke run, the temporary sim realtime session was unloaded with
+  `halrun -U`
+
+Next offline task:
+
+- perform a visual sim inspection with
+  `configs/sim/head_head_5axis/head_head_bharmonic_sim.ini`
+- run `tcp_bharmonic_candidate_sequence.ngc` with `sim-bharm-enable = FALSE`
+  and then `TRUE`
+- compare observed tool-tip behavior and joint travel before any live-machine
+  decision
+
+## Ready for Limited Machine Probe Validation - 2026-05-04
+
+The dedicated sim smoke was rerun after the B-harmonic support and candidate
+HAL were in place:
+
+- disabled max fixed-tip TCP error: `0.000000000 mm`
+- enabled max fixed-tip TCP error: `0.000000000 mm`
+- the temporary sim realtime session was unloaded afterward
+- a follow-up `halcmd getp headheadkins.sim-bharm-enable` returned pin not
+  found, confirming no sim realtime session was left running
+
+The TCPC Probe Basic test config startup HAL now persists the validated
+C-center correction in both the kinematics and TWP state component:
+
+```hal
+setp headheadkins.cal-c-to-b.x 0.035886006
+setp headheadkins.cal-c-to-b.y 0.009526306
+setp headheadtwp.cal_c_to_b_x 0.035886006
+setp headheadtwp.cal_c_to_b_y 0.009526306
+```
+
+The next live run is ready as a limited diagnostic only. It is not a production
+TCPC correction and it should not be made persistent.
+
+Recommended next machine run:
+
+1. Restart `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic`.
+2. Home and position the probe above the sphere at `B0 C0`.
+3. Confirm the validated C-center pins above loaded correctly.
+4. Confirm `headheadkins.sim-bharm-enable = FALSE`.
+5. Load the B-harmonic candidate pins manually while idle.
+6. Set `headheadkins.sim-bharm-enable = TRUE` only for the validation run.
+7. Run `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with the
+   default `#711 = 0.0` C0-only setting.
+8. After the run, set `headheadkins.sim-bharm-enable = FALSE` before doing
+   anything else.
+
+Manual candidate pin block for the live diagnostic session:
+
+```hal
+setp headheadkins.sim-bharm-enable 0
+setp headheadkins.bharm-m.sin.x 0.003457595
+setp headheadkins.bharm-m.sin.y 0.071987315
+setp headheadkins.bharm-m.sin.z 0.318267363
+setp headheadkins.bharm-m.omc.x 0.108123741
+setp headheadkins.bharm-m.omc.y 0.034446993
+setp headheadkins.bharm-m.omc.z -0.364472105
+setp headheadkins.bharm-m.sin2.x -0.032225192
+setp headheadkins.bharm-m.sin2.y 0.005230194
+setp headheadkins.bharm-m.sin2.z -0.190772593
+setp headheadkins.bharm-c.sin.x 0.000000000
+setp headheadkins.bharm-c.sin.y 0.000000000
+setp headheadkins.bharm-c.sin.z 0.000000000
+setp headheadkins.bharm-c.omc.x 0.000000000
+setp headheadkins.bharm-c.omc.y 0.000000000
+setp headheadkins.bharm-c.omc.z 0.000000000
+setp headheadkins.bharm-c.sin2.x 0.000000000
+setp headheadkins.bharm-c.sin2.y 0.000000000
+setp headheadkins.bharm-c.sin2.z 0.000000000
+```
+
+Acceptance guidance for this one run:
+
+- B0 open/close should remain in the established good range, roughly
+  `0.03 mm` 3D or better.
+- Probe diameters should stay in the normal wireless-probe window, roughly
+  U/V `30.15..30.25 mm` for this setup.
+- The C0 high-B error should improve materially, especially the prior
+  `B-90` positive-Z signature. If it does not, disable the candidate and
+  inspect the data before any C180 or C-quadrant probing.
+
+## Candidate-On C0 Result - 2026-05-04
+
+The first candidate-on run attempt was aborted for probe behavior and should be
+ignored for validation:
+
+- `tcpc-b-angle-scaling-diagnostic-2pass-results.csv` lines `25-27`
+- line `27` is `B+30 C0` pass 1 only
+
+The second run completed cleanly with the B-harmonic candidate enabled. Use
+accepted pass-2 lines:
+
+- `29, 31, 33, 35, 37, 39, 41, 43`
+
+Quality:
+
+- B0 open/close drift: `0.018351 mm` 3D
+- pass-2 max residuals: U `0.006865 mm`, V `0.008333 mm`
+- pass-2 corrected diameters:
+  - U `30.142549..30.219870 mm`
+  - V `30.216333..30.229667 mm`
+
+C0 improvement:
+
+| State | non-B0 RMS | non-B0 max |
+| --- | ---: | ---: |
+| candidate off, prior clean C0 | `0.320592 mm` | `0.673010 mm` |
+| candidate on, clean C0 | `0.108201 mm` | `0.189342 mm` |
+
+Candidate-on C0 deltas versus B0 average:
+
+| Pose | dX | dY | dZ | 3D drift |
+| --- | ---: | ---: | ---: | ---: |
+| `B+30 C0` | `-0.009897` | `-0.040287` | `-0.025141` | `0.048508` |
+| `B-30 C0` | `+0.004306` | `-0.019662` | `+0.005996` | `0.021003` |
+| `B+60 C0` | `+0.010792` | `-0.083620` | `-0.012162` | `0.085187` |
+| `B-60 C0` | `+0.008176` | `-0.094871` | `-0.028618` | `0.099430` |
+| `B+90 C0` | `+0.063705` | `-0.101798` | `+0.006001` | `0.120238` |
+| `B-90 C0` | `-0.068462` | `-0.169714` | `-0.048583` | `0.189342` |
+
+Decision:
+
+- The candidate is effective at C0 and brings this sequence inside the current
+  practical `0.2 mm` target.
+- The old `B-90` positive-Z error is mostly removed.
+- Remaining C0 error is mostly machine-Y at high B.
+- This is not yet a general TCPC correction because it has not been validated
+  at C180 or side C quadrants.
+
+Program change:
+
+- `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` now supports
+  `#711 = 2.0` for a C180-only pass.
+- Use C180-only next if continuing live validation; do not rerun C0 unless
+  probe repeatability becomes suspect.
+- The current file has been set to `#711 = 2.0`; reload it in Probe Basic
+  before running the next pass.
+
+## Candidate-On C180 Result - 2026-05-04
+
+The C180-only pass completed cleanly with the B-harmonic candidate enabled.
+The candidate was disabled immediately after the run.
+
+Use accepted pass-2 lines:
+
+- `45, 47, 49, 51, 53, 55, 57, 59`
+
+Quality:
+
+- B0 open/close drift: `0.012149 mm` 3D
+- pass-2 max residuals: U `0.007699 mm`, V `0.003335 mm`
+- pass-2 corrected diameters:
+  - U `30.148024..30.250744 mm`
+  - V `30.210500..30.217996 mm`
+
+Candidate-on C180 deltas versus B0 average:
+
+| Pose | dX | dY | dZ | 3D drift |
+| --- | ---: | ---: | ---: | ---: |
+| `B+30 C180` | `-0.112635` | `-0.047842` | `-0.048767` | `0.131733` |
+| `B-30 C180` | `-0.018993` | `+0.031533` | `+0.027880` | `0.046178` |
+| `B+60 C180` | `-0.193129` | `-0.103929` | `-0.065487` | `0.228885` |
+| `B-60 C180` | `-0.095269` | `+0.063543` | `+0.020045` | `0.116257` |
+| `B+90 C180` | `-0.065450` | `-0.119525` | `-0.014121` | `0.137001` |
+| `B-90 C180` | `+0.059216` | `+0.134433` | `-0.030788` | `0.150089` |
+
+Candidate-on summary:
+
+| Set | non-B0 RMS | non-B0 max |
+| --- | ---: | ---: |
+| C0 | `0.108201 mm` | `0.189342 mm` |
+| C180 | `0.145308 mm` | `0.228885 mm` |
+| C0 + C180 combined | `0.128105 mm` | `0.228885 mm` |
+
+Decision:
+
+- The B-harmonic candidate is effective at C0 and C180.
+- It should still remain diagnostic-only because C180 has a `0.228885 mm`
+  maximum at `B+60 C180`, and C90/C270 are unvalidated.
+- Stop live probing for offline fitting unless the operator specifically wants
+  one more limited side-quadrant check.
+- If continuing live, make the next pass short: `C90/C270` with `B0`,
+  `B+90`, `B-90`, `B0` only. Do not run the full long quadrant program yet.
+
+## Offline Fold-In And Next Short Test - 2026-05-04
+
+`tcpc_expanded_geometry_fit.py` now includes the candidate-on C0 and C180 rows
+as active-candidate validation data, and
+`TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md` has been regenerated.
+
+The report confirms:
+
+- candidate-on C0 non-B0 RMS/max: `0.108201 / 0.189342 mm`
+- candidate-on C180 non-B0 RMS/max: `0.145308 / 0.228885 mm`
+- candidate-on combined C0+C180 non-B0 RMS/max:
+  `0.128105 / 0.228885 mm`
+- existing side-quadrant data predicts the highest remaining risk at C90/C270
+  high-B poses:
+  - predicted side-quadrant high-B RMS/max: `0.3782 / 0.4238 mm`
+
+Next prepared live test:
+
+- `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- current mode is `#711 = 3.0`
+- sequence:
+  - `C90`: `B0`, `B+90`, `B-90`, `B0`
+  - `C270`: `B0`, `B+90`, `B-90`, `B0`
+- this skips C0/C180 and avoids the full long quadrant program
+
+Do not enable the B-harmonic candidate until immediately before this run, after
+idle/gate/probe/B/C checks.
+
+## Candidate-On Side-Quadrant Result - 2026-05-04
+
+The prepared `#711 = 3.0` side-quadrant run completed. Use accepted pass-2
+rows in `tcpc-b-angle-scaling-diagnostic-2pass-results.csv`:
+
+- `61, 63, 65, 67, 69, 71, 73, 75`
+
+The machine-fixed B-harmonic candidate is not viable as a general live
+correction by itself:
+
+| Set | non-B0 RMS | non-B0 max |
+| --- | ---: | ---: |
+| C0 | `0.108201 mm` | `0.189342 mm` |
+| C180 | `0.145308 mm` | `0.228885 mm` |
+| C90/C270 side | `0.408282 mm` | `0.615783 mm` |
+| all candidate-on validation | `0.232339 mm` | `0.615783 mm` |
+
+Side-quadrant refit results:
+
+- incremental C-frame terms on top of the live candidate reduce all direct
+  RMS/max to `0.202139 / 0.494928 mm`, but C0/C180 regress and side error is
+  still too large
+- replacement machine plus C-frame terms reduce all direct RMS/max to
+  `0.197311 / 0.434945 mm`, but the fit condition is about `1.21e17`
+- C-axis-tilted replacement machine plus C-frame terms reduce all direct
+  RMS/max to `0.185867 / 0.408958 mm`, but the model is still too flexible and
+  leaves too much side error
+- axis-vector plus linear-diagonal terms are also ill-conditioned and are not
+  a live correction candidate
+
+Next scope:
+
+- no further live probing is requested now
+- keep the validated C-center correction
+- keep all B-harmonic / expanded-variable results diagnostic-only
+- continue offline work on a smaller constrained C-tilt/harmonic correction
+  family that explains side-quadrant behavior without losing C0/C180
+- verify any new candidate in simulation before enabling it on the machine
