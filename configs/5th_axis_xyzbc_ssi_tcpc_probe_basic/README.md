@@ -851,17 +851,17 @@ Reason:
 - the side result shows the machine-fixed B-harmonic candidate is not a general
   TCPC correction
 
-Next candidate:
+Latest B/C cross candidate result:
 
 - manual HAL file:
   `configs/sim/head_head_5axis/head_head_bharmonic_candidate.hal`
-- predicted B/C cross candidate all-validation RMS/max:
-  `0.094009 / 0.166446 mm`
-- validation NGC:
-  `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
-- current NGC mode:
-  `#711 = 4.0`, which runs C0, C180, and C90/C270 side validation
+- the live `#711 = 4.0` C0 + C180 + C90/C270 validation completed
+- measured all-validation RMS/max: `0.096378 / 0.176626 mm`
+- measured C90/C270 side RMS/max: `0.079909 / 0.105982 mm`
+- worst remaining point: `B+60 C180` at `0.176626 mm`
+- the candidate remains non-persistent while the new rows are folded into the
+  next offline fit
 
-Do not enable `headheadkins.sim-bharm-enable` until the candidate coefficients
-are loaded, the machine is idle at the safe start position, probe input is
-false, and both probe gate outputs are false.
+Do not enable `headheadkins.sim-bharm-enable` for normal machine use. It should
+remain `FALSE` unless deliberately running a gated diagnostic candidate from
+the current offline plan.

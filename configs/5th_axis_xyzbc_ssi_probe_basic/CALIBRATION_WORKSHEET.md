@@ -849,3 +849,30 @@ Next machine test:
 - reload `tcpc_b_angle_scaling_diagnostic.ngc`
 - use `#711 = 4.0` for C0 + C180 + side validation
 - keep the B/C cross candidate non-persistent until this live validation passes
+
+Live B/C cross result:
+
+- the `#711 = 4.0` run completed with one operator pause/reset of the wireless
+  probe
+- accepted pass-2 rows:
+  - C0: `77,79,81,83,85,87,89,91`
+  - C180: `93,95,97,99,101,103,105,107`
+  - C90/C270 side: `109,111,113,115,117,119,121,123`
+- no accepted pass-2 rows were rejected
+- after the run, `headheadkins.sim-bharm-enable` was disabled and verified
+  `FALSE`
+
+Measured direct RMS/max:
+
+- C0: `0.083627 / 0.127554 mm`
+- C180: `0.116273 / 0.176626 mm`
+- C90/C270 side: `0.079909 / 0.105982 mm`
+- all validation: `0.096378 / 0.176626 mm`
+
+Current calibration decision:
+
+- the B/C cross candidate is a validated improvement over the
+  B-harmonic-only candidate
+- keep it non-persistent and gated off until the new run is folded into the
+  next offline fit
+- next work is offline fitting, not another immediate machine probe run

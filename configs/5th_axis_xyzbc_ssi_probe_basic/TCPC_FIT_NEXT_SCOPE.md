@@ -2492,3 +2492,38 @@ Before running:
 - load the candidate HAL while idle
 - enable only immediately before cycle start
 - disable `headheadkins.sim-bharm-enable` immediately after completion
+
+## B/C Cross-Harmonic Candidate Live Result - 2026-05-04
+
+The `#711 = 4.0` C0 + C180 + C90/C270 validation run has completed. The
+operator paused once to let/reset the wireless probe; accepted pass-2 rows
+looked clean and no pass-2 rows were rejected.
+
+Use these accepted pass-2 rows from
+`tcpc-b-angle-scaling-diagnostic-2pass-results.csv`:
+
+- C0: `77,79,81,83,85,87,89,91`
+- C180: `93,95,97,99,101,103,105,107`
+- C90/C270 side: `109,111,113,115,117,119,121,123`
+
+Measured direct validation:
+
+| Set | RMS | Max |
+| --- | ---: | ---: |
+| C0 | `0.083627 mm` | `0.127554 mm` |
+| C180 | `0.116273 mm` | `0.176626 mm` |
+| C90/C270 side | `0.079909 mm` | `0.105982 mm` |
+| all validation | `0.096378 mm` | `0.176626 mm` |
+
+The result is close to the offline prediction of `0.094009 / 0.166446 mm`.
+The large side-quadrant failure from the B-harmonic-only candidate is removed.
+The worst remaining point is `B+60 C180` at `0.176626 mm`.
+
+Current scope:
+
+- keep `headheadkins.sim-bharm-enable = FALSE`
+- keep the B/C cross candidate non-persistent
+- fold the new active-candidate rows into the offline fitter before any
+  additional live probing
+- do not rerun the same long validation immediately unless repeatability of
+  the candidate itself becomes the next question

@@ -45,3 +45,11 @@ Launch:
 Fallback:
 
 - `configs/5th_axis_xyzbc_ssi_maintenance` remains the locked AXIS fallback
+
+Latest TCPC fitting status, 2026-05-04:
+
+- validated C-center correction remains the only persistent correction
+- the simulation-gated B/C cross candidate measured all-validation RMS/max of
+  `0.096378 / 0.176626 mm`
+- keep the candidate non-persistent and `headheadkins.sim-bharm-enable = FALSE`
+- continue from `TCPC_FIT_NEXT_SCOPE.md` before any further machine probing

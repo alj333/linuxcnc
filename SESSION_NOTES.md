@@ -4197,3 +4197,58 @@ Important handoff:
   coefficients
 - do not make the B/C cross candidate persistent until the live validation
   passes
+
+## 2026-05-04 B/C Cross-Harmonic Live Validation Complete
+
+The B/C cross candidate run completed after one operator pause/reset of the
+wireless probe. The accepted pass-2 probe rows looked clean; pass-1 rows are
+intentionally rejected and no pass-2 rows were rejected.
+
+Accepted pass-2 rows in
+`configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-2pass-results.csv`:
+
+- C0: `77,79,81,83,85,87,89,91`
+- C180: `93,95,97,99,101,103,105,107`
+- C90/C270 side: `109,111,113,115,117,119,121,123`
+
+Immediate live-state cleanup was completed:
+
+- `headheadkins.sim-bharm-enable = FALSE`
+- `halui.program.is-idle = TRUE`
+- `motion.probe-input = FALSE`
+- `motion.digital-out-00 = FALSE`
+- `motion.digital-out-01 = FALSE`
+
+Probe quality on the accepted pass-2 rows:
+
+- max U center residual: `0.008136 mm`
+- max V center residual: `0.004583 mm`
+- corrected U diameter range: `30.146536..30.255703 mm`
+- corrected V diameter range: `30.158000..30.241334 mm`
+- max X/Y/Z motor following error in the captured axis-state rows:
+  `0.000002 / 0.000000 / 0.000000 mm`
+
+Live direct validation compared with the previous machine B-harmonic-only
+candidate:
+
+| Set | B-harmonic only RMS/max | B-harmonic plus B/C cross RMS/max |
+| --- | ---: | ---: |
+| C0 | `0.108201 / 0.189342 mm` | `0.083627 / 0.127554 mm` |
+| C180 | `0.145308 / 0.228885 mm` | `0.116273 / 0.176626 mm` |
+| C90/C270 side | `0.408282 / 0.615783 mm` | `0.079909 / 0.105982 mm` |
+| all validation | `0.232339 / 0.615783 mm` | `0.096378 / 0.176626 mm` |
+
+Worst remaining point is `B+60 C180` at `0.176626 mm`. The side quadrants are
+now much better than with the B-harmonic-only candidate.
+
+`tcpc_expanded_geometry_fit.py` and
+`TCPC_EXPANDED_GEOMETRY_FIT_REPORT.md` have been updated so the new run is
+modeled with the active C-center, machine B-harmonic, and B/C cross correction
+subtracted before any further offline model is applied.
+
+Next action:
+
+- do not rerun the same long validation immediately
+- keep the B/C cross candidate non-persistent and gated off
+- continue offline fitting against the new B/C cross validation rows before
+  selecting the next live probe task
