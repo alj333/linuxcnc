@@ -7,8 +7,9 @@
 (2. Keep hand on feed hold/stop for the full first run.)
 (3. #711 selects C-angle coverage: 0=C0 only, 1=C0 then C180, 2=C180 only,)
 (   3=C90/C270 side-quadrant high-B check only, 4=C0+C180+side check,)
-(   5=targeted refined-candidate repeat, 6=B0-only C-quadrant reference.)
-(4. This diagnostic uses C0/C90/C180/C270 only; no C45 moves.)
+(   5=targeted refined-candidate repeat, 6=B0-only C-quadrant reference,)
+(   7=detailed C sweep at B0/B+10/B-10/B+30/B-30.)
+(4. Modes 0-6 use C quadrants only; mode 7 includes every 45 degrees on C.)
 (5. B0 is probed only at open and close to reduce runtime.)
 
 (Sequence:)
@@ -46,10 +47,15 @@ M65 P1
 o<probe_tool_default> if [#500 LE 0]
   #500 = #5400
 o<probe_tool_default> endif
+o<probe_tool_known_default> if [#500 LE 0]
+  #500 = 3.0
+o<probe_tool_known_default> endif
 
-o<probe_tool_loaded> if [#5400 NE #500]
-  (abort, Specified probe tool is not in spindle)
-o<probe_tool_loaded> endif
+o<probe_tool_loaded_known> if [#5400 GT 0]
+  o<probe_tool_loaded> if [#5400 NE #500]
+    (abort, Specified probe tool is not in spindle)
+  o<probe_tool_loaded> endif
+o<probe_tool_loaded_known> endif
 
 #501 = #5410
 (In the TCPC test config #5410 may report the loaded tool diameter in the)
@@ -92,7 +98,7 @@ o<probe_cal_offset_default> endif
 #708 = 1.0            (reserved)
 #709 = 90.0           (reserved)
 #710 = 0.0            (reserved)
-#711 = 6.0            (C coverage; 6=B0-only C-quadrant reference)
+#711 = 7.0            (C coverage; 7=detailed C sweep)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -656,6 +662,7 @@ o<tcpc_measure_pose> endsub
 (#711=4 runs C0, C180, and C90/C270 side validation.)
 (#711=5 runs only C180 high-B and C270 B+90 targeted repeat.)
 (#711=6 runs B0 C0/C90/C180/C270/C0 reference only.)
+(#711=7 runs B0/B+10/B-10/B+30/B-30 at C every 45 degrees.)
 #712 = 0.0
 #713 = 0.0
 o<c0_requested_low_mode> if [#711 LT 1.5]
@@ -731,14 +738,41 @@ o<run_refined_targeted_repeat> if [#711 GT 4.5]
 o<run_refined_targeted_repeat> endif
 
 o<run_b0_reference_check> if [#711 GT 5.5]
-  (B0-only C-quadrant reference check for session/thermal/sphere movement.)
-  (Run with the refined candidate disabled unless deliberately testing it.)
-  o<tcpc_measure_pose> call [0.0] [0.0]
-  o<tcpc_measure_pose> call [0.0] [90.0]
-  o<tcpc_measure_pose> call [0.0] [180.0]
-  o<tcpc_measure_pose> call [0.0] [270.0]
-  o<tcpc_measure_pose> call [0.0] [0.0]
+  o<run_b0_reference_check_only> if [#711 LT 6.5]
+    (B0-only C-quadrant reference check for session/thermal/sphere movement.)
+    (Run with the refined candidate disabled unless deliberately testing it.)
+    o<tcpc_measure_pose> call [0.0] [0.0]
+    o<tcpc_measure_pose> call [0.0] [90.0]
+    o<tcpc_measure_pose> call [0.0] [180.0]
+    o<tcpc_measure_pose> call [0.0] [270.0]
+    o<tcpc_measure_pose> call [0.0] [0.0]
+  o<run_b0_reference_check_only> endif
 o<run_b0_reference_check> endif
+
+o<tcpc_c45_sweep_at_b> sub
+  #<sweep_b> = #1
+  o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [45.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [90.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [135.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [180.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [225.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [270.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [315.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
+o<tcpc_c45_sweep_at_b> endsub
+
+o<run_detailed_c45_sweep> if [#711 GT 6.5]
+  (Detailed C sweep for C-center/reference and low-B TCPC diagnostics.)
+  (Sequence per B group: C0/C45/C90/C135/C180/C225/C270/C315/C0.)
+  (Run with headheadkins.sim-bharm-enable FALSE unless deliberately testing it.)
+  (C45 and C225 align near the sphere stand; monitor the first sweep closely.)
+  o<tcpc_c45_sweep_at_b> call [0.0]
+  o<tcpc_c45_sweep_at_b> call [10.0]
+  o<tcpc_c45_sweep_at_b> call [-10.0]
+  o<tcpc_c45_sweep_at_b> call [30.0]
+  o<tcpc_c45_sweep_at_b> call [-30.0]
+o<run_detailed_c45_sweep> endif
 
 G90
 F#705

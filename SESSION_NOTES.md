@@ -4613,3 +4613,28 @@ Decision:
 - before the next probing run, confirm the probe tool state/Probe Basic mirror;
   then either repeat the B0 reference check or prepare a C-center-only
   candidate check with the new fitted `cal-c-to-b.x/y`
+
+## 2026-05-05 Detailed C Sweep Prepared
+
+Operator confirmed the UI shows Tool 3 and the Tool 3 probe is loaded.
+
+Prepared `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` for a
+detailed C sweep:
+
+- default `#711 = 7.0`
+- B groups: `B0`, `B+10`, `B-10`, `B+30`, `B-30`
+- each B group runs `C0`, `C45`, `C90`, `C135`, `C180`, `C225`, `C270`,
+  `C315`, then returns to `C0`
+- keep `headheadkins.sim-bharm-enable = FALSE` unless deliberately testing a
+  candidate; this run is intended to diagnose C-center/reference and low-B
+  behavior before more high-B fitting
+- the program now falls back to probe tool `3.0` if both Probe Basic mirrored
+  probe-tool parameter and LinuxCNC loaded-tool parameter are invalid/zero, but
+  it still checks the loaded tool if LinuxCNC reports one
+- C45/C225 can align near the sphere stand; monitor the first sweep closely
+
+Verification:
+
+- `rs274 -g` completed
+- `rs274 -T -g` reached the expected simulated probe-touch abort with no
+  interpreter/syntax error before the first real probe move

@@ -2768,3 +2768,23 @@ Next decision:
 - first confirm Probe Basic/tool state so the probe tool logs as expected
 - then either repeat the same B0-only reference check, or deliberately test a
   C-center-only candidate based on the fitted values
+
+## Detailed C Sweep Prepared - 2026-05-05
+
+The next data collection program is now the detailed low-B C sweep:
+
+- file: `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- default mode: `#711 = 7.0`
+- B groups: `B0`, `B+10`, `B-10`, `B+30`, `B-30`
+- C sequence in each B group:
+  `C0/C45/C90/C135/C180/C225/C270/C315/C0`
+- probe tool fallback now records Tool 3 if mirrored tool state and
+  `#5400` are both zero/invalid
+- keep the refined B-harmonic/B-cross candidate disabled for this run
+- C45/C225 are stand-clearance watch points
+
+Purpose:
+
+- build a session-local C sweep at B0 and low B angles
+- separate C-center/reference motion from B-dependent TCPC error
+- avoid another B90/B-90 fit until the C-only B0 orbit is understood
