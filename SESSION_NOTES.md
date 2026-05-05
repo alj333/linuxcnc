@@ -4787,6 +4787,7 @@ Tonight handoff:
 
 Runtime update:
 
+- ambient/machine temperature reference for this short-probe run: `32 C`
 - the first short-probe baseline attempt completed the B0 C sweep cleanly, then
   stopped at `B+30 C135`, which touched the sphere stand
 - operator confirmed `C45` is clear, while `C135` and `C315` are the collision
@@ -4801,3 +4802,29 @@ Runtime update:
 - `#711 = 9.0` now starts with a fresh `B0 C0` probe to establish the current
   sphere center, then runs the non-B0 B-grouped sweeps plus final B0 closure
 - operator should restart from `B0 C0`, `3-8 mm` above the sphere
+
+Completed `#711 = 9.0` short-probe resume audit:
+
+- current log block: result rows `273-348`
+- all commanded pass-2 points were accepted; no dropped rows inside the mode 9
+  commanded path
+- accepted pass-2 row count: `38`
+- opening B0 C0 center: `X468.936811 Y323.635409 Z-858.938222`
+- closing first B0 C0 center: `X468.922638 Y323.638335 Z-858.931634`
+  (`0.015901 mm` 3D shift from opening)
+- closing final B0 C0 center: `X468.915868 Y323.635307 Z-858.935018`
+  (`0.021187 mm` 3D shift from opening)
+- compared with desired every-45-degree safe coverage, the missing pass-2
+  points are:
+  `B+30/B+60/B+90/B-90/B-60/B-30 at C90 and C270`, plus `B0 C90`
+  and `B0 C270`
+- nonzero `C135` and `C315` remain intentional stand-clearance skips
+
+Prepared `#711 = 10.0` supplemental mode and made it the file default:
+
+- probes only C90/C270 coverage plus C0 guard/reference moves
+- each B group sequence is `C0/C90/C270/C0`
+- B groups: `B0`, `B+30`, `B+60`, `B+90`, `B-90`, `B-60`, `B-30`, then final
+  `B0 C0`
+- B changes occur from C0 to keep transitions away from the stand-clearance
+  diagonal path
