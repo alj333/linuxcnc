@@ -4538,3 +4538,13 @@ Decision:
 - for the core task, the current candidate is already within the measured
   `0.2 mm` band; for the secondary `0.1 mm` task, further work should wait for
   stable reference data and tool-length validation
+
+Reporting rule:
+
+- primary TCPC error reporting should be session-local
+- for each run and C group, use that same run's opening and closing B0 average
+  as the reference for all non-B0 pose errors
+- cross-session B0 movement should be reported separately as thermal, machine,
+  sphere/stand, or setup-state movement
+- do not use an older run's B0 reference as the main error baseline for a later
+  run unless explicitly studying absolute reference drift

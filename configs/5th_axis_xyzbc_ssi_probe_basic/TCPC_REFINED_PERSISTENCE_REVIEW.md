@@ -134,6 +134,34 @@ Worst current-candidate rows across live plus targeted data:
 | `candidate_on_c180_scaling` | 53 | `B-60 C180` | `-0.132223`, `-0.017853`, `-0.007479` | `0.133632` |
 | `bcross_candidate_c180_scaling` | 101 | `B-60 C180` | `-0.129594`, `-0.024618`, `-0.003913` | `0.131970` |
 
+Primary session-local grouping:
+
+- each run/C group uses its own opening and closing B0 average as the
+  reference for non-B0 error
+- absolute B0 movement between sessions is reported separately as machine,
+  thermal, or setup-state movement
+- do not use an older session's B0 reference as the main error baseline
+  for a later run
+
+| run/group | C group | opening B0 line | closing B0 line | B0 closure | non-B0 rows | local RMS/max |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `2026-05-04-candidate-on-c0` | `C0` | `29` | `43` | `0.018351` | `6` | `0.037921 / 0.061447` |
+| `2026-05-04-candidate-on-c180` | `C180` | `45` | `59` | `0.012149` | `6` | `0.095562 / 0.133632` |
+| `2026-05-04-candidate-on-side` | `C90` | `61` | `67` | `0.008856` | `2` | `0.076773 / 0.085143` |
+| `2026-05-04-candidate-on-side` | `C270` | `69` | `75` | `0.010215` | `2` | `0.065521 / 0.075274` |
+| `2026-05-04-bcross-candidate-c0` | `C0` | `77` | `91` | `0.007174` | `6` | `0.039546 / 0.068181` |
+| `2026-05-04-bcross-candidate-c180` | `C180` | `93` | `107` | `0.010959` | `6` | `0.098430 / 0.131970` |
+| `2026-05-04-bcross-candidate-side` | `C90` | `109` | `115` | `0.018189` | `2` | `0.060734 / 0.070044` |
+| `2026-05-04-bcross-candidate-side` | `C270` | `117` | `123` | `0.018019` | `2` | `0.067629 / 0.077115` |
+| `2026-05-05-refined-candidate-c0` | `C0` | `125` | `139` | `0.012134` | `6` | `0.044921 / 0.094234` |
+| `2026-05-05-refined-candidate-c180` | `C180` | `141` | `155` | `0.011210` | `6` | `0.098680 / 0.125893` |
+| `2026-05-05-refined-candidate-side` | `C90` | `157` | `163` | `0.015858` | `2` | `0.071908 / 0.091504` |
+| `2026-05-05-refined-candidate-side` | `C270` | `165` | `171` | `0.014273` | `2` | `0.082281 / 0.097132` |
+| `2026-05-05-refined-targeted-repeat-1` | `C180` | `173` | `183` | `0.027952` | `4` | `0.123068 / 0.153150` |
+| `2026-05-05-refined-targeted-repeat-1` | `C270` | `185` | `189` | `0.047593` | `1` | `0.152547 / 0.152547` |
+| `2026-05-05-refined-targeted-repeat-2` | `C180` | `191` | `201` | `0.013094` | `4` | `0.144353 / 0.191962` |
+| `2026-05-05-refined-targeted-repeat-2` | `C270` | `203` | `207` | `0.034588` | `1` | `0.166827 / 0.166827` |
+
 ## Decision
 
 - Keep the refined candidate unchanged.

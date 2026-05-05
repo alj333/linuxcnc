@@ -233,6 +233,50 @@ def worst_row_lines(
     return lines
 
 
+def session_local_group_lines(
+    data_sets: list[list[fit.Observation]],
+    params: dict[str, float],
+) -> list[str]:
+    lines = []
+    for observations in data_sets:
+        keys = sorted({(obs.group, round(obs.c_deg, 6)) for obs in observations})
+        for group, c_deg in keys:
+            group_rows = [
+                obs
+                for obs in observations
+                if obs.group == group and round(obs.c_deg, 6) == c_deg
+            ]
+            b0_rows = [obs for obs in group_rows if abs(obs.b_deg) < 1e-6]
+            if len(b0_rows) < 2:
+                continue
+
+            def point(obs: fit.Observation) -> np.ndarray:
+                return fit.physical_estimate(obs, params)
+
+            opening = point(b0_rows[0])
+            closing = point(b0_rows[-1])
+            local_base = (opening + closing) / 2.0
+            closure = closing - opening
+            non_b0_norms = [
+                float(np.linalg.norm(point(obs) - local_base))
+                for obs in group_rows
+                if abs(obs.b_deg) >= 1e-6
+            ]
+            if non_b0_norms:
+                rms, max_value = rms_max(non_b0_norms)
+                metric = f"`{rms:.6f} / {max_value:.6f}`"
+            else:
+                metric = "`n/a`"
+            lines.append(
+                "| "
+                f"`{group}` | `C{c_deg:.0f}` | "
+                f"`{b0_rows[0].line}` | `{b0_rows[-1].line}` | "
+                f"`{np.linalg.norm(closure):.6f}` | `{len(non_b0_norms)}` | "
+                f"{metric} |"
+            )
+    return lines
+
+
 def write_report(path: Path) -> None:
     review_sets = load_review_sets()
     targeted_repeats = load_targeted_repeats()
@@ -439,6 +483,19 @@ def write_report(path: Path) -> None:
         "| source | line | pose | delta X/Y/Z | norm |",
         "| --- | ---: | --- | ---: | ---: |",
         *worst_row_lines(all_live_targeted_sets, current_params),
+        "",
+        "Primary session-local grouping:",
+        "",
+        "- each run/C group uses its own opening and closing B0 average as the",
+        "  reference for non-B0 error",
+        "- absolute B0 movement between sessions is reported separately as machine,",
+        "  thermal, or setup-state movement",
+        "- do not use an older session's B0 reference as the main error baseline",
+        "  for a later run",
+        "",
+        "| run/group | C group | opening B0 line | closing B0 line | B0 closure | non-B0 rows | local RMS/max |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        *session_local_group_lines(all_live_targeted_sets, current_params),
     ]
 
     lines = [

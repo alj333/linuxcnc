@@ -2715,6 +2715,10 @@ Interpretation:
   absorbing thermal/setup movement
 - no further offline correction family is justified before checking the
   reference state
+- primary TCPC error metrics should stay session-local: each run/C group uses
+  its own opening and closing B0 average as the reference for non-B0 poses
+- absolute B0 movement between runs is a separate machine/setup-state
+  diagnostic, not the main TCPC error baseline
 
 Prepared next machine check:
 
