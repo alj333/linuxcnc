@@ -4753,14 +4753,14 @@ Mode `#711 = 8.0` sequence:
 - B0 C reference:
   `B0 C0/C45/C90/C135/C180/C225/C270/C315/C0`
 - B-grouped C sweeps for faster machine motion:
-- B-grouped C sweeps for faster machine motion:
-  `B+30/B+60/B+90 C0/C45/C135/C180/C315/C0`,
-  `B-90/B-60/B-30 C0/C135/C180/C225/C315/C0`
+  `B+30/B+60/B+90 C0/C45/C180/C0`,
+  `B-90/B-60/B-30 C0/C45/C180/C225/C0`
 - final B0 closure: `B0 C0/C45/C135/C180/C225/C315/C0`
 
 Safety/intent:
 
-- C45 is skipped for `B-30`, `B-60`, and `B-90` for stand clearance
+- C45 is clear and remains enabled
+- C135 and C315 are skipped for all nonzero B groups for stand clearance
 - C225 is skipped for `B+30`, `B+60`, and `B+90` for stand clearance
 - C returns to C0 before each B change, avoiding combined B/C diagonal
   transitions between measured groups
@@ -4784,3 +4784,19 @@ Tonight handoff:
 - start at/near `B0 C0`, probe `3-8 mm` above the sphere
 - if the wireless probe becomes noisy, pause/reset as before; do not use a
   visibly corrupted run for fitting
+
+Runtime update:
+
+- the first short-probe baseline attempt completed the B0 C sweep cleanly, then
+  stopped at `B+30 C135`, which touched the sphere stand
+- operator confirmed `C45` is clear, while `C135` and `C315` are the collision
+  C angles for tilted B groups
+- updated `#711 = 8.0` full baseline logic:
+  - keep `C45`
+  - skip `C135` and `C315` for all nonzero B groups
+  - keep previous `C225` skips at `B+30`, `B+60`, and `B+90`
+- added `#711 = 9.0` resume mode and made it the current file default for the
+  immediate continuation
+- `#711 = 9.0` assumes the B0 reference has already been captured; operator
+  should restart from `B0 C0`, `3-8 mm` above the sphere, and it will run only
+  the non-B0 B-grouped sweeps plus final B0 closure

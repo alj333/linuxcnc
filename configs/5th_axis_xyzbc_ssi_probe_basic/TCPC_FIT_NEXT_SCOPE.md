@@ -2847,13 +2847,14 @@ long probe is available.
 Prepared in `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`:
 
 - default mode `#711 = 8.0`
-- C45 is skipped for `B-30`, `B-60`, and `B-90`
+- C45 is clear and remains enabled
+- C135 and C315 are skipped for all nonzero B groups
 - C225 is skipped for `B+30`, `B+60`, and `B+90`
 - B0 C reference:
   `B0 C0/C45/C90/C135/C180/C225/C270/C315/C0`
 - B-grouped C sweeps for faster machine motion:
-  `B+30/B+60/B+90 C0/C45/C135/C180/C315/C0`,
-  `B-90/B-60/B-30 C0/C135/C180/C225/C315/C0`
+  `B+30/B+60/B+90 C0/C45/C180/C0`,
+  `B-90/B-60/B-30 C0/C45/C180/C225/C0`
 - final B0 closure: `B0 C0/C45/C135/C180/C225/C315/C0`
 - C returns to C0 before each B change, avoiding combined B/C diagonal
   transitions between measured groups
@@ -2874,3 +2875,17 @@ Parser checks:
 
 - `rs274 -g` passed
 - `rs274 -T -g` reached the expected simulated probe abort
+
+Live update:
+
+- B0 reference passed, then the machine stopped at `B+30 C135`; that pose
+  touched the sphere stand
+- operator confirmed `C45` is clear; `C135` and `C315` are the collision C
+  angles for tilted B groups
+- full baseline `#711 = 8.0` now skips `C135` and `C315` for all nonzero B
+  groups, while retaining `C45`
+- `C225` remains skipped for `B+30`, `B+60`, and `B+90`
+- current file default is `#711 = 9.0`, a resume mode after the completed B0
+  reference
+- for the immediate resume, start at `B0 C0`, `3-8 mm` above the sphere; the
+  program will run the non-B0 B-grouped sweeps and final B0 closure only

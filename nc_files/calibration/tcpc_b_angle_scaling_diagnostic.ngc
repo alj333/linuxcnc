@@ -9,8 +9,9 @@
 (   3=C90/C270 side-quadrant high-B check only, 4=C0+C180+side check,)
 (   5=targeted refined-candidate repeat, 6=B0-only C-quadrant reference,)
 (   7=detailed C sweep at B0/B+10/B-10/B+30/B-30,)
-(   8=tool-length baseline core; run short probe now, repeat with long probe later.)
-(4. Modes 0-6 and 8 use C quadrants only; mode 7 includes every 45 degrees on C.)
+(   8=tool-length baseline core; run short probe now, repeat with long probe later,)
+(   9=resume tool-length baseline after completed B0 reference.)
+(4. Modes 0-6 use C quadrants only; modes 7-9 use extended C sweeps.)
 (5. B0 is probed only at open and close to reduce runtime.)
 
 (Sequence:)
@@ -101,7 +102,7 @@ o<probe_cal_offset_default> endif
 #708 = 1.0            (reserved)
 #709 = 90.0           (reserved)
 #710 = 0.0            (reserved)
-#711 = 8.0            (C coverage; 8=tool-length baseline core)
+#711 = 9.0            (C coverage; 9=resume after completed B0 reference)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -678,6 +679,7 @@ o<tcpc_measure_pose> endsub
 (#711=6 runs B0 C0/C90/C180/C270/C0 reference only.)
 (#711=7 runs B0/B+10/B-10/B+30/B-30 at C every 45 degrees.)
 (#711=8 runs the tool-length baseline core.)
+(#711=9 resumes the tool-length baseline after completed B0 reference.)
 #712 = 0.0
 #713 = 0.0
 o<c0_requested_low_mode> if [#711 LT 1.5]
@@ -801,23 +803,17 @@ o<tcpc_tool_length_c_sweep_at_b> sub
   #<include_quadrants> = #2
 
   o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
-  #<skip_c45> = 0.0
-  o<skip_c45_bminus30> if [ABS[#<sweep_b> + 30.0] LT 0.001]
-    #<skip_c45> = 1.0
-  o<skip_c45_bminus30> endif
-  o<skip_c45_bminus60> if [ABS[#<sweep_b> + 60.0] LT 0.001]
-    #<skip_c45> = 1.0
-  o<skip_c45_bminus60> endif
-  o<skip_c45_bminus90> if [ABS[#<sweep_b> + 90.0] LT 0.001]
-    #<skip_c45> = 1.0
-  o<skip_c45_bminus90> endif
-  o<run_c45_when_safe> if [#<skip_c45> LT 0.5]
-    o<tcpc_measure_pose> call [#<sweep_b>] [45.0]
-  o<run_c45_when_safe> endif
+  o<tcpc_measure_pose> call [#<sweep_b>] [45.0]
   o<tool_length_include_c90> if [#<include_quadrants> GT 0.5]
     o<tcpc_measure_pose> call [#<sweep_b>] [90.0]
   o<tool_length_include_c90> endif
-  o<tcpc_measure_pose> call [#<sweep_b>] [135.0]
+  #<skip_c135> = 0.0
+  o<skip_c135_nonzero_b> if [ABS[#<sweep_b>] GT 0.001]
+    #<skip_c135> = 1.0
+  o<skip_c135_nonzero_b> endif
+  o<run_c135_when_safe> if [#<skip_c135> LT 0.5]
+    o<tcpc_measure_pose> call [#<sweep_b>] [135.0]
+  o<run_c135_when_safe> endif
   o<tcpc_measure_pose> call [#<sweep_b>] [180.0]
   #<skip_c225> = 0.0
   o<skip_c225_bplus30> if [ABS[#<sweep_b> - 30.0] LT 0.001]
@@ -835,23 +831,17 @@ o<tcpc_tool_length_c_sweep_at_b> sub
   o<tool_length_include_c270> if [#<include_quadrants> GT 0.5]
     o<tcpc_measure_pose> call [#<sweep_b>] [270.0]
   o<tool_length_include_c270> endif
-  o<tcpc_measure_pose> call [#<sweep_b>] [315.0]
+  #<skip_c315> = 0.0
+  o<skip_c315_nonzero_b> if [ABS[#<sweep_b>] GT 0.001]
+    #<skip_c315> = 1.0
+  o<skip_c315_nonzero_b> endif
+  o<run_c315_when_safe> if [#<skip_c315> LT 0.5]
+    o<tcpc_measure_pose> call [#<sweep_b>] [315.0]
+  o<run_c315_when_safe> endif
   o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
 o<tcpc_tool_length_c_sweep_at_b> endsub
 
-o<run_tool_length_baseline_core> if [#711 GT 7.5]
-  (Tool-length baseline core.)
-  (Run now with the short probe. Repeat the same file later with the long probe.)
-  (Keep headheadkins.sim-bharm-enable FALSE; this is for base geometry separation.)
-  (C45, C135, C225, and C315 are included with stand-risk skips.)
-  (C45 is skipped for B-30, B-60, and B-90.)
-  (Stand-risk C225 poses are skipped for B+30, B+60, and B+90.)
-  (Order is B-grouped for speed: set B, sweep C, return C0, then change B.)
-  (This avoids combined B/C diagonal transitions between measured groups.)
-
-  (B0 C reference for this tool length.)
-  o<tcpc_tool_length_c_sweep_at_b> call [0.0] [1.0]
-
+o<tcpc_tool_length_non_b0_groups> sub
   (Positive B groups, sweeping C at each B.)
   o<tcpc_tool_length_c_sweep_at_b> call [30.0] [0.0]
   o<tcpc_tool_length_c_sweep_at_b> call [60.0] [0.0]
@@ -864,7 +854,32 @@ o<run_tool_length_baseline_core> if [#711 GT 7.5]
 
   (Final B0 closure.)
   o<tcpc_tool_length_c_sweep_at_b> call [0.0] [0.0]
+o<tcpc_tool_length_non_b0_groups> endsub
+
+o<run_tool_length_baseline_core> if [#711 GT 7.5]
+  o<run_tool_length_baseline_core_only> if [#711 LT 8.5]
+  (Tool-length baseline core.)
+  (Run now with the short probe. Repeat the same file later with the long probe.)
+  (Keep headheadkins.sim-bharm-enable FALSE; this is for base geometry separation.)
+  (C45 is included. C135 and C315 are included only at B0.)
+  (Stand-risk C225 poses are skipped for B+30, B+60, and B+90.)
+  (Order is B-grouped for speed: set B, sweep C, return C0, then change B.)
+  (This avoids combined B/C diagonal transitions between measured groups.)
+
+  (B0 C reference for this tool length.)
+  o<tcpc_tool_length_c_sweep_at_b> call [0.0] [1.0]
+
+  o<tcpc_tool_length_non_b0_groups> call
+  o<run_tool_length_baseline_core_only> endif
 o<run_tool_length_baseline_core> endif
+
+o<run_tool_length_resume_after_b0> if [#711 GT 8.5]
+  o<run_tool_length_resume_after_b0_only> if [#711 LT 9.5]
+    (Resume after the completed B0 C reference from the interrupted run.)
+    (Operator start: B0 C0, 3-8 mm above the sphere.)
+    o<tcpc_tool_length_non_b0_groups> call
+  o<run_tool_length_resume_after_b0_only> endif
+o<run_tool_length_resume_after_b0> endif
 
 G90
 F#705
