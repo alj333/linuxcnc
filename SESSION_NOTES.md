@@ -4360,3 +4360,44 @@ The refined candidate is the best validated live candidate so far, but it is
 still simulation-gated and not persistent. A post-refined refit using all live
 rows slightly lowers combined RMS but worsens maximum error, so do not retune
 again or rerun the long validation until the persistence criteria are reviewed.
+
+## 2026-05-05 Refined Candidate Offline Persistence Review
+
+Probe Basic was closed and the machine was reported safe. Offline review
+continued from the committed refined-run data.
+
+Added:
+
+- `configs/5th_axis_xyzbc_ssi_probe_basic/tcpc_refined_persistence_review.py`
+- `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_REFINED_PERSISTENCE_REVIEW.md`
+
+Review result:
+
+- current refined candidate on all live rows: `0.073916 / 0.133632 mm`
+- post-refined all-live retune: `0.073209 / 0.136366 mm`
+- the retune lowers RMS by less than `0.001 mm` but worsens maximum error, so
+  keep the live-tested refined candidate unchanged
+- leave-one-live-state-out checks stayed close; maximum coefficient movement
+  was `0.018060 mm`
+- remaining error is concentrated at C180 high-B poses, especially
+  `B-60 C180`, `B-90 C180`, `B+60 C180`, and `B+90 C180`
+- extra offline correction families such as `sin(2B)` C-cross and
+  `(1-cos(B))^2` C-cross improved RMS by only about `0.003 mm` and did not
+  reduce maximum error enough to justify adding more kinematics pins
+
+Program update:
+
+- `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` now has
+  `#711 = 5.0` as the default targeted refined-candidate repeat
+- targeted mode runs:
+  - C180: `B0, B+60, B-60, B+90, B-90, B0`
+  - C270: `B0, B+90, B0`
+- the older full validation remains available with `#711 = 4.0`
+
+Next live decision:
+
+- do not promote the refined candidate to persistent startup HAL yet
+- do not run another full validation
+- if a confirmation run is needed, load the refined candidate manually, enable
+  it only immediately before cycle start, run the new `#711 = 5.0` targeted
+  pass, then disable it immediately after completion or any stop

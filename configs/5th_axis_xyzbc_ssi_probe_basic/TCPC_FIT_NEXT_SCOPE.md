@@ -2610,19 +2610,24 @@ Compared with earlier live candidates:
 Current decision:
 
 - The refined B/C cross candidate is the best validated live candidate so far.
-- Do not run another live probe pass yet.
 - Keep all B-harmonic and B/C cross terms simulation-gated and non-persistent.
 - A post-refined all-live refit slightly improves combined RMS
   (`0.073209 mm` versus `0.073916 mm`) but worsens maximum error
   (`0.136366 mm` versus `0.133632 mm`), so the live-tested refined candidate
   remains the current candidate.
-- Next offline work is persistence selection: decide whether to freeze this
-  candidate, run a targeted repeat of the C180 high-error poses, or add a
-  separate bounded correction family.
+- Offline persistence review is recorded in
+  `TCPC_REFINED_PERSISTENCE_REVIEW.md`.
+- The review did not justify another coefficient retune or an added correction
+  family. Keep the refined candidate unchanged.
 
-Next live data, if requested after review:
+Next live data, if requested:
 
-- avoid rerunning the full long sequence first
-- use a short targeted repeat of the remaining high-error poses:
-  `B-60 C180`, `B-90 C180`, `B+90 C180`, and `B+90 C270`, with B0 open/close
-  references for each C group
+- avoid rerunning the full `#711 = 4.0` long sequence
+- use `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with the new
+  default `#711 = 5.0`
+- targeted repeat sequence:
+  - C180: `B0, B+60, B-60, B+90, B-90, B0`
+  - C270: `B0, B+90, B0`
+- load the refined candidate manually, enable it only immediately before cycle
+  start, then disable `headheadkins.sim-bharm-enable` immediately after
+  completion or any stop/error

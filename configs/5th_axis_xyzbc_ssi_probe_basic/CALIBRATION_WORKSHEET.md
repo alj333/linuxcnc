@@ -920,5 +920,17 @@ Current calibration decision:
 
 - the refined B/C cross candidate is the best validated live candidate so far
 - keep the B-harmonic and B/C cross terms gated off and non-persistent
+- the offline persistence review keeps the refined candidate unchanged
 - do not run another full live validation immediately
-- continue offline persistence review before selecting the next machine run
+
+Next machine run, if a confirmation pass is needed:
+
+- use `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- current default is `#711 = 5.0`
+- targeted sequence:
+  - C180: `B0`, `B+60`, `B-60`, `B+90`, `B-90`, `B0`
+  - C270: `B0`, `B+90`, `B0`
+- load the refined candidate HAL while idle and gated off
+- enable `headheadkins.sim-bharm-enable` only immediately before cycle start
+- disable `headheadkins.sim-bharm-enable` immediately after completion or any
+  stop/error

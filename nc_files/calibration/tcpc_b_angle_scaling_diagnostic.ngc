@@ -6,8 +6,9 @@
 (1. Start at/near B0 C0 with the probe 3 to 8 mm clear from the 30 mm sphere.)
 (2. Keep hand on feed hold/stop for the full first run.)
 (3. #711 selects C-angle coverage: 0=C0 only, 1=C0 then C180, 2=C180 only,)
-(   3=C90/C270 side-quadrant high-B check only, 4=C0+C180+side check.)
-(4. This diagnostic uses C0 and optional C180 only; no C45 moves.)
+(   3=C90/C270 side-quadrant high-B check only, 4=C0+C180+side check,)
+(   5=targeted refined-candidate repeat.)
+(4. This diagnostic uses C0/C90/C180/C270 only; no C45 moves.)
 (5. B0 is probed only at open and close to reduce runtime.)
 
 (Sequence:)
@@ -91,7 +92,7 @@ o<probe_cal_offset_default> endif
 #708 = 1.0            (reserved)
 #709 = 90.0           (reserved)
 #710 = 0.0            (reserved)
-#711 = 4.0            (C coverage; 0=C0, 1=C0+C180, 2=C180, 3=side, 4=all validation)
+#711 = 5.0            (C coverage; 5=targeted refined-candidate repeat)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -653,13 +654,16 @@ o<tcpc_measure_pose> endsub
 (#711=0 runs C0 only. #711=1 runs C0 then C180. #711=2 runs C180 only.)
 (#711=3 runs only C90/C270 with B0, B+90, B-90, B0 at each C.)
 (#711=4 runs C0, C180, and C90/C270 side validation.)
+(#711=5 runs only C180 high-B and C270 B+90 targeted repeat.)
 #712 = 0.0
 #713 = 0.0
 o<c0_requested_low_mode> if [#711 LT 1.5]
   #712 = 1.0
 o<c0_requested_low_mode> endif
 o<c0_requested_all_mode> if [#711 GT 3.5]
-  #712 = 1.0
+  o<c0_requested_all_mode_not_targeted> if [#711 LT 4.5]
+    #712 = 1.0
+  o<c0_requested_all_mode_not_targeted> endif
 o<c0_requested_all_mode> endif
 o<c180_requested_middle_mode> if [#711 GT 0.5]
   o<c180_requested_not_side_only> if [#711 LT 2.5]
@@ -667,7 +671,9 @@ o<c180_requested_middle_mode> if [#711 GT 0.5]
   o<c180_requested_not_side_only> endif
 o<c180_requested_middle_mode> endif
 o<c180_requested_all_mode> if [#711 GT 3.5]
-  #713 = 1.0
+  o<c180_requested_all_mode_not_targeted> if [#711 LT 4.5]
+    #713 = 1.0
+  o<c180_requested_all_mode_not_targeted> endif
 o<c180_requested_all_mode> endif
 
 o<run_c0_sequence> if [#712 GT 0.5]
@@ -693,15 +699,33 @@ o<run_c180_repeat> if [#713 GT 0.5]
 o<run_c180_repeat> endif
 
 o<run_side_high_b> if [#711 GT 2.5]
-  o<tcpc_measure_pose> call [0.0] [90.0]
-  o<tcpc_measure_pose> call [90.0] [90.0]
-  o<tcpc_measure_pose> call [-90.0] [90.0]
-  o<tcpc_measure_pose> call [0.0] [90.0]
+  o<run_side_high_b_not_targeted> if [#711 LT 4.5]
+    o<tcpc_measure_pose> call [0.0] [90.0]
+    o<tcpc_measure_pose> call [90.0] [90.0]
+    o<tcpc_measure_pose> call [-90.0] [90.0]
+    o<tcpc_measure_pose> call [0.0] [90.0]
+    o<tcpc_measure_pose> call [0.0] [270.0]
+    o<tcpc_measure_pose> call [90.0] [270.0]
+    o<tcpc_measure_pose> call [-90.0] [270.0]
+    o<tcpc_measure_pose> call [0.0] [270.0]
+  o<run_side_high_b_not_targeted> endif
+o<run_side_high_b> endif
+
+o<run_refined_targeted_repeat> if [#711 GT 4.5]
+  (Targeted repeat of the remaining high-error refined-candidate poses.)
+  (C180 group: B0, B+60, B-60, B+90, B-90, B0.)
+  o<tcpc_measure_pose> call [0.0] [180.0]
+  o<tcpc_measure_pose> call [60.0] [180.0]
+  o<tcpc_measure_pose> call [-60.0] [180.0]
+  o<tcpc_measure_pose> call [90.0] [180.0]
+  o<tcpc_measure_pose> call [-90.0] [180.0]
+  o<tcpc_measure_pose> call [0.0] [180.0]
+
+  (C270 group: B0, B+90, B0.)
   o<tcpc_measure_pose> call [0.0] [270.0]
   o<tcpc_measure_pose> call [90.0] [270.0]
-  o<tcpc_measure_pose> call [-90.0] [270.0]
   o<tcpc_measure_pose> call [0.0] [270.0]
-o<run_side_high_b> endif
+o<run_refined_targeted_repeat> endif
 
 G90
 F#705
