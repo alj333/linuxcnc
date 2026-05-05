@@ -2885,7 +2885,8 @@ Live update:
 - operator confirmed `C225` is clear
 - full baseline `#711 = 8.0` now skips `C135` and `C315` for all nonzero B
   groups, while retaining `C45` and `C225`
-- current file default is `#711 = 9.0`, a resume mode after the completed B0
-  reference
+- current file default is `#711 = 9.0`, a resume mode that first probes fresh
+  `B0 C0` to establish the current sphere center
 - for the immediate resume, start at `B0 C0`, `3-8 mm` above the sphere; the
-  program will run the non-B0 B-grouped sweeps and final B0 closure only
+  program will probe `B0 C0`, then run the non-B0 B-grouped sweeps and final
+  B0 closure

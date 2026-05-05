@@ -4798,6 +4798,6 @@ Runtime update:
   - keep `C225`
 - added `#711 = 9.0` resume mode and made it the current file default for the
   immediate continuation
-- `#711 = 9.0` assumes the B0 reference has already been captured; operator
-  should restart from `B0 C0`, `3-8 mm` above the sphere, and it will run only
-  the non-B0 B-grouped sweeps plus final B0 closure
+- `#711 = 9.0` now starts with a fresh `B0 C0` probe to establish the current
+  sphere center, then runs the non-B0 B-grouped sweeps plus final B0 closure
+- operator should restart from `B0 C0`, `3-8 mm` above the sphere

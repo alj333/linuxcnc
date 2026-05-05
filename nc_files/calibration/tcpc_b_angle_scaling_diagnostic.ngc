@@ -102,7 +102,7 @@ o<probe_cal_offset_default> endif
 #708 = 1.0            (reserved)
 #709 = 90.0           (reserved)
 #710 = 0.0            (reserved)
-#711 = 9.0            (C coverage; 9=resume after completed B0 reference)
+#711 = 9.0            (C coverage; 9=resume with fresh B0 C0 center)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -679,7 +679,7 @@ o<tcpc_measure_pose> endsub
 (#711=6 runs B0 C0/C90/C180/C270/C0 reference only.)
 (#711=7 runs B0/B+10/B-10/B+30/B-30 at C every 45 degrees.)
 (#711=8 runs the tool-length baseline core.)
-(#711=9 resumes the tool-length baseline after completed B0 reference.)
+(#711=9 resumes the tool-length baseline with a fresh B0 C0 center.)
 #712 = 0.0
 #713 = 0.0
 o<c0_requested_low_mode> if [#711 LT 1.5]
@@ -863,8 +863,9 @@ o<run_tool_length_baseline_core> endif
 
 o<run_tool_length_resume_after_b0> if [#711 GT 8.5]
   o<run_tool_length_resume_after_b0_only> if [#711 LT 9.5]
-    (Resume after the completed B0 C reference from the interrupted run.)
+    (Resume with a fresh B0 C0 center from the current setup.)
     (Operator start: B0 C0, 3-8 mm above the sphere.)
+    o<tcpc_measure_pose> call [0.0] [0.0]
     o<tcpc_tool_length_non_b0_groups> call
   o<run_tool_length_resume_after_b0_only> endif
 o<run_tool_length_resume_after_b0> endif
