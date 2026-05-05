@@ -4735,3 +4735,48 @@ Next decision:
   candidate check
 - do not resume high-B fitting until the B0 C orbit is reduced with a confirmed
   C-center/reference correction
+
+## 2026-05-05 Short-Probe Tool-Length Baseline Prepared
+
+The long probe is not available yet, so the next live run is a short-probe-only
+baseline. The same core can be repeated later with the long probe for the real
+tool-length comparison.
+
+Updated:
+
+- `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- default `#711 = 8.0`
+- added `tcpc-b-angle-scaling-diagnostic-tool-state.csv`
+
+Mode `#711 = 8.0` sequence:
+
+- B0 C-quadrant reference:
+  `B0 C0`, `B0 C90`, `B0 C180`, `B0 C270`, `B0 C0`
+- C0 B-angle group:
+  `B+30`, `B-30`, `B+60`, `B-60`, `B+90`, `B-90`, closing `B0`
+- C180 B-angle group:
+  `B0`, `B+30`, `B-30`, `B+60`, `B-60`, `B+90`, `B-90`, closing `B0`
+
+Safety/intent:
+
+- no C45/C225 moves are included, avoiding the sphere stand sector
+- run with `headheadkins.sim-bharm-enable = FALSE`
+- this is not the long-probe comparison yet; it is the short-probe reference
+  state for later comparison
+- the new tool-state log records program/current tool number, `#5401/#5402/#5403`,
+  `#5410`, probe calibration offset, and `motion.tooloffset.x/y/z`
+
+Verification:
+
+- `rs274 -g` parse passed from the TCPC config directory
+- `rs274 -T -g` reached the expected simulated probe abort:
+  `Top vector touch did not record point data`
+
+Tonight handoff:
+
+- reload `tcpc_b_angle_scaling_diagnostic.ngc`
+- confirm Tool 3 short probe is loaded and Probe Basic shows Tool 3
+- confirm `headheadkins.sim-bharm-enable = FALSE`
+- start at/near `B0 C0`, probe `3-8 mm` above the sphere
+- if the wireless probe becomes noisy, pause/reset as before; do not use a
+  visibly corrupted run for fitting

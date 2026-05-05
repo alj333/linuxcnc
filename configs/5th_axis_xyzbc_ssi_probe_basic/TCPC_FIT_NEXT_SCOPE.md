@@ -2837,3 +2837,35 @@ Next:
 
 - prepare/test a C-center-only candidate before any more high-B fitting
 - continue excluding the interrupted B+10 and later rows from TCPC fits
+
+### Short-Probe Tool-Length Baseline
+
+The long probe is not available yet. Prepare the next live data as a
+short-probe baseline only, with the same core to be repeated later when the
+long probe is available.
+
+Prepared in `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`:
+
+- default mode `#711 = 8.0`
+- no C45/C225 stand-risk moves
+- B0 C-quadrant reference:
+  `B0 C0`, `B0 C90`, `B0 C180`, `B0 C270`, `B0 C0`
+- C0 and C180 symmetric B groups:
+  `B+30`, `B-30`, `B+60`, `B-60`, `B+90`, `B-90`, closing `B0`
+- new tool-state log:
+  `tcpc-b-angle-scaling-diagnostic-tool-state.csv`
+
+The tool-state log records the program-selected probe tool, current tool,
+tool-offset parameters `#5401/#5402/#5403`, `#5410`, the probe calibration
+offset, and live `motion.tooloffset.x/y/z`.
+
+Run with:
+
+- short Tool 3 probe loaded
+- `headheadkins.sim-bharm-enable = FALSE`
+- start at/near `B0 C0`, `3-8 mm` above the sphere
+
+Parser checks:
+
+- `rs274 -g` passed
+- `rs274 -T -g` reached the expected simulated probe abort
