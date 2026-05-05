@@ -2850,8 +2850,12 @@ Prepared in `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`:
 - no C45/C225 stand-risk moves
 - B0 C-quadrant reference:
   `B0 C0`, `B0 C90`, `B0 C180`, `B0 C270`, `B0 C0`
-- C0 and C180 symmetric B groups:
-  `B+30`, `B-30`, `B+60`, `B-60`, `B+90`, `B-90`, closing `B0`
+- B-grouped C sweeps for faster machine motion:
+  `B+30 C0/C180/C0`, `B+60 C0/C180/C0`, `B+90 C0/C180/C0`,
+  `B-90 C0/C180/C0`, `B-60 C0/C180/C0`, `B-30 C0/C180/C0`
+- final B0 closure: `B0 C180`, `B0 C0`
+- C returns to C0 before each B change, avoiding combined B/C diagonal
+  transitions between measured groups
 - new tool-state log:
   `tcpc-b-angle-scaling-diagnostic-tool-state.csv`
 

@@ -801,6 +801,8 @@ o<run_tool_length_baseline_core> if [#711 GT 7.5]
   (Run now with the short probe. Repeat the same file later with the long probe.)
   (Keep headheadkins.sim-bharm-enable FALSE; this is for base geometry separation.)
   (No C45/C225 moves are included, to avoid the sphere stand sector.)
+  (Order is B-grouped for speed: set B, sweep C, return C0, then change B.)
+  (This avoids combined B/C diagonal transitions between measured groups.)
 
   (B0 C-quadrant reference for this tool length.)
   o<tcpc_measure_pose> call [0.0] [0.0]
@@ -809,24 +811,35 @@ o<run_tool_length_baseline_core> if [#711 GT 7.5]
   o<tcpc_measure_pose> call [0.0] [270.0]
   o<tcpc_measure_pose> call [0.0] [0.0]
 
-  (C0 symmetric B-angle group.)
+  (Positive B groups, sweeping C at each B.)
   o<tcpc_measure_pose> call [30.0] [0.0]
-  o<tcpc_measure_pose> call [-30.0] [0.0]
-  o<tcpc_measure_pose> call [60.0] [0.0]
-  o<tcpc_measure_pose> call [-60.0] [0.0]
-  o<tcpc_measure_pose> call [90.0] [0.0]
-  o<tcpc_measure_pose> call [-90.0] [0.0]
-  o<tcpc_measure_pose> call [0.0] [0.0]
-
-  (C180 symmetric B-angle group.)
-  o<tcpc_measure_pose> call [0.0] [180.0]
   o<tcpc_measure_pose> call [30.0] [180.0]
-  o<tcpc_measure_pose> call [-30.0] [180.0]
+  o<tcpc_measure_pose> call [30.0] [0.0]
+
+  o<tcpc_measure_pose> call [60.0] [0.0]
   o<tcpc_measure_pose> call [60.0] [180.0]
-  o<tcpc_measure_pose> call [-60.0] [180.0]
+  o<tcpc_measure_pose> call [60.0] [0.0]
+
+  o<tcpc_measure_pose> call [90.0] [0.0]
   o<tcpc_measure_pose> call [90.0] [180.0]
+  o<tcpc_measure_pose> call [90.0] [0.0]
+
+  (Negative B groups, sweeping C at each B.)
+  o<tcpc_measure_pose> call [-90.0] [0.0]
   o<tcpc_measure_pose> call [-90.0] [180.0]
+  o<tcpc_measure_pose> call [-90.0] [0.0]
+
+  o<tcpc_measure_pose> call [-60.0] [0.0]
+  o<tcpc_measure_pose> call [-60.0] [180.0]
+  o<tcpc_measure_pose> call [-60.0] [0.0]
+
+  o<tcpc_measure_pose> call [-30.0] [0.0]
+  o<tcpc_measure_pose> call [-30.0] [180.0]
+  o<tcpc_measure_pose> call [-30.0] [0.0]
+
+  (Final B0 closure.)
   o<tcpc_measure_pose> call [0.0] [180.0]
+  o<tcpc_measure_pose> call [0.0] [0.0]
 o<run_tool_length_baseline_core> endif
 
 G90
