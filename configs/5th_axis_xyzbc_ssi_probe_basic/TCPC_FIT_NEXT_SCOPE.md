@@ -2634,3 +2634,56 @@ Next live data, if requested:
 - do not retune from the targeted repeats alone
 - next work is offline investigation of the session/reference movement before
   changing or persisting coefficients
+
+## Reference Movement And Tool-Length Gate - 2026-05-05
+
+The shifted targeted-repeat B0 reference is a real gating issue for persistence.
+It may be room-temperature/machine-frame movement, a bumped or relaxed
+sphere/stand, or another setup-state change. The current data cannot separate
+those causes by itself.
+
+Machine envelope:
+
+- the machine currently has no pitch error compensation
+- the machine currently has no thermal compensation
+- both are future projects, not active corrections in this TCPC work
+- because this is a large steel machine, thermal drift is expected and may be
+  comparable to the remaining `0.1-0.2 mm` TCPC residuals
+- do not bury pitch error or thermal growth inside the head-head TCPC
+  correction unless it is deliberately documented as an operating-state
+  workaround
+
+Observed pattern:
+
+- targeted repeat 1 moved about `0.092-0.106 mm` from the earlier refined
+  validation B0 reference
+- targeted repeat 2 moved about `0.112-0.115 mm` from the earlier refined
+  validation B0 reference
+- targeted repeat 2 stayed much closer to targeted repeat 1:
+  `0.026908 mm` at C180 and `0.021019 mm` at C270
+- probe residuals were clean, so do not classify this first as probe noise
+
+Next correction decision:
+
+- keep the refined candidate unchanged and non-persistent
+- do not run a broad live validation grid next
+- inspect the sphere/stand and let the machine reach a stable thermal state
+- then run a short B0-only reference check with the candidate disabled, for
+  example `B0 C0/C90/C180/C270/C0`
+- if the B0 reference returns to the earlier refined state, treat the targeted
+  repeats as a disturbed setup state
+- if the shifted B0 reference remains stable, split the datasets by session
+  state before fitting
+
+Tool-length limitation:
+
+- all current TCPC probing used one physical wireless probe stickout
+- `motion.tooloffset.z` is still not wired into `headheadkins`
+- the refined candidate is therefore provisional until a short-probe and
+  long-probe back-to-back validation passes
+- when the longer probes arrive, run the same candidate with the short and long
+  probes without moving the sphere or retuning between runs
+- if residuals scale with added probe length, prioritize tool-vector, spindle
+  alignment, and rotary-axis angular model corrections
+- if residuals stay about the same, prioritize pivot/frame/reference movement
+  rather than probe-length math

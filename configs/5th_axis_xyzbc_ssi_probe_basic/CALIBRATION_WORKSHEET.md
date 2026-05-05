@@ -933,3 +933,30 @@ Targeted confirmation result:
 - stop live probing for now
 - leave the refined candidate non-persistent and gated off
 - investigate session/reference movement before changing coefficients
+
+Reference-shift check before more fitting:
+
+- possible causes include room-temperature/machine-frame movement and a bumped
+  or relaxed sphere/stand
+- the machine currently has no pitch error compensation and no thermal
+  compensation; both are future projects
+- because this is a large steel machine, thermal drift is expected and can be
+  close to the current residual size
+- inspect the sphere, stand, clamp, and probe seating before collecting more
+  TCPC fit data
+- after a thermal soak, run a short candidate-off B0 reference check at
+  `C0/C90/C180/C270/C0`
+- compare that B0 state with both the earlier refined validation and the
+  targeted repeats
+- do not mix old and shifted B0 states in one final fit unless the difference
+  is explicitly modeled as session/reference movement
+
+Future tool-length validation:
+
+- all current TCPC data used one short wireless probe stickout
+- the refined candidate is provisional until a short-probe and long-probe
+  back-to-back validation is completed
+- do not move the sphere or retune between the short and long probe runs
+- collect B0 references and at least the C180/C270 high-B poses
+- compare residual change per added probe length before making TCPC correction
+  terms persistent

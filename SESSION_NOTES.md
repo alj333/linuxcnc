@@ -4448,3 +4448,59 @@ Decision:
 - stop live probing for now
 - investigate the source of the session/reference movement before changing
   coefficients
+
+Reference-shift interpretation:
+
+- the shifted B0 reference is compatible with either room-temperature/machine
+  frame movement or the sphere/stand being bumped or relaxing in its clamp
+- this machine currently has no pitch error compensation and no thermal
+  compensation; both are future projects
+- because it is a large steel machine, thermal drift is expected and can be of
+  the same order as the remaining TCPC residuals being reviewed
+- the data does not currently separate those two causes, because both would
+  appear as a changed measured sphere center at B0
+- the fact that repeat 1 and repeat 2 are much closer to each other than to
+  the earlier refined validation suggests the reference state changed before
+  or during the targeted-repeat session, then remained fairly repeatable
+- this pattern does not look like random wireless-probe trigger noise, because
+  the pass-2 probe residuals were clean and no rows were rejected
+- before changing TCPC coefficients, run a short B0-only reference check after
+  a stable thermal soak and a physical sphere/stand inspection
+- useful next reference check: with the candidate disabled, probe B0 at several
+  C angles such as C0, C90, C180, C270, and C0 again without moving the sphere
+- if the shifted B0 state is still present and stable after inspection, treat
+  the old and new datasets as different machine/setup states instead of
+  blindly fitting across both
+- do not attempt to absorb machine pitch error or thermal growth into the TCPC
+  head correction unless that choice is explicitly marked as a temporary
+  operating-state correction
+
+## 2026-05-05 Tool-Length Validation Requirement
+
+The current TCPC probing data was collected with one physical wireless probe
+stickout. Treat the refined candidate as provisional until it is validated with
+at least two probe lengths.
+
+Reason:
+
+- the TCPC test config still records that `motion.tooloffset.z` is not wired
+  into `headheadkins`
+- the current fit therefore absorbs the current probe length/stickout into the
+  effective head/probe geometry
+- a longer probe will amplify angular errors in the tool vector, spindle/probe
+  alignment, and B/C axis direction model
+- if error grows with probe length, the missing variable is likely angular/tool
+  vector related; if it stays similar, the dominant error is more likely pivot,
+  rotary-frame, or machine/reference movement
+
+Future required test after the ordered longer probes arrive:
+
+- run a back-to-back short-probe and long-probe validation without moving the
+  sphere or changing the machine setup
+- use the same refined candidate first; do not retune between the two runs
+- collect at minimum B0 references plus C180/C270 high-B poses
+- compare error scaling per added probe length before making the correction
+  persistent
+- longer-term kinematics work should wire tool length or an equivalent
+  calibrated probe-vector length into the TCPC model instead of relying on a
+  single fixed physical probe

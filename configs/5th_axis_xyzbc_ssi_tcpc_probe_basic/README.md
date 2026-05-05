@@ -883,3 +883,14 @@ Refined B/C cross candidate result:
   state versus the earlier refined validation
 - stop live probing for now; do not retune or persist the refined candidate
   until the session/reference movement is understood
+- this machine has no pitch error compensation and no thermal compensation at
+  this time; both are future projects
+- because it is a large steel machine, thermal drift is expected and must not
+  be mistaken for a head kinematics error during persistence decisions
+- the shifted B0 reference may be room-temperature/machine-frame movement or a
+  bumped/relaxed sphere stand; the current data cannot separate those causes
+  without a short B0-only reference check
+- the current TCPC data also used only one probe stickout, while
+  `motion.tooloffset.z` is not wired into `headheadkins`; keep the refined
+  candidate provisional until a short-probe and long-probe back-to-back
+  validation passes
