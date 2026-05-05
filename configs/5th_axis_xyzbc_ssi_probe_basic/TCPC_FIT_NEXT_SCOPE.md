@@ -2847,18 +2847,14 @@ long probe is available.
 Prepared in `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`:
 
 - default mode `#711 = 8.0`
-- no C45 moves
+- C45 is skipped for `B-30`, `B-60`, and `B-90`
 - C225 is skipped for `B+30`, `B+60`, and `B+90`
 - B0 C reference:
-  `B0 C0/C90/C135/C180/C225/C270/C315/C0`
+  `B0 C0/C45/C90/C135/C180/C225/C270/C315/C0`
 - B-grouped C sweeps for faster machine motion:
-  `B+30 C0/C135/C180/C315/C0`,
-  `B+60 C0/C135/C180/C315/C0`,
-  `B+90 C0/C135/C180/C315/C0`,
-  `B-90 C0/C135/C180/C225/C315/C0`,
-  `B-60 C0/C135/C180/C225/C315/C0`,
-  `B-30 C0/C135/C180/C225/C315/C0`
-- final B0 closure: `B0 C0/C135/C180/C225/C315/C0`
+  `B+30/B+60/B+90 C0/C45/C135/C180/C315/C0`,
+  `B-90/B-60/B-30 C0/C135/C180/C225/C315/C0`
+- final B0 closure: `B0 C0/C45/C135/C180/C225/C315/C0`
 - C returns to C0 before each B change, avoiding combined B/C diagonal
   transitions between measured groups
 - new tool-state log:

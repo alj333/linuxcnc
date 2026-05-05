@@ -801,6 +801,19 @@ o<tcpc_tool_length_c_sweep_at_b> sub
   #<include_quadrants> = #2
 
   o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
+  #<skip_c45> = 0.0
+  o<skip_c45_bminus30> if [ABS[#<sweep_b> + 30.0] LT 0.001]
+    #<skip_c45> = 1.0
+  o<skip_c45_bminus30> endif
+  o<skip_c45_bminus60> if [ABS[#<sweep_b> + 60.0] LT 0.001]
+    #<skip_c45> = 1.0
+  o<skip_c45_bminus60> endif
+  o<skip_c45_bminus90> if [ABS[#<sweep_b> + 90.0] LT 0.001]
+    #<skip_c45> = 1.0
+  o<skip_c45_bminus90> endif
+  o<run_c45_when_safe> if [#<skip_c45> LT 0.5]
+    o<tcpc_measure_pose> call [#<sweep_b>] [45.0]
+  o<run_c45_when_safe> endif
   o<tool_length_include_c90> if [#<include_quadrants> GT 0.5]
     o<tcpc_measure_pose> call [#<sweep_b>] [90.0]
   o<tool_length_include_c90> endif
@@ -830,7 +843,8 @@ o<run_tool_length_baseline_core> if [#711 GT 7.5]
   (Tool-length baseline core.)
   (Run now with the short probe. Repeat the same file later with the long probe.)
   (Keep headheadkins.sim-bharm-enable FALSE; this is for base geometry separation.)
-  (C135, C225, and C315 are included. C45 is still omitted.)
+  (C45, C135, C225, and C315 are included with stand-risk skips.)
+  (C45 is skipped for B-30, B-60, and B-90.)
   (Stand-risk C225 poses are skipped for B+30, B+60, and B+90.)
   (Order is B-grouped for speed: set B, sweep C, return C0, then change B.)
   (This avoids combined B/C diagonal transitions between measured groups.)
