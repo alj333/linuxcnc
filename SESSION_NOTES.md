@@ -4638,3 +4638,35 @@ Verification:
 - `rs274 -g` completed
 - `rs274 -T -g` reached the expected simulated probe-touch abort with no
   interpreter/syntax error before the first real probe move
+
+## 2026-05-05 Detailed C Sweep Aborted
+
+The detailed `#711 = 7.0` C sweep was started in an active workshop and was
+aborted after probe errors. Treat this partial run as disturbed and do not use
+it for TCPC fitting.
+
+Machine state after abort/recovery:
+
+- program idle
+- `headheadkins.sim-bharm-enable = FALSE`
+- `motion.probe-input = FALSE`
+- the abort left `motion.digital-out-00` and `motion.digital-out-01` true; both
+  were cleared with `M65 P0` and `M65 P1`
+
+Partial result rows appended to
+`tcpc-b-angle-scaling-diagnostic-2pass-results.csv`:
+
+- accepted pass-2 rows started at line `219`
+- B0 C sweep accepted through closing C0 at line `235`
+- B+10 sweep accepted through C270 at line `249`
+- B+10 C315 line `250` was pass 1 only and bad/disturbed, with a large V-side
+  centering error and corrected V diameter outside the normal window
+- do not use rows `218+` from this interrupted pass for fit decisions unless a
+  later explicit review marks selected rows usable
+
+Next live attempt:
+
+- rerun the same detailed C sweep during a quiet period, preferably tonight
+- keep `headheadkins.sim-bharm-enable = FALSE`
+- monitor the skipped stand-risk poses remain skipped: `B-30 C45` and
+  `B+30 C225`

@@ -2788,3 +2788,18 @@ Purpose:
 - build a session-local C sweep at B0 and low B angles
 - separate C-center/reference motion from B-dependent TCPC error
 - avoid another B90/B-90 fit until the C-only B0 orbit is understood
+
+## Detailed C Sweep Interrupted - 2026-05-05
+
+The first `#711 = 7.0` detailed C sweep attempt was aborted because the probe
+errored while the workshop was active. Treat the partial rows as disturbed.
+
+Partial log state:
+
+- accepted pass-2 rows began at `219`
+- B0 C sweep reached closing C0 at `235`
+- B+10 sweep reached C270 at `249`
+- B+10 C315 line `250` was pass 1 only and bad/disturbed
+
+Do not fit from this interrupted attempt. Rerun the same program during a quiet
+period with the refined candidate disabled.
