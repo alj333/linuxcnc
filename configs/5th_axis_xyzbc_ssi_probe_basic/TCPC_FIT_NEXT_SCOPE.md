@@ -2729,3 +2729,42 @@ Prepared next machine check:
   and sphere/stand inspection
 - run with `headheadkins.sim-bharm-enable = FALSE`
 - this is a reference check only, not a high-B TCPC validation
+
+## B0 Reference Check Result - 2026-05-05
+
+The `#711 = 6.0` B0-only reference check completed with accepted pass-2 rows
+`209,211,213,215,217`.
+
+Result:
+
+- C0 opening/closing closure: `0.007718 mm`
+- session-local C90/C180/C270 deltas from the C0 opening/closing average:
+  - C90 `0.165419 mm`
+  - C180 `0.226414 mm`
+  - C270 `0.170183 mm`
+- C180 and C270 now match targeted repeat 2 closely:
+  - C180 within `0.016633 mm`
+  - C270 within `0.014588 mm`
+- the run did not return to the earlier refined validation reference state
+- CSV rows logged `probe_tool_number=0`; confirm tool/probe parameter state
+  before using this as a final retune input
+
+Offline fit clue:
+
+- the current validated C-center gives B0 sweep residual RMS/max
+  `0.1105 / 0.1300 mm`
+- fitting C-center X/Y from this sweep alone gives residual
+  `0.0169 / 0.0196 mm`
+- fitted `cal-c-to-b.x/y`: `-0.075529283`, `0.010558248`
+
+Next decision:
+
+- do not run high-B validation next
+- do not apply the new C-center from one run
+- do not blame the B90/B-90 harmonic/cross fit for the B0 orbit directly; the
+  fitted high-B terms evaluate to zero at B0 and were disabled for this check
+- focus the next offline/live step on C-center/reference/tool state before any
+  more B90/B-90 fitting
+- first confirm Probe Basic/tool state so the probe tool logs as expected
+- then either repeat the same B0-only reference check, or deliberately test a
+  C-center-only candidate based on the fitted values

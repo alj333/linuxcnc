@@ -162,15 +162,67 @@ Primary session-local grouping:
 | `2026-05-05-refined-targeted-repeat-2` | `C180` | `191` | `201` | `0.013094` | `4` | `0.144353 / 0.191962` |
 | `2026-05-05-refined-targeted-repeat-2` | `C270` | `203` | `207` | `0.034588` | `1` | `0.166827 / 0.166827` |
 
+## B0 Reference Check Results
+
+The B0-only reference check uses its own opening and closing C0 B0
+measurements as the session reference. It is a reference-state check,
+not a high-B TCPC validation.
+
+### B0 reference check 1
+
+Accepted pass-2 rows: `209, 211, 213, 215, 217`.
+
+These rows logged `probe_tool_number=0`; confirm Probe Basic probe
+parameter mirroring and loaded tool state before using this as a final
+C-center retune.
+
+C0 opening/closing closure: `-0.006016`, `+0.001263`, `-0.004667`, `0.007718 mm`.
+
+Session-local C-only deltas from the C0 opening/closing average:
+
+| C pose | delta X/Y/Z | 3D norm |
+| ---: | ---: | ---: |
+| `C90` | `-0.126319`, `+0.104850`, `+0.020333` | `0.165419 mm` |
+| `C180` | `-0.223605`, `+0.006256`, `+0.034999` | `0.226414 mm` |
+| `C270` | `-0.125282`, `-0.111295`, `+0.029666` | `0.170183 mm` |
+
+Comparison against earlier references:
+
+| comparison | C pose | delta X/Y/Z | 3D norm |
+| --- | ---: | ---: | ---: |
+| new vs refined validation | `C0` | `+0.059916`, `-0.052661`, `+0.035938` | `0.087491 mm` |
+| new vs refined validation | `C90` | `-0.032191`, `-0.001792`, `+0.043416` | `0.054078 mm` |
+| new vs refined validation | `C180` | `-0.101608`, `-0.058676`, `+0.041834` | `0.124568 mm` |
+| new vs refined validation | `C270` | `-0.024274`, `-0.119928`, `+0.041946` | `0.129350 mm` |
+| new vs targeted repeat 2 | `C180` | `-0.015797`, `-0.002901`, `-0.004324` | `0.016633 mm` |
+| new vs targeted repeat 2 | `C270` | `-0.000291`, `-0.014495`, `+0.001625` | `0.014588 mm` |
+
+C-center-only fit from this B0 sweep:
+
+- current validated C-center residual RMS/max: `0.1105 / 0.1300 mm`
+- fitted C-center residual RMS/max: `0.0169 / 0.0196 mm`
+- fitted `cal-c-to-b.x/y`: `-0.075529283`, `0.010558248`
+- the B90/B-90 fitted B-harmonic and B/C cross terms do not
+  directly move B0; those terms are zero at B0 and the
+  reference check ran with the candidate gate disabled
+- do not apply this from one run; first confirm the probe tool state
+  and decide whether the shifted B0 state is the new stable machine
+  state or a temporary setup/thermal condition
+
 ## Decision
 
 - Keep the refined candidate unchanged.
 - Do not promote it to persistent startup HAL yet.
 - Do not run another full `#711 = 4.0` validation.
-- Treat the refined candidate as acceptable for the core task only after
-  the shifted B0 reference state is checked; current data is inside
-  `0.2 mm` but not a hard `0.1 mm` fit.
+- The B0 reference check shows the shifted C180/C270 state persisted
+  close to targeted repeat 2, not the earlier refined validation.
+- The same check also shows a C-only B0 orbit above `0.2 mm` with the
+  current validated C-center, so do not run more high-B validation next.
+- The B90/B-90 harmonic/cross fit is not the direct cause of the B0
+  orbit; those correction terms are zero at B0 and were disabled for
+  the B0 reference check.
 - The `#711 = 5.0` targeted repeats show a repeatable shifted B0
   reference state; do not retune from those repeats alone.
-- The next machine run should be a short candidate-off B0 C-quadrant
-  reference check, not another high-B validation grid.
+- Confirm the probe tool state because the B0 reference rows logged tool
+  `0`; if that was only a metadata/state-sync issue, repeat or proceed
+  to a C-center-only candidate check before touching high-B terms.

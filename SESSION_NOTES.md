@@ -4548,3 +4548,68 @@ Reporting rule:
   sphere/stand, or setup-state movement
 - do not use an older run's B0 reference as the main error baseline for a later
   run unless explicitly studying absolute reference drift
+
+## 2026-05-05 B0 Reference Check Complete
+
+The `#711 = 6.0` B0-only C-quadrant reference check completed and appended
+accepted pass-2 rows `209,211,213,215,217`.
+
+Machine state after the run:
+
+- `halui.program.is-idle = TRUE`
+- `headheadkins.sim-bharm-enable = FALSE`
+- `motion.probe-input = FALSE`
+- `motion.digital-out-00 = FALSE`
+- `motion.digital-out-01 = FALSE`
+- `motion.in-position = TRUE`
+
+Probe/data quality:
+
+- pass-2 U/V residuals were small, max about `0.003750 mm`
+- C0 opening/closing closure was
+  `-0.006016 X`, `+0.001263 Y`, `-0.004667 Z`, `0.007718 mm` 3D
+- corrected diameters were in the normal `30.16-30.24 mm` band
+- the rows logged `probe_tool_number=0`; confirm Probe Basic probe parameter
+  mirroring and loaded tool state before using this as a final C-center retune
+
+Session-local B0 C-only deltas from the C0 opening/closing average:
+
+| C pose | dX mm | dY mm | dZ mm | 3D mm |
+| --- | ---: | ---: | ---: | ---: |
+| `C90` | `-0.126319` | `+0.104850` | `+0.020333` | `0.165419` |
+| `C180` | `-0.223605` | `+0.006256` | `+0.034999` | `0.226414` |
+| `C270` | `-0.125282` | `-0.111295` | `+0.029666` | `0.170183` |
+
+Reference comparison:
+
+- versus earlier refined validation:
+  - C0 shift `0.087491 mm`
+  - C90 shift `0.054078 mm`
+  - C180 shift `0.124568 mm`
+  - C270 shift `0.129350 mm`
+- versus targeted repeat 2:
+  - C180 shift `0.016633 mm`
+  - C270 shift `0.014588 mm`
+
+Offline C-center-only fit from this B0 sweep:
+
+- current validated C-center residual RMS/max: `0.1105 / 0.1300 mm`
+- fitted C-center residual RMS/max: `0.0169 / 0.0196 mm`
+- fitted `cal-c-to-b.x/y`: `-0.075529283`, `0.010558248`
+
+Decision:
+
+- the shifted C180/C270 B0 reference state persisted and is now close to
+  targeted repeat 2, not the earlier refined validation
+- the current C-center state is not good enough for another high-B validation
+  because the B0-only C sweep itself reaches `0.226414 mm`
+- the B90/B-90 fitted B-harmonic and B/C cross corrections did not cause this
+  B0 error directly; those terms are zero at B0 because they are based on
+  `sin(B)`, `1-cos(B)`, or `sin(2B)`, and the B0 reference run was performed
+  with `headheadkins.sim-bharm-enable = FALSE`
+- only common geometry/reference terms can affect B0: C-center, C zero,
+  machine/reference state, probe/tool state, and thermal/setup movement
+- do not apply the new C-center fit from one run
+- before the next probing run, confirm the probe tool state/Probe Basic mirror;
+  then either repeat the B0 reference check or prepare a C-center-only
+  candidate check with the new fitted `cal-c-to-b.x/y`

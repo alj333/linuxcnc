@@ -28,6 +28,13 @@ TARGETED_REPEATS = [
         [191, 193, 195, 197, 199, 201, 203, 205, 207],
     ),
 ]
+B0_REFERENCE_CHECKS = [
+    (
+        "B0 reference check 1",
+        "2026-05-05-b0-reference-check-1",
+        [209, 211, 213, 215, 217],
+    ),
+]
 
 
 @dataclass(frozen=True)
@@ -172,6 +179,24 @@ def load_targeted_repeats() -> list[ReviewSet]:
     return repeats
 
 
+def load_b0_reference_checks() -> list[ReviewSet]:
+    if not RESULTS_PATH.exists():
+        return []
+    checks = []
+    for label, group, lines in B0_REFERENCE_CHECKS:
+        observations = fit.read_results(
+            RESULTS_PATH,
+            source=group,
+            group=group,
+            active_name="validated_c_center_only",
+            active_cal_c_to_b=fit.VALIDATED_CAL_C_TO_B,
+            include_lines=lines,
+        )
+        if observations:
+            checks.append(ReviewSet(label, [observations]))
+    return checks
+
+
 def mean_point(observations: list[fit.Observation], b_deg: float, c_deg: float) -> np.ndarray:
     points = [
         obs.center
@@ -233,6 +258,133 @@ def worst_row_lines(
     return lines
 
 
+def reference_point(observations: list[fit.Observation]) -> np.ndarray:
+    c0_points = [
+        obs.center
+        for obs in observations
+        if abs(obs.b_deg) < 1e-6 and abs(obs.c_deg) < 1e-6
+    ]
+    if len(c0_points) >= 2:
+        return (c0_points[0] + c0_points[-1]) / 2.0
+    if c0_points:
+        return c0_points[0]
+    return np.full(3, float("nan"))
+
+
+def b0_reference_check_lines(
+    checks: list[ReviewSet],
+    refined_observations: list[fit.Observation],
+    targeted_repeats: list[ReviewSet],
+) -> list[str]:
+    if not checks:
+        return []
+
+    lines = [
+        "",
+        "## B0 Reference Check Results",
+        "",
+        "The B0-only reference check uses its own opening and closing C0 B0",
+        "measurements as the session reference. It is a reference-state check,",
+        "not a high-B TCPC validation.",
+    ]
+    for check in checks:
+        observations = [obs for data_set in check.data_sets for obs in data_set]
+        observations.sort(key=lambda obs: obs.line)
+        local_ref = reference_point(observations)
+        c0_points = [
+            obs.center
+            for obs in observations
+            if abs(obs.b_deg) < 1e-6 and abs(obs.c_deg) < 1e-6
+        ]
+        closure = c0_points[-1] - c0_points[0] if len(c0_points) >= 2 else np.zeros(3)
+
+        current_params = fit.as_params([], np.array([]), fit.FIXED_C_CENTER)
+        c_center_fit = fit.fit_model("c_center_xy", observations)
+        fitted_cal_x = fit.BASE_CAL_C_TO_B[0] + c_center_fit.params["dcx"]
+        fitted_cal_y = fit.BASE_CAL_C_TO_B[1] + c_center_fit.params["dcy"]
+
+        lines.extend(
+            [
+                "",
+                f"### {check.label}",
+                "",
+                f"Accepted pass-2 rows: `{', '.join(str(obs.line) for obs in observations)}`.",
+                "",
+                "These rows logged `probe_tool_number=0`; confirm Probe Basic probe",
+                "parameter mirroring and loaded tool state before using this as a final",
+                "C-center retune.",
+                "",
+                f"C0 opening/closing closure: {vector_text(closure)}, "
+                f"`{np.linalg.norm(closure):.6f} mm`.",
+                "",
+                "Session-local C-only deltas from the C0 opening/closing average:",
+                "",
+                "| C pose | delta X/Y/Z | 3D norm |",
+                "| ---: | ---: | ---: |",
+            ]
+        )
+        for c_deg in [90.0, 180.0, 270.0]:
+            point = mean_point(observations, 0.0, c_deg)
+            delta = point - local_ref
+            lines.append(
+                f"| `C{c_deg:.0f}` | {vector_text(delta)} | "
+                f"`{np.linalg.norm(delta):.6f} mm` |"
+            )
+
+        lines.extend(
+            [
+                "",
+                "Comparison against earlier references:",
+                "",
+                "| comparison | C pose | delta X/Y/Z | 3D norm |",
+                "| --- | ---: | ---: | ---: |",
+            ]
+        )
+        for c_deg in [0.0, 90.0, 180.0, 270.0]:
+            point = mean_point(observations, 0.0, c_deg)
+            previous = mean_point(refined_observations, 0.0, c_deg)
+            delta = point - previous
+            lines.append(
+                f"| new vs refined validation | `C{c_deg:.0f}` | "
+                f"{vector_text(delta)} | `{np.linalg.norm(delta):.6f} mm` |"
+            )
+
+        if targeted_repeats:
+            latest_targeted = targeted_repeats[-1]
+            latest_observations = [
+                obs for data_set in latest_targeted.data_sets for obs in data_set
+            ]
+            for c_deg in [180.0, 270.0]:
+                point = mean_point(observations, 0.0, c_deg)
+                previous = mean_point(latest_observations, 0.0, c_deg)
+                delta = point - previous
+                lines.append(
+                    f"| new vs {latest_targeted.label} | `C{c_deg:.0f}` | "
+                    f"{vector_text(delta)} | `{np.linalg.norm(delta):.6f} mm` |"
+                )
+
+        lines.extend(
+            [
+                "",
+                "C-center-only fit from this B0 sweep:",
+                "",
+                f"- current validated C-center residual RMS/max: "
+                f"`{fit.metric_text(observations, current_params)} mm`",
+                f"- fitted C-center residual RMS/max: "
+                f"`{fit.metric_text(observations, c_center_fit.params)} mm`",
+                f"- fitted `cal-c-to-b.x/y`: "
+                f"`{fitted_cal_x:.9f}`, `{fitted_cal_y:.9f}`",
+                "- the B90/B-90 fitted B-harmonic and B/C cross terms do not",
+                "  directly move B0; those terms are zero at B0 and the",
+                "  reference check ran with the candidate gate disabled",
+                "- do not apply this from one run; first confirm the probe tool state",
+                "  and decide whether the shifted B0 state is the new stable machine",
+                "  state or a temporary setup/thermal condition",
+            ]
+        )
+    return lines
+
+
 def session_local_group_lines(
     data_sets: list[list[fit.Observation]],
     params: dict[str, float],
@@ -280,6 +432,7 @@ def session_local_group_lines(
 def write_report(path: Path) -> None:
     review_sets = load_review_sets()
     targeted_repeats = load_targeted_repeats()
+    b0_reference_checks = load_b0_reference_checks()
     all_live_sets = [data_set for review_set in review_sets for data_set in review_set.data_sets]
     all_targeted_sets = [
         data_set
@@ -453,6 +606,15 @@ def write_report(path: Path) -> None:
             "machine/session repeatability evidence before changing the candidate.",
         ]
 
+    refined_observations = [
+        obs for data_set in review_sets[2].data_sets for obs in data_set
+    ]
+    b0_reference_lines = b0_reference_check_lines(
+        b0_reference_checks,
+        refined_observations,
+        targeted_repeats,
+    )
+
     acceptance_lines = [
         "",
         "## Acceptance Band Review",
@@ -558,19 +720,25 @@ def write_report(path: Path) -> None:
         "is not justified from this data alone.",
         *targeted_lines,
         *acceptance_lines,
+        *b0_reference_lines,
         "",
         "## Decision",
         "",
         "- Keep the refined candidate unchanged.",
         "- Do not promote it to persistent startup HAL yet.",
         "- Do not run another full `#711 = 4.0` validation.",
-        "- Treat the refined candidate as acceptable for the core task only after",
-        "  the shifted B0 reference state is checked; current data is inside",
-        "  `0.2 mm` but not a hard `0.1 mm` fit.",
+        "- The B0 reference check shows the shifted C180/C270 state persisted",
+        "  close to targeted repeat 2, not the earlier refined validation.",
+        "- The same check also shows a C-only B0 orbit above `0.2 mm` with the",
+        "  current validated C-center, so do not run more high-B validation next.",
+        "- The B90/B-90 harmonic/cross fit is not the direct cause of the B0",
+        "  orbit; those correction terms are zero at B0 and were disabled for",
+        "  the B0 reference check.",
         "- The `#711 = 5.0` targeted repeats show a repeatable shifted B0",
         "  reference state; do not retune from those repeats alone.",
-        "- The next machine run should be a short candidate-off B0 C-quadrant",
-        "  reference check, not another high-B validation grid.",
+        "- Confirm the probe tool state because the B0 reference rows logged tool",
+        "  `0`; if that was only a metadata/state-sync issue, repeat or proceed",
+        "  to a C-center-only candidate check before touching high-B terms.",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
