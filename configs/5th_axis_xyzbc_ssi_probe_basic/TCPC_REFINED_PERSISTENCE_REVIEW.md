@@ -68,12 +68,42 @@ The best experimental family improves RMS by about `0.003 mm` and does not
 materially reduce maximum error. Adding another kinematics correction family
 is not justified from this data alone.
 
+## Targeted Repeat Results
+
+Two targeted `#711 = 5.0` repeats completed with accepted pass-2 rows
+`173..189` and `191..207` respectively, and no pass-2 rejects.
+
+| evaluation | non-B0 RMS/max |
+| --- | ---: |
+| targeted repeat 1 | `0.129502 / 0.153150 mm` |
+| targeted repeat 2 | `0.149119 / 0.191962 mm` |
+| targeted repeats combined | `0.139656 / 0.191962 mm` |
+| current refined candidate on all live rows plus targeted repeats | `0.088793 / 0.191962 mm` |
+| all-live-plus-targeted retune on all rows | `0.082907 / 0.151695 mm` |
+
+The targeted repeats are clean enough to use as evidence, but they are
+not a standalone retune target. The B0 reference moved substantially
+from the previous refined validation and repeated in the shifted state:
+
+| comparison | C group | B0 mean shift X/Y/Z | 3D shift |
+| --- | --- | ---: | ---: |
+| targeted repeat 1 vs refined | C180 | `-0.059316`, `-0.051450`, `+0.047973` | `0.092016 mm` |
+| targeted repeat 1 vs refined | C270 | `-0.033308`, `-0.088322`, `+0.048197` | `0.105986 mm` |
+| targeted repeat 2 vs refined | C180 | `-0.085811`, `-0.055774`, `+0.046157` | `0.112272 mm` |
+| targeted repeat 2 vs refined | C270 | `-0.023984`, `-0.105434`, `+0.040322` | `0.115401 mm` |
+| targeted repeat 2 vs prior targeted | C180 | `-0.026496`, `-0.004325`, `-0.001816` | `0.026908 mm` |
+| targeted repeat 2 vs prior targeted | C270 | `+0.009324`, `-0.017112`, `-0.007875` | `0.021019 mm` |
+
+Including the targeted repeats in a retune improves today's shifted
+targeted rows but raises earlier validation maxima. Treat this as
+machine/session repeatability evidence before changing the candidate.
+
 ## Decision
 
 - Keep the refined candidate unchanged.
 - Do not promote it to persistent startup HAL yet.
 - Do not run another full `#711 = 4.0` validation.
-- If another machine run is needed, use the targeted repeat mode
-  `#711 = 5.0` in `tcpc_b_angle_scaling_diagnostic.ngc`.
-- Targeted mode repeats C180 high-B and C270 B+90 only, with B0 open/close
-  references for each C group.
+- The `#711 = 5.0` targeted repeats show a repeatable shifted B0
+  reference state; do not retune from those repeats alone.
+- Stop live probing for now and investigate the source of the session
+  reference movement before changing coefficients.

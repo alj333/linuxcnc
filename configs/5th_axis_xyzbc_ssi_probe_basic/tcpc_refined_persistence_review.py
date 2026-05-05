@@ -15,6 +15,19 @@ import tcpc_expanded_geometry_fit as fit
 
 
 REPORT_PATH = Path(__file__).with_name("TCPC_REFINED_PERSISTENCE_REVIEW.md")
+RESULTS_PATH = Path(__file__).with_name("tcpc-b-angle-scaling-diagnostic-2pass-results.csv")
+TARGETED_REPEATS = [
+    (
+        "targeted repeat 1",
+        "2026-05-05-refined-targeted-repeat-1",
+        [173, 175, 177, 179, 181, 183, 185, 187, 189],
+    ),
+    (
+        "targeted repeat 2",
+        "2026-05-05-refined-targeted-repeat-2",
+        [191, 193, 195, 197, 199, 201, 203, 205, 207],
+    ),
+]
 
 
 @dataclass(frozen=True)
@@ -140,9 +153,49 @@ def load_review_sets() -> list[ReviewSet]:
     ]
 
 
+def load_targeted_repeats() -> list[ReviewSet]:
+    if not RESULTS_PATH.exists():
+        return []
+    repeats = []
+    for label, group, lines in TARGETED_REPEATS:
+        observations = fit.read_results(
+            RESULTS_PATH,
+            source=group,
+            group=group,
+            active_name="validated_c_center_plus_refined_machine_bharmonic_bcross",
+            active_cal_c_to_b=fit.VALIDATED_CAL_C_TO_B,
+            active_bharmonic_params=fit.REFINED_BCROSS_CANDIDATE,
+            include_lines=lines,
+        )
+        if observations:
+            repeats.append(ReviewSet(label, [observations]))
+    return repeats
+
+
+def mean_point(observations: list[fit.Observation], b_deg: float, c_deg: float) -> np.ndarray:
+    points = [
+        obs.center
+        for obs in observations
+        if abs(obs.b_deg - b_deg) < 1e-6 and abs(obs.c_deg - c_deg) < 1e-6
+    ]
+    if not points:
+        return np.full(3, float("nan"))
+    return np.mean(np.array(points), axis=0)
+
+
+def vector_text(vec: np.ndarray) -> str:
+    return f"`{vec[0]:+.6f}`, `{vec[1]:+.6f}`, `{vec[2]:+.6f}`"
+
+
 def write_report(path: Path) -> None:
     review_sets = load_review_sets()
+    targeted_repeats = load_targeted_repeats()
     all_live_sets = [data_set for review_set in review_sets for data_set in review_set.data_sets]
+    all_targeted_sets = [
+        data_set
+        for targeted_repeat in targeted_repeats
+        for data_set in targeted_repeat.data_sets
+    ]
     current_params = fit.as_params(
         [],
         np.array([]),
@@ -154,6 +207,13 @@ def write_report(path: Path) -> None:
     post_refined = fit.fit_direct_model(
         "b_harmonic_machine_bcross_no_cxy",
         all_live_sets,
+        fit.FIXED_C_CENTER,
+    )
+    all_live_targeted_sets = [*all_live_sets]
+    all_live_targeted_sets.extend(all_targeted_sets)
+    post_targeted = fit.fit_direct_model(
+        "b_harmonic_machine_bcross_no_cxy",
+        all_live_targeted_sets,
         fit.FIXED_C_CENTER,
     )
 
@@ -221,6 +281,88 @@ def write_report(path: Path) -> None:
             f"`{np.max(np.abs(values)):.6f}` |"
         )
 
+    targeted_lines: list[str] = []
+    if targeted_repeats:
+        refined_data = [data_set for data_set in review_sets[2].data_sets]
+        refined_observations = [obs for data_set in refined_data for obs in data_set]
+        targeted_metric_rows = [
+            f"| {targeted_repeat.label} | "
+            f"{metric_text(targeted_repeat.data_sets, current_params)} |"
+            for targeted_repeat in targeted_repeats
+        ]
+        repeat_shift_rows = []
+        previous_targeted_observations: list[fit.Observation] | None = None
+        for targeted_repeat in targeted_repeats:
+            targeted_observations = [
+                obs
+                for data_set in targeted_repeat.data_sets
+                for obs in data_set
+            ]
+            c180_shift = mean_point(targeted_observations, 0.0, 180.0) - mean_point(
+                refined_observations,
+                0.0,
+                180.0,
+            )
+            c270_shift = mean_point(targeted_observations, 0.0, 270.0) - mean_point(
+                refined_observations,
+                0.0,
+                270.0,
+            )
+            repeat_shift_rows.extend(
+                [
+                    f"| {targeted_repeat.label} vs refined | C180 | "
+                    f"{vector_text(c180_shift)} | `{np.linalg.norm(c180_shift):.6f} mm` |",
+                    f"| {targeted_repeat.label} vs refined | C270 | "
+                    f"{vector_text(c270_shift)} | `{np.linalg.norm(c270_shift):.6f} mm` |",
+                ]
+            )
+            if previous_targeted_observations is not None:
+                c180_repeat_shift = mean_point(targeted_observations, 0.0, 180.0) - mean_point(
+                    previous_targeted_observations,
+                    0.0,
+                    180.0,
+                )
+                c270_repeat_shift = mean_point(targeted_observations, 0.0, 270.0) - mean_point(
+                    previous_targeted_observations,
+                    0.0,
+                    270.0,
+                )
+                repeat_shift_rows.extend(
+                    [
+                        f"| {targeted_repeat.label} vs prior targeted | C180 | "
+                        f"{vector_text(c180_repeat_shift)} | `{np.linalg.norm(c180_repeat_shift):.6f} mm` |",
+                        f"| {targeted_repeat.label} vs prior targeted | C270 | "
+                        f"{vector_text(c270_repeat_shift)} | `{np.linalg.norm(c270_repeat_shift):.6f} mm` |",
+                    ]
+                )
+            previous_targeted_observations = targeted_observations
+        targeted_lines = [
+            "",
+            "## Targeted Repeat Results",
+            "",
+            "Two targeted `#711 = 5.0` repeats completed with accepted pass-2 rows",
+            "`173..189` and `191..207` respectively, and no pass-2 rejects.",
+            "",
+            "| evaluation | non-B0 RMS/max |",
+            "| --- | ---: |",
+            *targeted_metric_rows,
+            f"| targeted repeats combined | {metric_text(all_targeted_sets, current_params)} |",
+            f"| current refined candidate on all live rows plus targeted repeats | {metric_text(all_live_targeted_sets, current_params)} |",
+            f"| all-live-plus-targeted retune on all rows | {metric_text(all_live_targeted_sets, post_targeted.params)} |",
+            "",
+            "The targeted repeats are clean enough to use as evidence, but they are",
+            "not a standalone retune target. The B0 reference moved substantially",
+            "from the previous refined validation and repeated in the shifted state:",
+            "",
+            "| comparison | C group | B0 mean shift X/Y/Z | 3D shift |",
+            "| --- | --- | ---: | ---: |",
+            *repeat_shift_rows,
+            "",
+            "Including the targeted repeats in a retune improves today's shifted",
+            "targeted rows but raises earlier validation maxima. Treat this as",
+            "machine/session repeatability evidence before changing the candidate.",
+        ]
+
     lines = [
         "# TCPC Refined Candidate Persistence Review",
         "",
@@ -279,16 +421,17 @@ def write_report(path: Path) -> None:
         "The best experimental family improves RMS by about `0.003 mm` and does not",
         "materially reduce maximum error. Adding another kinematics correction family",
         "is not justified from this data alone.",
+        *targeted_lines,
         "",
         "## Decision",
         "",
         "- Keep the refined candidate unchanged.",
         "- Do not promote it to persistent startup HAL yet.",
         "- Do not run another full `#711 = 4.0` validation.",
-        "- If another machine run is needed, use the targeted repeat mode",
-        "  `#711 = 5.0` in `tcpc_b_angle_scaling_diagnostic.ngc`.",
-        "- Targeted mode repeats C180 high-B and C270 B+90 only, with B0 open/close",
-        "  references for each C group.",
+        "- The `#711 = 5.0` targeted repeats show a repeatable shifted B0",
+        "  reference state; do not retune from those repeats alone.",
+        "- Stop live probing for now and investigate the source of the session",
+        "  reference movement before changing coefficients.",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 

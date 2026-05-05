@@ -923,14 +923,13 @@ Current calibration decision:
 - the offline persistence review keeps the refined candidate unchanged
 - do not run another full live validation immediately
 
-Next machine run, if a confirmation pass is needed:
+Targeted confirmation result:
 
-- use `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
-- current default is `#711 = 5.0`
-- targeted sequence:
-  - C180: `B0`, `B+60`, `B-60`, `B+90`, `B-90`, `B0`
-  - C270: `B0`, `B+90`, `B0`
-- load the refined candidate HAL while idle and gated off
-- enable `headheadkins.sim-bharm-enable` only immediately before cycle start
-- disable `headheadkins.sim-bharm-enable` immediately after completion or any
-  stop/error
+- two `#711 = 5.0` repeats completed with no pass-2 rejects
+- repeat 1 non-B0 RMS/max: `0.129502 / 0.153150 mm`
+- repeat 2 non-B0 RMS/max: `0.149119 / 0.191962 mm`
+- both repeats showed a shifted B0 reference state versus the earlier refined
+  validation
+- stop live probing for now
+- leave the refined candidate non-persistent and gated off
+- investigate session/reference movement before changing coefficients

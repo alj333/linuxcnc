@@ -4401,3 +4401,50 @@ Next live decision:
 - if a confirmation run is needed, load the refined candidate manually, enable
   it only immediately before cycle start, run the new `#711 = 5.0` targeted
   pass, then disable it immediately after completion or any stop
+
+## 2026-05-05 Targeted Refined Repeats Complete
+
+Two targeted `#711 = 5.0` repeats were run with the refined candidate enabled
+only during the programs. After each run, `headheadkins.sim-bharm-enable` was
+disabled immediately and verified `FALSE`; LinuxCNC was idle and probe/gate
+signals were false.
+
+Accepted pass-2 rows:
+
+- targeted repeat 1: `173,175,177,179,181,183,185,187,189`
+- targeted repeat 2: `191,193,195,197,199,201,203,205,207`
+
+Probe quality:
+
+- repeat 1 max U/V residual: `0.006031 / 0.002500 mm`
+- repeat 2 max U/V residual: `0.003333 / 0.007916 mm`
+- no pass-2 rows were rejected
+- X/Y/Z motor following error remained effectively zero
+
+Targeted direct RMS/max:
+
+| Run | non-B0 RMS/max |
+| --- | ---: |
+| repeat 1 | `0.129502 / 0.153150 mm` |
+| repeat 2 | `0.149119 / 0.191962 mm` |
+| combined targeted repeats | `0.139656 / 0.191962 mm` |
+
+Reference movement:
+
+- repeat 1 B0 mean versus prior refined validation:
+  - C180 shift: `0.092016 mm`
+  - C270 shift: `0.105986 mm`
+- repeat 2 B0 mean versus prior refined validation:
+  - C180 shift: `0.112272 mm`
+  - C270 shift: `0.115401 mm`
+- repeat 2 B0 mean versus repeat 1:
+  - C180 shift: `0.026908 mm`
+  - C270 shift: `0.021019 mm`
+
+Decision:
+
+- keep the refined candidate unchanged
+- do not make it persistent yet
+- stop live probing for now
+- investigate the source of the session/reference movement before changing
+  coefficients

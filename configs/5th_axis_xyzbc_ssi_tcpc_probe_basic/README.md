@@ -876,6 +876,10 @@ Refined B/C cross candidate result:
 - it remains non-persistent and manually gated
 - offline persistence review did not justify a retune or another correction
   family
-- next machine run, if needed, should use
-  `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with `#711 = 5.0`
-  for the targeted refined-candidate repeat, not the full long validation
+- two targeted `#711 = 5.0` repeats completed after that review:
+  - repeat 1 RMS/max: `0.129502 / 0.153150 mm`
+  - repeat 2 RMS/max: `0.149119 / 0.191962 mm`
+- both targeted repeats were probe-clean but showed a shifted B0 reference
+  state versus the earlier refined validation
+- stop live probing for now; do not retune or persist the refined candidate
+  until the session/reference movement is understood

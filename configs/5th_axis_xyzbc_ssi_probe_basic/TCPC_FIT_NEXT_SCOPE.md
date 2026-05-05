@@ -2622,12 +2622,15 @@ Current decision:
 
 Next live data, if requested:
 
-- avoid rerunning the full `#711 = 4.0` long sequence
-- use `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with the new
-  default `#711 = 5.0`
-- targeted repeat sequence:
-  - C180: `B0, B+60, B-60, B+90, B-90, B0`
-  - C270: `B0, B+90, B0`
-- load the refined candidate manually, enable it only immediately before cycle
-  start, then disable `headheadkins.sim-bharm-enable` immediately after
-  completion or any stop/error
+- two `#711 = 5.0` targeted repeats have now completed
+- both repeats were probe-clean but showed a shifted B0 reference state versus
+  the earlier refined validation
+- repeat 1 non-B0 RMS/max: `0.129502 / 0.153150 mm`
+- repeat 2 non-B0 RMS/max: `0.149119 / 0.191962 mm`
+- repeat 2 B0 mean stayed within `0.026908 mm` at C180 and `0.021019 mm` at
+  C270 of repeat 1, but both were about `0.09-0.12 mm` from the prior refined
+  validation
+- do not run more live probing immediately
+- do not retune from the targeted repeats alone
+- next work is offline investigation of the session/reference movement before
+  changing or persisting coefficients
