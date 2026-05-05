@@ -4761,7 +4761,7 @@ Safety/intent:
 
 - C45 is clear and remains enabled
 - C135 and C315 are skipped for all nonzero B groups for stand clearance
-- C225 is skipped for `B+30`, `B+60`, and `B+90` for stand clearance
+- C225 is clear and remains enabled
 - C returns to C0 before each B change, avoiding combined B/C diagonal
   transitions between measured groups
 - run with `headheadkins.sim-bharm-enable = FALSE`
@@ -4791,10 +4791,11 @@ Runtime update:
   stopped at `B+30 C135`, which touched the sphere stand
 - operator confirmed `C45` is clear, while `C135` and `C315` are the collision
   C angles for tilted B groups
+- operator confirmed `C225` is clear
 - updated `#711 = 8.0` full baseline logic:
   - keep `C45`
   - skip `C135` and `C315` for all nonzero B groups
-  - keep previous `C225` skips at `B+30`, `B+60`, and `B+90`
+  - keep `C225`
 - added `#711 = 9.0` resume mode and made it the current file default for the
   immediate continuation
 - `#711 = 9.0` assumes the B0 reference has already been captured; operator
