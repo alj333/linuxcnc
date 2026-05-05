@@ -70,6 +70,35 @@ BCROSS_CANDIDATE = {
     "bc_omcb_cosc_z": -0.000964915,
 }
 
+# Live-tested refined replacement of the machine-fixed B-harmonic plus B/C
+# cross terms.
+REFINED_BCROSS_CANDIDATE = {
+    "mb_sin_b_x": 0.015577123,
+    "mb_sin_b_y": 0.060508594,
+    "mb_sin_b_z": 0.312123080,
+    "mb_omc_b_x": 0.141330042,
+    "mb_omc_b_y": 0.111703959,
+    "mb_omc_b_z": -0.338104991,
+    "mb_sin_2b_x": -0.013271805,
+    "mb_sin_2b_y": 0.050707231,
+    "mb_sin_2b_z": -0.156014210,
+    "bc_sinb_sinc_x": -0.006371196,
+    "bc_sinb_sinc_y": 0.325723886,
+    "bc_sinb_sinc_z": 0.130042953,
+    "bc_omcb_sinc_x": -0.074687973,
+    "bc_omcb_sinc_y": 0.012622224,
+    "bc_omcb_sinc_z": -0.001729459,
+    "bc_omcb_sin2c_x": -0.017723675,
+    "bc_omcb_sin2c_y": -0.255875638,
+    "bc_omcb_sin2c_z": -0.055414262,
+    "bc_sinb_cosc_x": -0.048238059,
+    "bc_sinb_cosc_y": -0.063070849,
+    "bc_sinb_cosc_z": -0.018239994,
+    "bc_omcb_cosc_x": -0.030283175,
+    "bc_omcb_cosc_y": 0.071683484,
+    "bc_omcb_cosc_z": 0.000165632,
+}
+
 
 @dataclass(frozen=True)
 class Observation:
@@ -859,6 +888,9 @@ def write_report(
     bcross_candidate_c0: list[Observation],
     bcross_candidate_c180: list[Observation],
     bcross_candidate_side: list[Observation],
+    refined_candidate_c0: list[Observation],
+    refined_candidate_c180: list[Observation],
+    refined_candidate_side: list[Observation],
     b0_fit: FitResult,
     post_fit: dict[str, FitResult],
     post_baxis_fit: dict[str, FitResult],
@@ -912,7 +944,13 @@ def write_report(
     bcross_candidate_validation = (
         bcross_candidate_c0 + bcross_candidate_c180 + bcross_candidate_side
     )
-    combined_live_validation = old_candidate_validation + bcross_candidate_validation
+    refined_candidate_validation = (
+        refined_candidate_c0 + refined_candidate_c180 + refined_candidate_side
+    )
+    combined_pre_refined_validation = old_candidate_validation + bcross_candidate_validation
+    combined_live_validation = (
+        old_candidate_validation + bcross_candidate_validation + refined_candidate_validation
+    )
     live_candidate_params = as_params(
         [],
         np.array([]),
@@ -955,6 +993,9 @@ def write_report(
         f"| B/C cross candidate C0 validation | {len(bcross_candidate_c0)} | validated C-center plus machine B-harmonic plus B/C cross | CSV lines `77,79,81,83,85,87,89,91` |",
         f"| B/C cross candidate C180 validation | {len(bcross_candidate_c180)} | validated C-center plus machine B-harmonic plus B/C cross | CSV lines `93,95,97,99,101,103,105,107` |",
         f"| B/C cross candidate C90/C270 side validation | {len(bcross_candidate_side)} | validated C-center plus machine B-harmonic plus B/C cross | CSV lines `109,111,113,115,117,119,121,123` |",
+        f"| refined B/C cross C0 validation | {len(refined_candidate_c0)} | validated C-center plus refined machine B-harmonic plus B/C cross | CSV lines `125,127,129,131,133,135,137,139` |",
+        f"| refined B/C cross C180 validation | {len(refined_candidate_c180)} | validated C-center plus refined machine B-harmonic plus B/C cross | CSV lines `141,143,145,147,149,151,153,155` |",
+        f"| refined B/C cross C90/C270 side validation | {len(refined_candidate_side)} | validated C-center plus refined machine B-harmonic plus B/C cross | CSV lines `157,159,161,163,165,167,169,171` |",
         "",
         "Each observation now subtracts the kinematic offset active during that run",
         "before applying a candidate model. This avoids treating pre-correction and",
@@ -1257,6 +1298,7 @@ def write_report(
             [
                 ("old B-harmonic-only live rows", old_candidate_validation),
                 ("new B/C cross live rows", bcross_candidate_validation),
+                ("refined live rows", refined_candidate_validation),
                 ("combined live rows", combined_live_validation),
                 ("corrected B90 holdout", post_cquad),
                 ("clean B-axis holdout", baxis_holdout),
@@ -1264,10 +1306,11 @@ def write_report(
             ],
         ),
         "",
-        "The best next diagnostic is the refined replacement machine plus B/C",
-        "cross fit. It is not a new kinematics family; it only retunes the",
-        "already simulation-gated machine harmonic and B/C cross pins using the",
-        "additional live validation rows.",
+        "The refined replacement machine plus B/C cross fit was selected as the",
+        "next live diagnostic from the pre-refined data. It is not a new",
+        "kinematics family; it only retunes the already simulation-gated",
+        "machine harmonic and B/C cross pins using the additional live",
+        "validation rows.",
         "",
         "### Refined Replacement Machine Plus B/C Cross Parameters",
         "",
@@ -1283,6 +1326,47 @@ def write_report(
         "Dedicated HAL file for the refined candidate:",
         "",
         "- `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`",
+        "",
+        "## Live Refined B/C Cross Candidate Validation",
+        "",
+        "The refined replacement machine plus B/C cross candidate was loaded from",
+        "`head_head_bharmonic_refined_candidate.hal`, enabled only for the live",
+        "validation pass, then disabled immediately after completion.",
+        "",
+        "| validation set | B0 closure | non-B0 RMS/max |",
+        "| --- | ---: | ---: |",
+        f"| refined C0 | {b_angle_closure_text(refined_candidate_c0)} | {b_angle_delta_metric_text(refined_candidate_c0)} |",
+        f"| refined C180 | {b_angle_closure_text(refined_candidate_c180)} | {b_angle_delta_metric_text(refined_candidate_c180)} |",
+        f"| refined C90/C270 side | n/a | {b_angle_combined_delta_metric_text([refined_candidate_side])} |",
+        f"| refined C0+C180 combined | n/a | {b_angle_combined_delta_metric_text([refined_candidate_c0, refined_candidate_c180])} |",
+        f"| refined all validation | n/a | {b_angle_combined_delta_metric_text([refined_candidate_c0, refined_candidate_c180, refined_candidate_side])} |",
+        "",
+        "Live candidate progression:",
+        "",
+        "| set | B-harmonic only | B/C cross | refined B/C cross |",
+        "| --- | ---: | ---: | ---: |",
+        f"| C0 | {b_angle_delta_metric_text(candidate_on_c0)} | {b_angle_delta_metric_text(bcross_candidate_c0)} | {b_angle_delta_metric_text(refined_candidate_c0)} |",
+        f"| C180 | {b_angle_delta_metric_text(candidate_on_c180)} | {b_angle_delta_metric_text(bcross_candidate_c180)} | {b_angle_delta_metric_text(refined_candidate_c180)} |",
+        f"| C90/C270 side | {b_angle_combined_delta_metric_text([candidate_on_side])} | {b_angle_combined_delta_metric_text([bcross_candidate_side])} | {b_angle_combined_delta_metric_text([refined_candidate_side])} |",
+        f"| all validation | {b_angle_combined_delta_metric_text([candidate_on_c0, candidate_on_c180, candidate_on_side])} | {b_angle_combined_delta_metric_text([bcross_candidate_c0, bcross_candidate_c180, bcross_candidate_side])} | {b_angle_combined_delta_metric_text([refined_candidate_c0, refined_candidate_c180, refined_candidate_side])} |",
+        "",
+        "Refined C0 deltas:",
+        "",
+        "| pose | dX from B0 mean | dY from B0 mean | dZ from B0 mean | 3D drift |",
+        "| --- | ---: | ---: | ---: | ---: |",
+        *b_angle_delta_summary(refined_candidate_c0),
+        "",
+        "Refined C180 deltas:",
+        "",
+        "| pose | dX from B0 mean | dY from B0 mean | dZ from B0 mean | 3D drift |",
+        "| --- | ---: | ---: | ---: | ---: |",
+        *b_angle_delta_summary(refined_candidate_c180),
+        "",
+        "Refined side-quadrant deltas:",
+        "",
+        "| pose | dX from B0 mean | dY from B0 mean | dZ from B0 mean | 3D drift |",
+        "| --- | ---: | ---: | ---: | ---: |",
+        *b_angle_delta_summary(refined_candidate_side),
         "",
         "### Candidate-On Incremental C-Frame Parameters",
         "",
@@ -1368,9 +1452,11 @@ def write_report(
         f"  {b_angle_combined_delta_metric_text([bcross_candidate_c0, bcross_candidate_c180, bcross_candidate_side])}.",
         "- B/C cross candidate side-quadrant non-B0 RMS/max is",
         f"  {b_angle_combined_delta_metric_text([bcross_candidate_side])}.",
-        "- The refined replacement machine plus B/C cross fit reduces combined",
-        "  live-state direct RMS/max to",
-        f"  {b_angle_combined_delta_metric_text([combined_live_validation], selected_bcross_refined.params)}.",
+        "- Refined B/C cross candidate all-validation non-B0 RMS/max is",
+        f"  {b_angle_combined_delta_metric_text([refined_candidate_c0, refined_candidate_c180, refined_candidate_side])}.",
+        "- The refined replacement machine plus B/C cross fit predicted combined",
+        "  pre-refined live-state direct RMS/max at",
+        f"  {b_angle_combined_delta_metric_text([combined_pre_refined_validation], selected_bcross_refined.params)}.",
         "- With the B-harmonic-only candidate, C180 still had a `0.228885 mm`",
         "  maximum at `B+60 C180`.",
         f"- With the B/C cross candidate active, the current maximum is `{max(np.linalg.norm(delta) for _, delta in b_angle_delta_rows(bcross_candidate_validation)[1]):.6f} mm`.",
@@ -1379,9 +1465,9 @@ def write_report(
         "  `B+90 C270`.",
         "- The tested machine-fixed correction is not a general solution by itself;",
         "  the side-quadrant validation is much worse than C0/C180.",
-        "- The B/C cross layer is a validated improvement over the machine-fixed",
-        "  B-harmonic-only candidate, but it should still remain simulation-gated",
-        "  until the new run is used in the next correction-selection pass.",
+        "- The refined B/C cross layer is the best validated live candidate so",
+        "  far, but it should still remain simulation-gated until persistence",
+        "  criteria are decided.",
         "- On the prior B-harmonic-only rows, the direct B/C cross candidate",
         "  reduces all-validation direct RMS/max to",
         f"  {b_angle_combined_delta_metric_text([candidate_on_c0, candidate_on_c180, candidate_on_side], selected_candidate_bcross.params)}.",
@@ -1396,8 +1482,9 @@ def write_report(
         "## Next TCPC Math Work",
         "",
         "1. Keep the run-state-aware fitter as the source of truth for mixed data.",
-        "2. Use the refined replacement machine plus B/C cross candidate as",
-        "   the next simulation-gated live diagnostic.",
+        "2. Use the refined-candidate validation rows to decide whether to freeze",
+        "   the current candidate, retune once more, or run a targeted repeat of",
+        "   the remaining C180/C270 high-error poses.",
         "3. Keep the B-harmonic and B/C cross terms simulation-gated with zero",
         "   defaults.",
         "4. Do not promote any B-harmonic or B/C cross correction to persistent",
@@ -1406,17 +1493,19 @@ def write_report(
         "",
         "## Next Live Data",
         "",
-        "The next live probe pass should use the refined candidate HAL file above",
-        "with `headheadkins.sim-bharm-enable` still normally `FALSE`.",
+        "Do not run another live probe pass until the refined-candidate rows have",
+        "been reviewed against the persistence criteria.",
         "",
-        "Use `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with",
-        "`#711 = 4.0` for the next validation so the refined candidate is checked",
-        "against C0, C180, and the C90/C270 side poses.",
+        "The next live test should be selected from the new offline check rather",
+        "than rerunning the same full validation immediately.",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
 
 def load_data() -> tuple[
+    list[Observation],
+    list[Observation],
+    list[Observation],
     list[Observation],
     list[Observation],
     list[Observation],
@@ -1531,6 +1620,33 @@ def load_data() -> tuple[
         active_bharmonic_params=BCROSS_CANDIDATE,
         include_lines=[109, 111, 113, 115, 117, 119, 121, 123],
     )
+    refined_candidate_c0 = read_results(
+        scaling_path,
+        source="refined_candidate_c0_scaling",
+        group="2026-05-05-refined-candidate-c0",
+        active_name="validated_c_center_plus_refined_machine_bharmonic_bcross",
+        active_cal_c_to_b=VALIDATED_CAL_C_TO_B,
+        active_bharmonic_params=REFINED_BCROSS_CANDIDATE,
+        include_lines=[125, 127, 129, 131, 133, 135, 137, 139],
+    )
+    refined_candidate_c180 = read_results(
+        scaling_path,
+        source="refined_candidate_c180_scaling",
+        group="2026-05-05-refined-candidate-c180",
+        active_name="validated_c_center_plus_refined_machine_bharmonic_bcross",
+        active_cal_c_to_b=VALIDATED_CAL_C_TO_B,
+        active_bharmonic_params=REFINED_BCROSS_CANDIDATE,
+        include_lines=[141, 143, 145, 147, 149, 151, 153, 155],
+    )
+    refined_candidate_side = read_results(
+        scaling_path,
+        source="refined_candidate_side_scaling",
+        group="2026-05-05-refined-candidate-side",
+        active_name="validated_c_center_plus_refined_machine_bharmonic_bcross",
+        active_cal_c_to_b=VALIDATED_CAL_C_TO_B,
+        active_bharmonic_params=REFINED_BCROSS_CANDIDATE,
+        include_lines=[157, 159, 161, 163, 165, 167, 169, 171],
+    )
     return (
         pre_cquad,
         validation_b0,
@@ -1543,6 +1659,9 @@ def load_data() -> tuple[
         bcross_candidate_c0,
         bcross_candidate_c180,
         bcross_candidate_side,
+        refined_candidate_c0,
+        refined_candidate_c180,
+        refined_candidate_side,
     )
 
 
@@ -1568,6 +1687,9 @@ def main() -> int:
         bcross_candidate_c0,
         bcross_candidate_c180,
         bcross_candidate_side,
+        refined_candidate_c0,
+        refined_candidate_c180,
+        refined_candidate_side,
     ) = load_data()
     pre_b0 = [obs for obs in pre_cquad if abs(obs.b_deg) < 1e-6]
     b0_fit = fit_model("c_center_xy", pre_b0)
@@ -1593,15 +1715,26 @@ def main() -> int:
         **FIXED_C_CENTER,
         **BCROSS_CANDIDATE,
     }
+    live_refined_bcross_fixed_params = {
+        **FIXED_C_CENTER,
+        **REFINED_BCROSS_CANDIDATE,
+    }
     candidate_validation = candidate_on_c0 + candidate_on_c180 + candidate_on_side
     bcross_validation = bcross_candidate_c0 + bcross_candidate_c180 + bcross_candidate_side
-    combined_live_validation_sets = [
+    refined_validation = refined_candidate_c0 + refined_candidate_c180 + refined_candidate_side
+    combined_pre_refined_validation_sets = [
         candidate_on_c0,
         candidate_on_c180,
         candidate_on_side,
         bcross_candidate_c0,
         bcross_candidate_c180,
         bcross_candidate_side,
+    ]
+    combined_live_validation_sets = [
+        *combined_pre_refined_validation_sets,
+        refined_candidate_c0,
+        refined_candidate_c180,
+        refined_candidate_side,
     ]
     candidate_validation_fit = [
         (
@@ -1680,7 +1813,7 @@ def main() -> int:
             "old+new live rows",
             fit_direct_model(
                 "b_cross_machine_no_cxy",
-                combined_live_validation_sets,
+                combined_pre_refined_validation_sets,
                 live_candidate_fixed_params,
             ),
         ),
@@ -1689,7 +1822,7 @@ def main() -> int:
             "old+new live rows",
             fit_direct_model(
                 "b_harmonic_machine_bcross_no_cxy",
-                combined_live_validation_sets,
+                combined_pre_refined_validation_sets,
                 FIXED_C_CENTER,
             ),
         ),
@@ -1711,6 +1844,24 @@ def main() -> int:
                 live_bcross_fixed_params,
             ),
         ),
+        (
+            "current refined B/C cross candidate",
+            "live-tested refined candidate",
+            FitResult(
+                model="current_refined_bcross_candidate",
+                params=as_params([], np.array([]), live_refined_bcross_fixed_params),
+                result=None,
+            ),
+        ),
+        (
+            "post-refined replacement machine plus B/C cross",
+            "all live rows",
+            fit_direct_model(
+                "b_harmonic_machine_bcross_no_cxy",
+                combined_live_validation_sets,
+                FIXED_C_CENTER,
+            ),
+        ),
     ]
 
     write_report(
@@ -1726,6 +1877,9 @@ def main() -> int:
         bcross_candidate_c0,
         bcross_candidate_c180,
         bcross_candidate_side,
+        refined_candidate_c0,
+        refined_candidate_c180,
+        refined_candidate_side,
         b0_fit,
         post_fit,
         post_baxis_fit,
@@ -1749,6 +1903,9 @@ def main() -> int:
     print(f"B/C cross candidate C0 scaling points: {len(bcross_candidate_c0)}")
     print(f"B/C cross candidate C180 scaling points: {len(bcross_candidate_c180)}")
     print(f"B/C cross candidate side scaling points: {len(bcross_candidate_side)}")
+    print(f"refined B/C cross candidate C0 scaling points: {len(refined_candidate_c0)}")
+    print(f"refined B/C cross candidate C180 scaling points: {len(refined_candidate_c180)}")
+    print(f"refined B/C cross candidate side scaling points: {len(refined_candidate_side)}")
     print(f"report: {args.report}")
     print()
     print(
@@ -1805,6 +1962,14 @@ def main() -> int:
     print(
         "all, "
         f"{b_angle_combined_delta_metric_text([bcross_candidate_c0, bcross_candidate_c180, bcross_candidate_side])}"
+    )
+    print("refined B/C cross live validation, set, non-B0 RMS/max")
+    print(f"C0, {b_angle_delta_metric_text(refined_candidate_c0)}")
+    print(f"C180, {b_angle_delta_metric_text(refined_candidate_c180)}")
+    print(f"C90/C270, {b_angle_combined_delta_metric_text([refined_candidate_side])}")
+    print(
+        "all, "
+        f"{b_angle_combined_delta_metric_text([refined_candidate_c0, refined_candidate_c180, refined_candidate_side])}"
     )
     print()
     print("candidate-on refit, model, all direct non-B0 RMS/max, residual RMS/max")

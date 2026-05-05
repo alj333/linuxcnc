@@ -1,13 +1,14 @@
 # TCPC Fit Next Scope
 
 Status: TCPC direction checks, fixed-tip validation, corrected expanded
-validation, B50 redo data, clean B90 diagnostics, and the C0 B-angle scaling
-run have now run on the real machine. The current guidance is the
-`C0 Scaling Folded Into Offline Fit - 2026-05-04` section near the end of this
-document. Older early-fit sections remain for provenance only and should not be
-treated as the next live sequence without checking the latest status. Current
-practical acceptance target is `0.2 mm`; refine toward `0.1 mm` only after
-mechanical backlash, alignment, servo tuning, and thermal/return-path
+validation, B50 redo data, clean B90 diagnostics, C0 B-angle scaling, the
+B/C-cross candidate run, and the refined B/C-cross candidate run have now run
+on the real machine. The current guidance is the
+`Refined B/C Cross Candidate Live Result - 2026-05-05` section near the end of
+this document. Older early-fit sections remain for provenance only and should
+not be treated as the next live sequence without checking the latest status.
+Current practical acceptance target is `0.2 mm`; refine toward `0.1 mm` only
+after mechanical backlash, alignment, servo tuning, and thermal/return-path
 repeatability are better characterized.
 
 Earlier on 2026-04-27 staff started epoxy preparation on a mold on the machine,
@@ -2567,3 +2568,61 @@ Next live run:
 - run `tcpc_b_angle_scaling_diagnostic.ngc` with `#711 = 4.0`
 - disable `headheadkins.sim-bharm-enable` immediately after completion or any
   stop/error
+
+## Refined B/C Cross Candidate Live Result - 2026-05-05
+
+The refined `#711 = 4.0` validation run completed. The refined candidate was
+loaded from:
+
+- `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`
+
+It was disabled immediately after completion and verified safe:
+
+- `headheadkins.sim-bharm-enable = FALSE`
+- `halui.program.is-idle = TRUE`
+- `motion.probe-input = FALSE`
+- `motion.digital-out-00 = FALSE`
+- `motion.digital-out-01 = FALSE`
+
+Use accepted pass-2 rows:
+
+- C0: `125,127,129,131,133,135,137,139`
+- C180: `141,143,145,147,149,151,153,155`
+- C90/C270 side: `157,159,161,163,165,167,169,171`
+
+Measured direct validation:
+
+| Set | non-B0 RMS/max |
+| --- | ---: |
+| refined C0 | `0.044921 / 0.094234 mm` |
+| refined C180 | `0.098680 / 0.125893 mm` |
+| refined C90/C270 side | `0.077269 / 0.097132 mm` |
+| refined all validation | `0.076818 / 0.125893 mm` |
+
+Compared with earlier live candidates:
+
+| Candidate | all-validation RMS/max |
+| --- | ---: |
+| machine B-harmonic only | `0.232339 / 0.615783 mm` |
+| B/C cross | `0.096378 / 0.176626 mm` |
+| refined B/C cross | `0.076818 / 0.125893 mm` |
+
+Current decision:
+
+- The refined B/C cross candidate is the best validated live candidate so far.
+- Do not run another live probe pass yet.
+- Keep all B-harmonic and B/C cross terms simulation-gated and non-persistent.
+- A post-refined all-live refit slightly improves combined RMS
+  (`0.073209 mm` versus `0.073916 mm`) but worsens maximum error
+  (`0.136366 mm` versus `0.133632 mm`), so the live-tested refined candidate
+  remains the current candidate.
+- Next offline work is persistence selection: decide whether to freeze this
+  candidate, run a targeted repeat of the C180 high-error poses, or add a
+  separate bounded correction family.
+
+Next live data, if requested after review:
+
+- avoid rerunning the full long sequence first
+- use a short targeted repeat of the remaining high-error poses:
+  `B-60 C180`, `B-90 C180`, `B+90 C180`, and `B+90 C270`, with B0 open/close
+  references for each C group

@@ -900,3 +900,25 @@ Next machine task:
 - run `tcpc_b_angle_scaling_diagnostic.ngc` with `#711 = 4.0`
 - disable `headheadkins.sim-bharm-enable` immediately after the run or any
   stop/error
+
+Refined candidate live result:
+
+- the `#711 = 4.0` refined validation pass completed
+- accepted pass-2 rows:
+  - C0: `125,127,129,131,133,135,137,139`
+  - C180: `141,143,145,147,149,151,153,155`
+  - C90/C270 side: `157,159,161,163,165,167,169,171`
+- after the run, `headheadkins.sim-bharm-enable` was disabled and verified
+  `FALSE`
+- measured direct RMS/max:
+  - C0: `0.044921 / 0.094234 mm`
+  - C180: `0.098680 / 0.125893 mm`
+  - C90/C270 side: `0.077269 / 0.097132 mm`
+  - all validation: `0.076818 / 0.125893 mm`
+
+Current calibration decision:
+
+- the refined B/C cross candidate is the best validated live candidate so far
+- keep the B-harmonic and B/C cross terms gated off and non-persistent
+- do not run another full live validation immediately
+- continue offline persistence review before selecting the next machine run

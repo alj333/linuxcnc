@@ -4312,3 +4312,51 @@ Next live task:
   `#711 = 4.0`
 - disable `headheadkins.sim-bharm-enable` immediately after completion or any
   stop/error
+
+## 2026-05-05 Refined B/C Cross Candidate Live Validation Complete
+
+The refined candidate run completed cleanly. The candidate was disabled
+immediately after completion and verified off:
+
+- `headheadkins.sim-bharm-enable = FALSE`
+- `halui.program.is-idle = TRUE`
+- `motion.probe-input = FALSE`
+- `motion.digital-out-00 = FALSE`
+- `motion.digital-out-01 = FALSE`
+
+Accepted pass-2 rows in
+`configs/5th_axis_xyzbc_ssi_probe_basic/tcpc-b-angle-scaling-diagnostic-2pass-results.csv`:
+
+- C0: `125,127,129,131,133,135,137,139`
+- C180: `141,143,145,147,149,151,153,155`
+- C90/C270 side: `157,159,161,163,165,167,169,171`
+
+Probe quality:
+
+- max U center residual: `0.010268 mm`
+- max V center residual: `0.005000 mm`
+- corrected U diameter range: `30.138857..30.249869 mm`
+- corrected V diameter range: `30.156807..30.243000 mm`
+- X/Y/Z motor following error remained effectively zero in the captured rows
+
+Measured direct validation:
+
+| Set | non-B0 RMS | non-B0 max |
+| --- | ---: | ---: |
+| C0 | `0.044921 mm` | `0.094234 mm` |
+| C180 | `0.098680 mm` | `0.125893 mm` |
+| C90/C270 side | `0.077269 mm` | `0.097132 mm` |
+| all validation | `0.076818 mm` | `0.125893 mm` |
+
+Live progression:
+
+| Candidate | all-validation RMS/max |
+| --- | ---: |
+| machine B-harmonic only | `0.232339 / 0.615783 mm` |
+| B/C cross | `0.096378 / 0.176626 mm` |
+| refined B/C cross | `0.076818 / 0.125893 mm` |
+
+The refined candidate is the best validated live candidate so far, but it is
+still simulation-gated and not persistent. A post-refined refit using all live
+rows slightly lowers combined RMS but worsens maximum error, so do not retune
+again or rerun the long validation until the persistence criteria are reviewed.
