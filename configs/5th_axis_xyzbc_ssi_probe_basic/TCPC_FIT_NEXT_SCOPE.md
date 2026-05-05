@@ -2803,3 +2803,37 @@ Partial log state:
 
 Do not fit from this interrupted attempt. Rerun the same program during a quiet
 period with the refined candidate disabled.
+
+### Selected B0 C-Sweep Review
+
+The completed B0 portion of the interrupted detailed sweep can be used for a
+C-axis/C-center check. Use only accepted pass-2 rows
+`219,221,223,225,227,229,231,233,235`.
+
+Quality:
+
+- Tool 3 logged correctly
+- C0 opening/closing closure was `0.007299 mm`
+- pass-2 U/V residuals were only a few microns
+- corrected diameters stayed in the normal window
+
+Main C-axis result:
+
+- raw session-local C orbit reaches `0.220980 mm` at C180 and `0.225719 mm`
+  at C225 from the C0 opening/closing average
+- raw XY circle radius is `0.110996 mm`, with radial RMS/max
+  `0.011939 / 0.018794 mm`
+- this is a coherent C-center/reference orbit, not a high-B fit side effect
+
+C-center fit from this B0 sweep:
+
+- current validated C-center residual RMS/max: `0.1111 / 0.1341 mm`
+- fitted C-center residual RMS/max: `0.0192 / 0.0287 mm`
+- fitted `cal-c-to-b.x/y`: `-0.074115329`, `0.014377936`
+- earlier quadrant-only B0 fit gave `-0.075529283`, `0.010558248`, so the
+  required X correction is repeatable
+
+Next:
+
+- prepare/test a C-center-only candidate before any more high-B fitting
+- continue excluding the interrupted B+10 and later rows from TCPC fits

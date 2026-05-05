@@ -4670,3 +4670,68 @@ Next live attempt:
 - keep `headheadkins.sim-bharm-enable = FALSE`
 - monitor the skipped stand-risk poses remain skipped: `B-30 C45` and
   `B+30 C225`
+
+## 2026-05-05 Selected B0 C-Sweep C-Axis Check
+
+Although the later detailed sweep was interrupted, the completed B0 portion is
+usable for a C-axis/C-center check only. Use accepted pass-2 rows:
+
+- `219,221,223,225,227,229,231,233,235`
+
+Probe/data quality:
+
+- Tool 3 was logged correctly
+- C0 opening/closing closure:
+  `-0.005422 X`, `+0.000717 Y`, `+0.004834 Z`, `0.007299 mm` 3D
+- max pass-2 U/V centering residuals were about `0.002917 / 0.002500 mm`
+- corrected diameters stayed in the normal range for the current probe
+
+Session-local raw deltas from the C0 opening/closing average:
+
+| C pose | dX mm | dY mm | dZ mm | 3D mm |
+| --- | ---: | ---: | ---: | ---: |
+| `C45` | `-0.006370` | `+0.078351` | `+0.002250` | `0.078642` |
+| `C90` | `-0.120746` | `+0.102519` | `+0.014417` | `0.159052` |
+| `C135` | `-0.174109` | `+0.064839` | `+0.028250` | `0.187926` |
+| `C180` | `-0.218744` | `+0.002584` | `+0.031250` | `0.220980` |
+| `C225` | `-0.209463` | `-0.076819` | `+0.034250` | `0.225719` |
+| `C270` | `-0.124258` | `-0.114109` | `+0.025584` | `0.170633` |
+| `C315` | `-0.043961` | `-0.072767` | `+0.012750` | `0.085966` |
+
+Raw XY circle fit:
+
+- center: `X468.858396 Y323.634282`
+- radius: `0.110996 mm`
+- radial residual RMS/max: `0.011939 / 0.018794 mm`
+
+Interpretation:
+
+- this looks like a real C-center/reference orbit, not random probe noise
+- the C axis rotation/feedback is reasonably coherent because the 45-degree
+  points fall on a consistent small circle
+- the B90/B-90 harmonic/cross fit did not create this B0 orbit; those terms are
+  zero at B0 and were disabled
+- there is also a small C-correlated Z component, about `0.034 mm` peak, which
+  may indicate C-axis tilt, structure, or local machine/reference behavior
+
+C-center-only offline fit from the B0 C45 sweep:
+
+- current validated C-center residual RMS/max: `0.1111 / 0.1341 mm`
+- fitted C-center residual RMS/max: `0.0192 / 0.0287 mm`
+- fitted `cal-c-to-b.x/y`: `-0.074115329`, `0.014377936`
+
+Comparison to the earlier B0-only quadrant check:
+
+- quadrant-only fit from rows `209,211,213,215,217` gave
+  `cal-c-to-b.x/y = -0.075529283, 0.010558248`
+- the two independent B0 checks agree strongly on the required X shift,
+  roughly `-0.11 mm` from the current `+0.035886006` X value
+- Y differs by only about `0.003820 mm` between the two fits
+
+Next decision:
+
+- do not use the later interrupted B+10 rows for fitting
+- the completed B0 C45 sweep is enough to justify preparing a C-center-only
+  candidate check
+- do not resume high-B fitting until the B0 C orbit is reduced with a confirmed
+  C-center/reference correction
