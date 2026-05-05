@@ -4750,16 +4750,21 @@ Updated:
 
 Mode `#711 = 8.0` sequence:
 
-- B0 C-quadrant reference:
-  `B0 C0`, `B0 C90`, `B0 C180`, `B0 C270`, `B0 C0`
+- B0 C reference:
+  `B0 C0/C90/C135/C180/C225/C270/C315/C0`
 - B-grouped C sweeps for faster machine motion:
-  `B+30 C0/C180/C0`, `B+60 C0/C180/C0`, `B+90 C0/C180/C0`,
-  `B-90 C0/C180/C0`, `B-60 C0/C180/C0`, `B-30 C0/C180/C0`
-- final B0 closure: `B0 C180`, `B0 C0`
+  `B+30 C0/C135/C180/C315/C0`,
+  `B+60 C0/C135/C180/C315/C0`,
+  `B+90 C0/C135/C180/C315/C0`,
+  `B-90 C0/C135/C180/C225/C315/C0`,
+  `B-60 C0/C135/C180/C225/C315/C0`,
+  `B-30 C0/C135/C180/C225/C315/C0`
+- final B0 closure: `B0 C0/C135/C180/C225/C315/C0`
 
 Safety/intent:
 
-- no C45/C225 moves are included, avoiding the sphere stand sector
+- C45 is omitted
+- C225 is skipped for `B+30`, `B+60`, and `B+90` for stand clearance
 - C returns to C0 before each B change, avoiding combined B/C diagonal
   transitions between measured groups
 - run with `headheadkins.sim-bharm-enable = FALSE`

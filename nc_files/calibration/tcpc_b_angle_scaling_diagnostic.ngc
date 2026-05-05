@@ -796,50 +796,60 @@ o<run_detailed_c45_sweep> if [#711 GT 6.5]
   o<run_detailed_c45_sweep_only> endif
 o<run_detailed_c45_sweep> endif
 
+o<tcpc_tool_length_c_sweep_at_b> sub
+  #<sweep_b> = #1
+  #<include_quadrants> = #2
+
+  o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
+  o<tool_length_include_c90> if [#<include_quadrants> GT 0.5]
+    o<tcpc_measure_pose> call [#<sweep_b>] [90.0]
+  o<tool_length_include_c90> endif
+  o<tcpc_measure_pose> call [#<sweep_b>] [135.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [180.0]
+  #<skip_c225> = 0.0
+  o<skip_c225_bplus30> if [ABS[#<sweep_b> - 30.0] LT 0.001]
+    #<skip_c225> = 1.0
+  o<skip_c225_bplus30> endif
+  o<skip_c225_bplus60> if [ABS[#<sweep_b> - 60.0] LT 0.001]
+    #<skip_c225> = 1.0
+  o<skip_c225_bplus60> endif
+  o<skip_c225_bplus90> if [ABS[#<sweep_b> - 90.0] LT 0.001]
+    #<skip_c225> = 1.0
+  o<skip_c225_bplus90> endif
+  o<run_c225_when_safe> if [#<skip_c225> LT 0.5]
+    o<tcpc_measure_pose> call [#<sweep_b>] [225.0]
+  o<run_c225_when_safe> endif
+  o<tool_length_include_c270> if [#<include_quadrants> GT 0.5]
+    o<tcpc_measure_pose> call [#<sweep_b>] [270.0]
+  o<tool_length_include_c270> endif
+  o<tcpc_measure_pose> call [#<sweep_b>] [315.0]
+  o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
+o<tcpc_tool_length_c_sweep_at_b> endsub
+
 o<run_tool_length_baseline_core> if [#711 GT 7.5]
   (Tool-length baseline core.)
   (Run now with the short probe. Repeat the same file later with the long probe.)
   (Keep headheadkins.sim-bharm-enable FALSE; this is for base geometry separation.)
-  (No C45/C225 moves are included, to avoid the sphere stand sector.)
+  (C135, C225, and C315 are included. C45 is still omitted.)
+  (Stand-risk C225 poses are skipped for B+30, B+60, and B+90.)
   (Order is B-grouped for speed: set B, sweep C, return C0, then change B.)
   (This avoids combined B/C diagonal transitions between measured groups.)
 
-  (B0 C-quadrant reference for this tool length.)
-  o<tcpc_measure_pose> call [0.0] [0.0]
-  o<tcpc_measure_pose> call [0.0] [90.0]
-  o<tcpc_measure_pose> call [0.0] [180.0]
-  o<tcpc_measure_pose> call [0.0] [270.0]
-  o<tcpc_measure_pose> call [0.0] [0.0]
+  (B0 C reference for this tool length.)
+  o<tcpc_tool_length_c_sweep_at_b> call [0.0] [1.0]
 
   (Positive B groups, sweeping C at each B.)
-  o<tcpc_measure_pose> call [30.0] [0.0]
-  o<tcpc_measure_pose> call [30.0] [180.0]
-  o<tcpc_measure_pose> call [30.0] [0.0]
-
-  o<tcpc_measure_pose> call [60.0] [0.0]
-  o<tcpc_measure_pose> call [60.0] [180.0]
-  o<tcpc_measure_pose> call [60.0] [0.0]
-
-  o<tcpc_measure_pose> call [90.0] [0.0]
-  o<tcpc_measure_pose> call [90.0] [180.0]
-  o<tcpc_measure_pose> call [90.0] [0.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [30.0] [0.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [60.0] [0.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [90.0] [0.0]
 
   (Negative B groups, sweeping C at each B.)
-  o<tcpc_measure_pose> call [-90.0] [0.0]
-  o<tcpc_measure_pose> call [-90.0] [180.0]
-  o<tcpc_measure_pose> call [-90.0] [0.0]
-
-  o<tcpc_measure_pose> call [-60.0] [0.0]
-  o<tcpc_measure_pose> call [-60.0] [180.0]
-  o<tcpc_measure_pose> call [-60.0] [0.0]
-
-  o<tcpc_measure_pose> call [-30.0] [0.0]
-  o<tcpc_measure_pose> call [-30.0] [180.0]
-  o<tcpc_measure_pose> call [-30.0] [0.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [-90.0] [0.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [-60.0] [0.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [-30.0] [0.0]
 
   (Final B0 closure.)
-  o<tcpc_measure_pose> call [0.0] [180.0]
-  o<tcpc_measure_pose> call [0.0] [0.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [0.0] [0.0]
 o<run_tool_length_baseline_core> endif
 
 G90
