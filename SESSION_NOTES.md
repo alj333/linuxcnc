@@ -4849,3 +4849,26 @@ Prepared `#711 = 11.0` continuation and made it the file default:
 - operator start: `B0 C0`, `3-8 mm` above the sphere
 - sequence: fresh `B0 C0`, then `B-30 C0/C90/C270/C0`, then final `B0 C0`
 - do not use the failed `B-60 C0 pass 1` row for fitting
+
+Completed `#711 = 11.0` continuation audit:
+
+- result rows: `396-407`
+- accepted pass-2 rows: `6`
+- accepted continuation centers:
+  - `B0 C0`: `X468.925353 Y323.625555 Z-858.934502`
+  - `B-30 C0`: `X468.879658 Y323.643688 Z-858.837699`
+  - `B-30 C90`: `X468.798319 Y323.855081 Z-858.735342`
+  - `B-30 C270`: `X468.781090 Y323.507442 Z-858.831897`
+  - `B-30 C0`: `X468.876072 Y323.645417 Z-858.840086`
+  - final `B0 C0`: `X468.917271 Y323.637652 Z-858.937095`
+- max continuation pass-2 centering residuals:
+  `err_u=0.004125 mm`, `err_v=0.003667 mm`
+- continuation opening/final `B0 C0` drift:
+  `dX=-0.008082`, `dY=+0.012097`, `dZ=-0.002593`, `3D=0.014778 mm`
+- combined safe required coverage from rows `273-394` and `396-407` is now
+  complete; no B/C points remain missing
+- operator reported probe errors toward the end of the previous supplemental
+  run; keep that as a data-quality caveat, but the accepted pass-2 continuation
+  rows do not show the large diameter/residual signature seen in the failed
+  `B-60 C0 pass 1` row
+- continue excluding row `395` from fitting
