@@ -11,8 +11,9 @@
 (   7=detailed C sweep at B0/B+10/B-10/B+30/B-30,)
 (   8=tool-length baseline core; run short probe now, repeat with long probe later,)
 (   9=resume tool-length baseline after completed B0 reference,)
-(   10=C90/C270 supplemental tool-length coverage only.)
-(4. Modes 0-6 use C quadrants only; modes 7-10 use extended C sweeps.)
+(   10=C90/C270 supplemental tool-length coverage only,)
+(   11=resume C90/C270 supplement after completed B-60 C90/C270.)
+(4. Modes 0-6 use C quadrants only; modes 7-11 use extended C sweeps.)
 (5. B0 is probed only at open and close to reduce runtime.)
 
 (Sequence:)
@@ -103,7 +104,7 @@ o<probe_cal_offset_default> endif
 #708 = 1.0            (reserved)
 #709 = 90.0           (reserved)
 #710 = 0.0            (reserved)
-#711 = 10.0           (C coverage; 10=C90/C270 supplemental coverage)
+#711 = 11.0           (C coverage; 11=resume supplement from B-30)
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -868,6 +869,14 @@ o<tcpc_tool_length_c90_c270_supplement> sub
   o<tcpc_measure_pose> call [0.0] [0.0]
 o<tcpc_tool_length_c90_c270_supplement> endsub
 
+o<tcpc_tool_length_c90_c270_after_bminus60> sub
+  (Resume after B-60 C90/C270 completed but the B-60 C0 guard repeat aborted.)
+  (Operator start: B0 C0, 3-8 mm above the sphere.)
+  o<tcpc_measure_pose> call [0.0] [0.0]
+  o<tcpc_tool_length_c90_c270_at_b> call [-30.0]
+  o<tcpc_measure_pose> call [0.0] [0.0]
+o<tcpc_tool_length_c90_c270_after_bminus60> endsub
+
 o<run_tool_length_baseline_core> if [#711 GT 7.5]
   o<run_tool_length_baseline_core_only> if [#711 LT 8.5]
   (Tool-length baseline core.)
@@ -900,6 +909,12 @@ o<run_tool_length_c90_c270_supplement> if [#711 GT 9.5]
     o<tcpc_tool_length_c90_c270_supplement> call
   o<run_tool_length_c90_c270_supplement_only> endif
 o<run_tool_length_c90_c270_supplement> endif
+
+o<run_tool_length_c90_c270_after_bminus60> if [#711 GT 10.5]
+  o<run_tool_length_c90_c270_after_bminus60_only> if [#711 LT 11.5]
+    o<tcpc_tool_length_c90_c270_after_bminus60> call
+  o<run_tool_length_c90_c270_after_bminus60_only> endif
+o<run_tool_length_c90_c270_after_bminus60> endif
 
 G90
 F#705

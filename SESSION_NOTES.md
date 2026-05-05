@@ -4828,3 +4828,24 @@ Prepared `#711 = 10.0` supplemental mode and made it the file default:
   `B0 C0`
 - B changes occur from C0 to keep transitions away from the stand-clearance
   diagonal path
+
+Supplemental run stop:
+
+- program stopped before completion at result line `395`
+- exact abort: `Pass 1 U corrected diameter above safe range`
+- stop point: second/guard `B-60 C0` after `B-60 C90` and `B-60 C270` had both
+  accepted pass 2
+- bad row: `B-60 C0 pass 1`, center
+  `X469.150498 Y323.489315 Z-858.019215`, `err_u=1.443901`,
+  corrected U diameter `38.663892 mm`
+- this is consistent with a false/early probe event, not useful geometry data
+- accepted supplemental C90/C270 coverage before the stop:
+  `B0`, `B+30`, `B+60`, `B+90`, `B-90`, `B-60`
+- still missing from the supplemental coverage:
+  `B-30 C90`, `B-30 C270`, and a final `B0 C0` closure
+
+Prepared `#711 = 11.0` continuation and made it the file default:
+
+- operator start: `B0 C0`, `3-8 mm` above the sphere
+- sequence: fresh `B0 C0`, then `B-30 C0/C90/C270/C0`, then final `B0 C0`
+- do not use the failed `B-60 C0 pass 1` row for fitting
