@@ -4504,3 +4504,37 @@ Future required test after the ordered longer probes arrive:
 - longer-term kinematics work should wire tool length or an equivalent
   calibrated probe-vector length into the TCPC model instead of relying on a
   single fixed physical probe
+
+## 2026-05-05 Offline Acceptance Review And Next Run
+
+Acceptance bands are now split by machine task:
+
+- `0.2 mm` is the current production/core-task acceptance band
+- `0.1 mm` is the secondary refinement target
+- current refined candidate on live validation rows: `48/48` non-B0 rows under
+  `0.2 mm`, `41/48` under `0.1 mm`
+- current refined candidate on targeted repeats: `10/10` non-B0 rows under
+  `0.2 mm`, `2/10` under `0.1 mm`
+- current refined candidate on all live plus targeted rows: `58/58` under
+  `0.2 mm`, `43/58` under `0.1 mm`
+- all-live-plus-targeted retune would remain `58/58` under `0.2 mm` but only
+  `44/58` under `0.1 mm`; it improves the shifted session slightly but is not
+  enough to justify replacing the live-tested refined candidate
+
+Decision:
+
+- keep the refined candidate unchanged
+- do not run another broad high-B validation grid next
+- the next live verification should only check the B0 reference state after
+  thermal soak and sphere/stand inspection
+- `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` now defaults to
+  `#711 = 6.0`, a B0-only C-quadrant reference check:
+  `B0 C0`, `B0 C90`, `B0 C180`, `B0 C270`, `B0 C0`
+- run the B0 reference check with `headheadkins.sim-bharm-enable = FALSE`
+- if the B0 reference matches the earlier refined validation, treat the
+  targeted repeats as a shifted/disturbed setup state
+- if the B0 reference remains in the shifted state, split the datasets by
+  session state before doing any retune
+- for the core task, the current candidate is already within the measured
+  `0.2 mm` band; for the secondary `0.1 mm` task, further work should wait for
+  stable reference data and tool-length validation

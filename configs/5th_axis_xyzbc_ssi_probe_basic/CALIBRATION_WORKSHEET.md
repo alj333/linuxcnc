@@ -960,3 +960,15 @@ Future tool-length validation:
 - collect B0 references and at least the C180/C270 high-B poses
 - compare residual change per added probe length before making TCPC correction
   terms persistent
+
+Next minimal probing task:
+
+- do not run another full high-B grid yet
+- after the machine has thermally stabilized, inspect the sphere/stand and run
+  only the B0 reference check
+- program: `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- default mode is now `#711 = 6.0`
+- sequence: `B0 C0`, `B0 C90`, `B0 C180`, `B0 C270`, `B0 C0`
+- run with `headheadkins.sim-bharm-enable = FALSE`
+- compare this B0 reference state with the earlier refined validation and the
+  shifted targeted repeats before doing any retune

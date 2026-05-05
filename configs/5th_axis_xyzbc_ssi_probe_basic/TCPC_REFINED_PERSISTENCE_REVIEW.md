@@ -98,12 +98,51 @@ Including the targeted repeats in a retune improves today's shifted
 targeted rows but raises earlier validation maxima. Treat this as
 machine/session repeatability evidence before changing the candidate.
 
+## Acceptance Band Review
+
+Use `0.2 mm` as the current production/core-task acceptance band and
+`0.1 mm` as the secondary refinement target. These counts use non-B0
+rows compared to the adjacent B0 references in each C group.
+
+| evaluation | non-B0 rows | RMS | max | <=0.2 mm | <=0.1 mm |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| current refined candidate on live validation rows | `48` | `0.073916` | `0.133632` | `48/48` | `41/48` |
+| current refined candidate on targeted repeats | `10` | `0.139656` | `0.191962` | `10/10` | `2/10` |
+| current refined candidate on live plus targeted rows | `58` | `0.088793` | `0.191962` | `58/58` | `43/58` |
+| all-live-plus-targeted retune on live plus targeted rows | `58` | `0.082907` | `0.151695` | `58/58` | `44/58` |
+
+The current refined candidate stays inside the `0.2 mm` core-task band
+for every accepted live and targeted non-B0 row. It does not satisfy the
+`0.1 mm` refinement target as a hard maximum; the over-`0.1 mm` rows are
+concentrated in high-B C180 and the shifted targeted-repeat session.
+
+The all-live-plus-targeted retune improves the shifted targeted repeats
+but still does not meet the `0.1 mm` hard target and is not live-tested.
+Do not replace the refined candidate with that retune unless a stable
+B0 reference check proves the shifted session is the new machine state.
+
+Worst current-candidate rows across live plus targeted data:
+
+| source | line | pose | delta X/Y/Z | norm |
+| --- | ---: | --- | ---: | ---: |
+| `2026-05-05-refined-targeted-repeat-2` | 199 | `B-90 C180` | `+0.153369`, `+0.098772`, `+0.059761` | `0.191962` |
+| `2026-05-05-refined-targeted-repeat-2` | 205 | `B+90 C270` | `-0.009087`, `+0.151522`, `-0.069208` | `0.166827` |
+| `2026-05-05-refined-targeted-repeat-2` | 197 | `B+90 C180` | `+0.143702`, `-0.054145`, `-0.054199` | `0.162848` |
+| `2026-05-05-refined-targeted-repeat-1` | 181 | `B-90 C180` | `+0.121748`, `+0.082028`, `+0.043632` | `0.153150` |
+| `2026-05-05-refined-targeted-repeat-1` | 187 | `B+90 C270` | `-0.010989`, `+0.137000`, `-0.066188` | `0.152547` |
+| `2026-05-05-refined-targeted-repeat-1` | 179 | `B+90 C180` | `+0.118748`, `-0.060264`, `-0.038244` | `0.138548` |
+| `candidate_on_c180_scaling` | 53 | `B-60 C180` | `-0.132223`, `-0.017853`, `-0.007479` | `0.133632` |
+| `bcross_candidate_c180_scaling` | 101 | `B-60 C180` | `-0.129594`, `-0.024618`, `-0.003913` | `0.131970` |
+
 ## Decision
 
 - Keep the refined candidate unchanged.
 - Do not promote it to persistent startup HAL yet.
 - Do not run another full `#711 = 4.0` validation.
+- Treat the refined candidate as acceptable for the core task only after
+  the shifted B0 reference state is checked; current data is inside
+  `0.2 mm` but not a hard `0.1 mm` fit.
 - The `#711 = 5.0` targeted repeats show a repeatable shifted B0
   reference state; do not retune from those repeats alone.
-- Stop live probing for now and investigate the source of the session
-  reference movement before changing coefficients.
+- The next machine run should be a short candidate-off B0 C-quadrant
+  reference check, not another high-B validation grid.

@@ -2687,3 +2687,41 @@ Tool-length limitation:
   alignment, and rotary-axis angular model corrections
 - if residuals stay about the same, prioritize pivot/frame/reference movement
   rather than probe-length math
+
+## Offline Acceptance Review - 2026-05-05
+
+Use two acceptance bands from here:
+
+- `0.2 mm`: current production/core-task requirement
+- `0.1 mm`: secondary refinement target
+
+The regenerated persistence review now counts accepted non-B0 rows against
+both bands:
+
+| Evaluation | <=0.2 mm | <=0.1 mm | Max |
+| --- | ---: | ---: | ---: |
+| current refined candidate on live validation rows | `48/48` | `41/48` | `0.133632 mm` |
+| current refined candidate on targeted repeats | `10/10` | `2/10` | `0.191962 mm` |
+| current refined candidate on live plus targeted rows | `58/58` | `43/58` | `0.191962 mm` |
+| all-live-plus-targeted retune on live plus targeted rows | `58/58` | `44/58` | `0.151695 mm` |
+
+Interpretation:
+
+- the current refined candidate is good enough for the core task if the B0
+  reference and tool-length caveats are accepted
+- it is not a hard `0.1 mm` candidate yet
+- the post-targeted retune does not justify replacing the live-tested refined
+  candidate, because it still misses the hard `0.1 mm` target and may be
+  absorbing thermal/setup movement
+- no further offline correction family is justified before checking the
+  reference state
+
+Prepared next machine check:
+
+- `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- default `#711 = 6.0`
+- sequence: `B0 C0`, `B0 C90`, `B0 C180`, `B0 C270`, `B0 C0`
+- purpose: determine whether the shifted B0 state remains after thermal soak
+  and sphere/stand inspection
+- run with `headheadkins.sim-bharm-enable = FALSE`
+- this is a reference check only, not a high-B TCPC validation

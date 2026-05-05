@@ -894,3 +894,10 @@ Refined B/C cross candidate result:
   `motion.tooloffset.z` is not wired into `headheadkins`; keep the refined
   candidate provisional until a short-probe and long-probe back-to-back
   validation passes
+- current refined candidate is inside the core `0.2 mm` band for all accepted
+  live plus targeted non-B0 rows
+- current refined candidate is not yet a hard-max pass for the secondary
+  `0.1 mm` band
+- the next prepared run is the B0-only reference check in
+  `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with
+  `#711 = 6.0`; keep `headheadkins.sim-bharm-enable = FALSE` for that check

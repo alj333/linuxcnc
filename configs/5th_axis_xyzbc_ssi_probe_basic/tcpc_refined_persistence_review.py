@@ -187,6 +187,52 @@ def vector_text(vec: np.ndarray) -> str:
     return f"`{vec[0]:+.6f}`, `{vec[1]:+.6f}`, `{vec[2]:+.6f}`"
 
 
+def norm_rows(
+    data_sets: list[list[fit.Observation]],
+    params: dict[str, float],
+) -> list[tuple[float, fit.Observation, np.ndarray]]:
+    rows = []
+    for observations in data_sets:
+        _, data_rows = fit.b_angle_delta_rows(observations, params)
+        for obs, delta in data_rows:
+            rows.append((float(np.linalg.norm(delta)), obs, delta))
+    return rows
+
+
+def acceptance_row(
+    label: str,
+    data_sets: list[list[fit.Observation]],
+    params: dict[str, float],
+) -> str:
+    rows = norm_rows(data_sets, params)
+    if not rows:
+        return f"| {label} | `0` | `n/a` | `n/a` | `0/0` | `0/0` |"
+    norms = np.array([norm for norm, _, _ in rows])
+    rms, max_value = rms_max(norms)
+    under_core = int(np.sum(norms <= 0.2 + 1e-12))
+    under_refine = int(np.sum(norms <= 0.1 + 1e-12))
+    return (
+        f"| {label} | `{len(rows)}` | `{rms:.6f}` | `{max_value:.6f}` | "
+        f"`{under_core}/{len(rows)}` | `{under_refine}/{len(rows)}` |"
+    )
+
+
+def worst_row_lines(
+    data_sets: list[list[fit.Observation]],
+    params: dict[str, float],
+    limit: int = 8,
+) -> list[str]:
+    rows = sorted(norm_rows(data_sets, params), key=lambda row: row[0], reverse=True)
+    lines = []
+    for norm, obs, delta in rows[:limit]:
+        lines.append(
+            "| "
+            f"`{obs.source}` | {obs.line} | `B{obs.b_deg:+.0f} C{obs.c_deg:.0f}` | "
+            f"{vector_text(delta)} | `{norm:.6f}` |"
+        )
+    return lines
+
+
 def write_report(path: Path) -> None:
     review_sets = load_review_sets()
     targeted_repeats = load_targeted_repeats()
@@ -363,6 +409,38 @@ def write_report(path: Path) -> None:
             "machine/session repeatability evidence before changing the candidate.",
         ]
 
+    acceptance_lines = [
+        "",
+        "## Acceptance Band Review",
+        "",
+        "Use `0.2 mm` as the current production/core-task acceptance band and",
+        "`0.1 mm` as the secondary refinement target. These counts use non-B0",
+        "rows compared to the adjacent B0 references in each C group.",
+        "",
+        "| evaluation | non-B0 rows | RMS | max | <=0.2 mm | <=0.1 mm |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+        acceptance_row("current refined candidate on live validation rows", all_live_sets, current_params),
+        acceptance_row("current refined candidate on targeted repeats", all_targeted_sets, current_params),
+        acceptance_row("current refined candidate on live plus targeted rows", all_live_targeted_sets, current_params),
+        acceptance_row("all-live-plus-targeted retune on live plus targeted rows", all_live_targeted_sets, post_targeted.params),
+        "",
+        "The current refined candidate stays inside the `0.2 mm` core-task band",
+        "for every accepted live and targeted non-B0 row. It does not satisfy the",
+        "`0.1 mm` refinement target as a hard maximum; the over-`0.1 mm` rows are",
+        "concentrated in high-B C180 and the shifted targeted-repeat session.",
+        "",
+        "The all-live-plus-targeted retune improves the shifted targeted repeats",
+        "but still does not meet the `0.1 mm` hard target and is not live-tested.",
+        "Do not replace the refined candidate with that retune unless a stable",
+        "B0 reference check proves the shifted session is the new machine state.",
+        "",
+        "Worst current-candidate rows across live plus targeted data:",
+        "",
+        "| source | line | pose | delta X/Y/Z | norm |",
+        "| --- | ---: | --- | ---: | ---: |",
+        *worst_row_lines(all_live_targeted_sets, current_params),
+    ]
+
     lines = [
         "# TCPC Refined Candidate Persistence Review",
         "",
@@ -422,16 +500,20 @@ def write_report(path: Path) -> None:
         "materially reduce maximum error. Adding another kinematics correction family",
         "is not justified from this data alone.",
         *targeted_lines,
+        *acceptance_lines,
         "",
         "## Decision",
         "",
         "- Keep the refined candidate unchanged.",
         "- Do not promote it to persistent startup HAL yet.",
         "- Do not run another full `#711 = 4.0` validation.",
+        "- Treat the refined candidate as acceptable for the core task only after",
+        "  the shifted B0 reference state is checked; current data is inside",
+        "  `0.2 mm` but not a hard `0.1 mm` fit.",
         "- The `#711 = 5.0` targeted repeats show a repeatable shifted B0",
         "  reference state; do not retune from those repeats alone.",
-        "- Stop live probing for now and investigate the source of the session",
-        "  reference movement before changing coefficients.",
+        "- The next machine run should be a short candidate-off B0 C-quadrant",
+        "  reference check, not another high-B validation grid.",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
