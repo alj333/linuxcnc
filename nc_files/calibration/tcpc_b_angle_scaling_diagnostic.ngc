@@ -752,11 +752,15 @@ o<run_b0_reference_check> endif
 o<tcpc_c45_sweep_at_b> sub
   #<sweep_b> = #1
   o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
-  o<tcpc_measure_pose> call [#<sweep_b>] [45.0]
+  o<skip_bminus30_c45> if [ABS[#<sweep_b> + 30.0] GT 0.001]
+    o<tcpc_measure_pose> call [#<sweep_b>] [45.0]
+  o<skip_bminus30_c45> endif
   o<tcpc_measure_pose> call [#<sweep_b>] [90.0]
   o<tcpc_measure_pose> call [#<sweep_b>] [135.0]
   o<tcpc_measure_pose> call [#<sweep_b>] [180.0]
-  o<tcpc_measure_pose> call [#<sweep_b>] [225.0]
+  o<skip_bplus30_c225> if [ABS[#<sweep_b> - 30.0] GT 0.001]
+    o<tcpc_measure_pose> call [#<sweep_b>] [225.0]
+  o<skip_bplus30_c225> endif
   o<tcpc_measure_pose> call [#<sweep_b>] [270.0]
   o<tcpc_measure_pose> call [#<sweep_b>] [315.0]
   o<tcpc_measure_pose> call [#<sweep_b>] [0.0]
@@ -766,6 +770,7 @@ o<run_detailed_c45_sweep> if [#711 GT 6.5]
   (Detailed C sweep for C-center/reference and low-B TCPC diagnostics.)
   (Sequence per B group: C0/C45/C90/C135/C180/C225/C270/C315/C0.)
   (Run with headheadkins.sim-bharm-enable FALSE unless deliberately testing it.)
+  (Safety skips: B-30 C45 and B+30 C225 are omitted for sphere stand clearance.)
   (C45 and C225 align near the sphere stand; monitor the first sweep closely.)
   o<tcpc_c45_sweep_at_b> call [0.0]
   o<tcpc_c45_sweep_at_b> call [10.0]
