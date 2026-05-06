@@ -34,6 +34,8 @@ class BHarmonic:
     enabled: bool
     machine: dict[str, tuple[float, float, float]]
     cframe: dict[str, tuple[float, float, float]]
+    charm: dict[str, tuple[float, float, float]]
+    bmid: dict[str, tuple[float, float, float]]
     bcross: dict[str, tuple[float, float, float]]
 
 
@@ -67,12 +69,27 @@ ZERO_HARMONIC = BHarmonic(
         "omc": (0.0, 0.0, 0.0),
         "sin2": (0.0, 0.0, 0.0),
     },
+    charm={
+        "cos": (0.0, 0.0, 0.0),
+        "sin": (0.0, 0.0, 0.0),
+        "cos2": (0.0, 0.0, 0.0),
+        "sin2": (0.0, 0.0, 0.0),
+    },
+    bmid={
+        "base": (0.0, 0.0, 0.0),
+        "cosc": (0.0, 0.0, 0.0),
+        "sinc": (0.0, 0.0, 0.0),
+        "cos2c": (0.0, 0.0, 0.0),
+        "sin2c": (0.0, 0.0, 0.0),
+    },
     bcross={
         "sinb-sinc": (0.0, 0.0, 0.0),
         "omcb-sinc": (0.0, 0.0, 0.0),
         "omcb-sin2c": (0.0, 0.0, 0.0),
         "sinb-cosc": (0.0, 0.0, 0.0),
         "omcb-cosc": (0.0, 0.0, 0.0),
+        "sinb-sin2c": (0.0, 0.0, 0.0),
+        "sinb-cos2c": (0.0, 0.0, 0.0),
     },
 )
 
@@ -84,6 +101,8 @@ MACHINE_FIXED_CANDIDATE = BHarmonic(
         "sin2": (-0.032225192, 0.005230194, -0.190772593),
     },
     cframe=ZERO_HARMONIC.cframe,
+    charm=ZERO_HARMONIC.charm,
+    bmid=ZERO_HARMONIC.bmid,
     bcross=ZERO_HARMONIC.bcross,
 )
 
@@ -91,6 +110,8 @@ MACHINE_FIXED_DISABLED = BHarmonic(
     enabled=False,
     machine=MACHINE_FIXED_CANDIDATE.machine,
     cframe=MACHINE_FIXED_CANDIDATE.cframe,
+    charm=MACHINE_FIXED_CANDIDATE.charm,
+    bmid=MACHINE_FIXED_CANDIDATE.bmid,
     bcross=MACHINE_FIXED_CANDIDATE.bcross,
 )
 
@@ -98,12 +119,16 @@ BCROSS_CANDIDATE = BHarmonic(
     enabled=True,
     machine=MACHINE_FIXED_CANDIDATE.machine,
     cframe=ZERO_HARMONIC.cframe,
+    charm=ZERO_HARMONIC.charm,
+    bmid=ZERO_HARMONIC.bmid,
     bcross={
         "sinb-sinc": (0.002528625, 0.322704792, 0.129756713),
         "omcb-sinc": (-0.075154781, 0.002088037, -0.001416604),
         "omcb-sin2c": (0.015430253, -0.178186533, -0.027922013),
         "sinb-cosc": (-0.047944843, -0.063115561, -0.018569166),
         "omcb-cosc": (-0.033954526, 0.071241728, -0.000964915),
+        "sinb-sin2c": (0.0, 0.0, 0.0),
+        "sinb-cos2c": (0.0, 0.0, 0.0),
     },
 )
 
@@ -115,12 +140,69 @@ REFINED_BCROSS_CANDIDATE = BHarmonic(
         "sin2": (-0.013271805, 0.050707231, -0.156014210),
     },
     cframe=ZERO_HARMONIC.cframe,
+    charm=ZERO_HARMONIC.charm,
+    bmid=ZERO_HARMONIC.bmid,
     bcross={
         "sinb-sinc": (-0.006371196, 0.325723886, 0.130042953),
         "omcb-sinc": (-0.074687973, 0.012622224, -0.001729459),
         "omcb-sin2c": (-0.017723675, -0.255875638, -0.055414262),
         "sinb-cosc": (-0.048238059, -0.063070849, -0.018239994),
         "omcb-cosc": (-0.030283175, 0.071683484, 0.000165632),
+        "sinb-sin2c": (0.0, 0.0, 0.0),
+        "sinb-cos2c": (0.0, 0.0, 0.0),
+    },
+)
+
+SHORT_PROBE_EXTENDED_CANDIDATE = BHarmonic(
+    enabled=True,
+    machine={
+        "sin": (0.017924948, 0.058126845, 0.392280490),
+        "omc": (0.097308591, 0.081476614, -0.344419137),
+        "sin2": (0.004105061, 0.005536233, -0.150507227),
+    },
+    cframe=ZERO_HARMONIC.cframe,
+    charm={
+        "cos": (-0.131593800, -0.007562306, 0.016558764),
+        "sin": (-0.004929903, -0.124613220, 0.006528345),
+        "cos2": (-0.011171047, 0.018637150, 0.010762855),
+        "sin2": (0.016179345, -0.013748585, -0.001209434),
+    },
+    bmid=ZERO_HARMONIC.bmid,
+    bcross={
+        "sinb-sinc": (-0.009597862, 0.260181317, 0.118497105),
+        "omcb-sinc": (-0.050693113, 0.097446530, -0.003005566),
+        "omcb-sin2c": (0.005037623, -0.221178842, -0.041979701),
+        "sinb-cosc": (-0.052968194, -0.071049371, -0.015714834),
+        "omcb-cosc": (0.099996873, 0.082895840, 0.000822785),
+        "sinb-sin2c": (-0.049640417, -0.035604022, -0.012113361),
+        "sinb-cos2c": (-0.021909475, 0.064078633, -0.002501793),
+    },
+)
+
+SHORT_PROBE_EXTENDED_MIDB_CANDIDATE = BHarmonic(
+    enabled=True,
+    machine={
+        "sin": (0.020232490, 0.053643196, 0.413246353),
+        "omc": (0.108616426, 0.080669272, -0.332620644),
+        "sin2": (0.003654539, 0.002126803, -0.153701465),
+    },
+    cframe=ZERO_HARMONIC.cframe,
+    charm=SHORT_PROBE_EXTENDED_CANDIDATE.charm,
+    bmid={
+        "base": (0.072260653, -0.016840777, -0.010150241),
+        "cosc": (-0.065673112, 0.001021410, 0.003220997),
+        "sinc": (0.018716221, -0.073924110, 0.003007059),
+        "cos2c": (-0.019109844, 0.038329852, 0.011150299),
+        "sin2c": (0.027829640, -0.011700047, -0.002799022),
+    },
+    bcross={
+        "sinb-sinc": (-0.011253767, 0.255089607, 0.118267693),
+        "omcb-sinc": (-0.059665945, 0.087907386, 0.000349817),
+        "omcb-sin2c": (0.017978104, -0.247049337, -0.050909161),
+        "sinb-cosc": (-0.050970278, -0.067636824, -0.020576425),
+        "omcb-cosc": (0.092500537, 0.073766288, 0.005718354),
+        "sinb-sin2c": (-0.045614497, -0.027397048, -0.011204533),
+        "sinb-cos2c": (-0.020810948, 0.060056465, -0.003246386),
     },
 )
 
@@ -261,6 +343,46 @@ def b_harmonic_vector(
     return out
 
 
+def c_harmonic_vector(
+    coeffs: dict[str, tuple[float, float, float]],
+    c_eff: float,
+    c_ref: float,
+) -> tuple[float, float, float]:
+    c_rad = math.radians(c_eff)
+    c_ref_rad = math.radians(c_ref)
+    terms = {
+        "cos": math.cos(c_rad) - math.cos(c_ref_rad),
+        "sin": math.sin(c_rad) - math.sin(c_ref_rad),
+        "cos2": math.cos(2.0 * c_rad) - math.cos(2.0 * c_ref_rad),
+        "sin2": math.sin(2.0 * c_rad) - math.sin(2.0 * c_ref_rad),
+    }
+    out = (0.0, 0.0, 0.0)
+    for term_name, term_value in terms.items():
+        out = vec_add(out, vec_scale(term_value, coeffs[term_name]))
+    return out
+
+
+def b_mid_vector(
+    coeffs: dict[str, tuple[float, float, float]],
+    b_eff: float,
+    c_eff: float,
+) -> tuple[float, float, float]:
+    b_rad = math.radians(b_eff)
+    c_rad = math.radians(c_eff)
+    mid_b = math.sin(2.0 * b_rad) ** 2
+    terms = {
+        "base": mid_b,
+        "cosc": mid_b * math.cos(c_rad),
+        "sinc": mid_b * math.sin(c_rad),
+        "cos2c": mid_b * math.cos(2.0 * c_rad),
+        "sin2c": mid_b * math.sin(2.0 * c_rad),
+    }
+    out = (0.0, 0.0, 0.0)
+    for term_name, term_value in terms.items():
+        out = vec_add(out, vec_scale(term_value, coeffs[term_name]))
+    return out
+
+
 def b_cross_vector(
     coeffs: dict[str, tuple[float, float, float]],
     b_eff: float,
@@ -274,6 +396,8 @@ def b_cross_vector(
         "omcb-sin2c": (1.0 - math.cos(b_rad)) * math.sin(c_rad) * math.sin(c_rad),
         "sinb-cosc": math.sin(b_rad) * math.cos(c_rad),
         "omcb-cosc": (1.0 - math.cos(b_rad)) * math.cos(c_rad),
+        "sinb-sin2c": math.sin(b_rad) * math.sin(2.0 * c_rad),
+        "sinb-cos2c": math.sin(b_rad) * math.cos(2.0 * c_rad),
     }
     out = (0.0, 0.0, 0.0)
     for term_name, term_value in terms.items():
@@ -293,9 +417,14 @@ def b_harmonic_offset_world(
     b_eff = b_deg + geometry.b_zero_deg
     c_eff = c_deg + geometry.c_zero_deg
     machine_fixed = b_harmonic_vector(harmonic.machine, b_eff)
+    c_machine_fixed = c_harmonic_vector(harmonic.charm, c_eff, geometry.c_zero_deg)
+    b_mid_fixed = b_mid_vector(harmonic.bmid, b_eff, c_eff)
     cframe_local = b_harmonic_vector(harmonic.cframe, b_eff)
     cframe_world = c_frame_to_world(geometry, rotate_z(c_eff, cframe_local))
-    return vec_add(vec_add(machine_fixed, cframe_world), b_cross_vector(harmonic.bcross, b_eff, c_eff))
+    return vec_add(
+        vec_add(vec_add(vec_add(machine_fixed, b_mid_fixed), c_machine_fixed), cframe_world),
+        b_cross_vector(harmonic.bcross, b_eff, c_eff),
+    )
 
 
 def tool_offset_world(
@@ -364,6 +493,8 @@ def verify_zero_default() -> float:
         enabled=True,
         machine=ZERO_HARMONIC.machine,
         cframe=ZERO_HARMONIC.cframe,
+        charm=ZERO_HARMONIC.charm,
+        bmid=ZERO_HARMONIC.bmid,
         bcross=ZERO_HARMONIC.bcross,
     )
     for b_deg, c_deg in POSES:
@@ -412,6 +543,8 @@ def verify_forward_inverse() -> float:
                 MACHINE_FIXED_CANDIDATE,
                 BCROSS_CANDIDATE,
                 REFINED_BCROSS_CANDIDATE,
+                SHORT_PROBE_EXTENDED_CANDIDATE,
+                SHORT_PROBE_EXTENDED_MIDB_CANDIDATE,
             ):
                 joints = inverse_tcp(ACTIVE_GEOMETRY, harmonic, target, b_deg, c_deg)
                 returned = forward_tcp(ACTIVE_GEOMETRY, harmonic, joints, b_deg, c_deg)
@@ -454,6 +587,18 @@ def main() -> int:
     print("| B deg | dX | dY | dZ |")
     print("| ---: | ---: | ---: | ---: |")
     for b_deg, offset in harmonic_offsets_for_c0(REFINED_BCROSS_CANDIDATE):
+        print(f"| {b_deg:+.0f} | {fmt_vec(offset).replace(', ', ' | ')} |")
+    print("")
+    print("Short-probe extended candidate harmonic offsets at C0:")
+    print("| B deg | dX | dY | dZ |")
+    print("| ---: | ---: | ---: | ---: |")
+    for b_deg, offset in harmonic_offsets_for_c0(SHORT_PROBE_EXTENDED_CANDIDATE):
+        print(f"| {b_deg:+.0f} | {fmt_vec(offset).replace(', ', ' | ')} |")
+    print("")
+    print("Short-probe extended mid-B diagnostic offsets at C0:")
+    print("| B deg | dX | dY | dZ |")
+    print("| ---: | ---: | ---: | ---: |")
+    for b_deg, offset in harmonic_offsets_for_c0(SHORT_PROBE_EXTENDED_MIDB_CANDIDATE):
         print(f"| {b_deg:+.0f} | {fmt_vec(offset).replace(', ', ' | ')} |")
     return 0
 

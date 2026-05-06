@@ -177,6 +177,12 @@ def main() -> int:
         fail("TCPC did not enable")
     if abs(hal.get_value("headheadkins.bcross.sinb-sinc.y") - EXPECTED_BCROSS_SINB_SINC_Y) > 1e-9:
         fail("refined B/C cross candidate coefficients did not load")
+    if abs(hal.get_value("headheadkins.charm.cos.x")) > 1e-12:
+        fail("C-harmonic pins did not default or load zero")
+    if abs(hal.get_value("headheadkins.bcross.sinb-sin2c.x")) > 1e-12:
+        fail("new B/C cross pins did not default or load zero")
+    if abs(hal.get_value("headheadkins.bmid.base.x")) > 1e-12:
+        fail("mid-B pins did not default or load zero")
 
     disabled_error = run_pose_set(command, status, error_channel, enable=False)
     enabled_error = run_pose_set(command, status, error_channel, enable=True)

@@ -1,0 +1,78 @@
+# WHB04B-6 pendant wiring for the XYZ-only maintenance config.
+# Rebased on the old known-good machine wiring style: axis selection plus
+# axis jog pins, not direct joint jog pin injection.
+
+loadusr -W xhc-whb04b-6 -HsfB
+
+# Machine on/off.
+net machine.is-on                         halui.machine.is-on                   whb.halui.machine.is-on
+net pdnt.machine.on                       whb.halui.machine.on                  halui.machine.on
+net pdnt.machine.off                      whb.halui.machine.off                 halui.machine.off
+
+# Program status and controls.
+net pdnt.program.is-idle                  whb.halui.program.is-idle             halui.program.is-idle
+net pdnt.program.is-paused                whb.halui.program.is-paused           halui.program.is-paused
+net pdnt.program-is-running               whb.halui.program.is-running          halui.program.is-running
+net pdnt.program.resume                   whb.halui.program.resume              halui.program.resume
+net pdnt.program.pause                    whb.halui.program.pause               halui.program.pause
+net pdnt.program.run                      whb.halui.program.run                 halui.program.run
+net pdnt.program.stop                     whb.halui.program.stop                halui.program.stop
+
+# Preserve the old known-good mode wiring so the pendant can drive axis jogs
+# through the standard teleop/manual path.
+net pdnt.mode.auto                        whb.halui.mode.auto                   halui.mode.auto
+net pdnt.mode.manual                      whb.halui.mode.manual                 halui.mode.manual
+net pdnt.mode.mdi                         whb.halui.mode.mdi                    halui.mode.mdi
+net pdnt.mode.joint                       whb.halui.mode.joint                  halui.mode.joint
+net pdnt.mode.teleop                      whb.halui.mode.teleop                 halui.mode.teleop
+net pdnt.mode.is-auto                     halui.mode.is-auto                    whb.halui.mode.is-auto
+net pdnt.mode.is-manual                   halui.mode.is-manual                  whb.halui.mode.is-manual
+net pdnt.mode.is-mdi                      halui.mode.is-mdi                     whb.halui.mode.is-mdi
+net pdnt.mode.is-joint                    halui.mode.is-joint                   whb.halui.mode.is-joint
+net pdnt.mode.is-teleop                   halui.mode.is-teleop                  whb.halui.mode.is-teleop
+
+# Home-state feedback.
+net pdnt.axis.X.is-homed                  halui.joint.0.is-homed                whb.halui.joint.x.is-homed
+net pdnt.axis.Y.is-homed                  halui.joint.1.is-homed                whb.halui.joint.y.is-homed
+net pdnt.axis.Z.is-homed                  halui.joint.2.is-homed                whb.halui.joint.z.is-homed
+
+# Axis selection, as used by the old working config.
+net pdnt.axis.X.select                    whb.halui.axis.x.select               halui.axis.x.select
+net pdnt.axis.Y.select                    whb.halui.axis.y.select               halui.axis.y.select
+net pdnt.axis.Z.select                    whb.halui.axis.z.select               halui.axis.z.select
+
+# Jogging through axis pins rather than direct joint pins.
+net pdnt.axis.x.jog-scale                 whb.axis.x.jog-scale                  axis.x.jog-scale
+net pdnt.axis.y.jog-scale                 whb.axis.y.jog-scale                  axis.y.jog-scale
+net pdnt.axis.z.jog-scale                 whb.axis.z.jog-scale                  axis.z.jog-scale
+
+net pdnt.axis.x.jog-counts                whb.axis.x.jog-counts                 axis.x.jog-counts
+net pdnt.axis.y.jog-counts                whb.axis.y.jog-counts                 axis.y.jog-counts
+net pdnt.axis.z.jog-counts                whb.axis.z.jog-counts                 axis.z.jog-counts
+
+net pdnt.axis.x.jog-enable                whb.axis.x.jog-enable                 axis.x.jog-enable
+net pdnt.axis.y.jog-enable                whb.axis.y.jog-enable                 axis.y.jog-enable
+net pdnt.axis.z.jog-enable                whb.axis.z.jog-enable                 axis.z.jog-enable
+
+net pdnt.axis.x.jog-vel-mode              whb.axis.x.jog-vel-mode               axis.x.jog-vel-mode
+net pdnt.axis.y.jog-vel-mode              whb.axis.y.jog-vel-mode               axis.y.jog-vel-mode
+net pdnt.axis.z.jog-vel-mode              whb.axis.z.jog-vel-mode               axis.z.jog-vel-mode
+
+# Useful built-in controls.
+net pdnt.button.m-home                    whb.button.m-home                     halui.home-all
+
+# Feed/max-velocity override path, matching the old machine style.
+net pdnt.feed-override.scale              whb.halui.feed-override.scale         halui.feed-override.scale
+net pdnt.max-velocity.value               whb.halui.max-velocity.value          halui.max-velocity.value
+net pdnt.feed-override.value              halui.feed-override.value             whb.halui.feed-override.value
+net pdnt.feed-override.increase           whb.halui.feed-override.increase      halui.feed-override.increase
+net pdnt.feed-override.decrease           whb.halui.feed-override.decrease      halui.feed-override.decrease
+
+# Position display feedback.
+net pdnt.axis.x.pos-feedback              halui.axis.x.pos-feedback             whb.halui.axis.x.pos-feedback
+net pdnt.axis.y.pos-feedback              halui.axis.y.pos-feedback             whb.halui.axis.y.pos-feedback
+net pdnt.axis.z.pos-feedback              halui.axis.z.pos-feedback             whb.halui.axis.z.pos-feedback
+
+net pdnt.axis.x.pos-relative              halui.axis.x.pos-relative             whb.halui.axis.x.pos-relative
+net pdnt.axis.y.pos-relative              halui.axis.y.pos-relative             whb.halui.axis.y.pos-relative
+net pdnt.axis.z.pos-relative              halui.axis.z.pos-relative             whb.halui.axis.z.pos-relative

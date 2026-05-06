@@ -19,6 +19,7 @@ Important:
 - B/C can start near the SSI single-turn wrap, so this maintenance config normalizes the `-360` startup branch back into the local angle range before feeding the joints
 - C display/feedback applies `c_ssi_axis_scale.in1 = -1.0`, matching the validated SSI feedback test direction
 - pendant jogging uses the old known-good `axis.*.jog-*` path, not direct `joint.*` jog pins
+- manual tool release uses `hm2_7i95.0.inmux.00.input-16` to drive `hm2_7i95.0.ssr.00.out-05` through a spindle-on interlock; the solenoid cannot energize while `spindle.0.on` is true
 
 Launch:
 

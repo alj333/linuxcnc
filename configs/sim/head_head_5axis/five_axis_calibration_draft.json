@@ -1,0 +1,20 @@
+{
+  "offsets": {
+    "b_zero_offset": "0.0",
+    "c_zero_offset": "0.0",
+    "cal_c_to_b_x": "0.0",
+    "cal_c_to_b_y": "0.0",
+    "cal_c_to_b_z": "0.0",
+    "cal_b_to_tool_x": "0.0",
+    "cal_b_to_tool_y": "0.0",
+    "cal_b_to_tool_z": "0.0"
+  },
+  "notes": {
+    "setup_notes": "",
+    "rotary_notes": "",
+    "c_to_b_notes": "",
+    "b_to_tool_notes": "",
+    "verify_notes": ""
+  },
+  "step": 2
+}

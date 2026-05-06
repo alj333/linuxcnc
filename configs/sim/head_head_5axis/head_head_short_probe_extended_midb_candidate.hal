@@ -1,0 +1,90 @@
+# Diagnostic-only short-probe extended TCPC candidate with mid-B envelope.
+#
+# Do not include this file in normal machine startup.
+# The enable pin is deliberately left false by default; set it true only for a
+# controlled validation run after loading and inspecting the pins.
+#
+# Fitted from accepted candidate-on pass-2 validation rows 409-471 and 473-529
+# in tcpc-b-angle-scaling-diagnostic-2pass-results.csv.
+
+setp headheadkins.sim-bharm-enable 0
+
+# C-angle machine-world harmonic terms from the current validated candidate.
+setp headheadkins.charm.cos.x -0.131593800
+setp headheadkins.charm.cos.y -0.007562306
+setp headheadkins.charm.cos.z 0.016558764
+setp headheadkins.charm.sin.x -0.004929903
+setp headheadkins.charm.sin.y -0.124613220
+setp headheadkins.charm.sin.z 0.006528345
+setp headheadkins.charm.cos2.x -0.011171047
+setp headheadkins.charm.cos2.y 0.018637150
+setp headheadkins.charm.cos2.z 0.010762855
+setp headheadkins.charm.sin2.x 0.016179345
+setp headheadkins.charm.sin2.y -0.013748585
+setp headheadkins.charm.sin2.z -0.001209434
+
+# Refined machine-fixed B-harmonic terms.
+setp headheadkins.bharm-m.sin.x 0.020232490
+setp headheadkins.bharm-m.sin.y 0.053643196
+setp headheadkins.bharm-m.sin.z 0.413246353
+setp headheadkins.bharm-m.omc.x 0.108616426
+setp headheadkins.bharm-m.omc.y 0.080669272
+setp headheadkins.bharm-m.omc.z -0.332620644
+setp headheadkins.bharm-m.sin2.x 0.003654539
+setp headheadkins.bharm-m.sin2.y 0.002126803
+setp headheadkins.bharm-m.sin2.z -0.153701465
+
+# Keep the C-frame B-harmonic family zero for this diagnostic.
+setp headheadkins.bharm-c.sin.x 0.000000000
+setp headheadkins.bharm-c.sin.y 0.000000000
+setp headheadkins.bharm-c.sin.z 0.000000000
+setp headheadkins.bharm-c.omc.x 0.000000000
+setp headheadkins.bharm-c.omc.y 0.000000000
+setp headheadkins.bharm-c.omc.z 0.000000000
+setp headheadkins.bharm-c.sin2.x 0.000000000
+setp headheadkins.bharm-c.sin2.y 0.000000000
+setp headheadkins.bharm-c.sin2.z 0.000000000
+
+# Machine-world B/C cross terms after the validation-grid refit.
+setp headheadkins.bcross.sinb-cosc.x -0.050970278
+setp headheadkins.bcross.sinb-cosc.y -0.067636824
+setp headheadkins.bcross.sinb-cosc.z -0.020576425
+setp headheadkins.bcross.sinb-sinc.x -0.011253767
+setp headheadkins.bcross.sinb-sinc.y 0.255089607
+setp headheadkins.bcross.sinb-sinc.z 0.118267693
+setp headheadkins.bcross.omcb-sin2c.x 0.017978104
+setp headheadkins.bcross.omcb-sin2c.y -0.247049337
+setp headheadkins.bcross.omcb-sin2c.z -0.050909161
+setp headheadkins.bcross.omcb-cosc.x 0.092500537
+setp headheadkins.bcross.omcb-cosc.y 0.073766288
+setp headheadkins.bcross.omcb-cosc.z 0.005718354
+setp headheadkins.bcross.omcb-sinc.x -0.059665945
+setp headheadkins.bcross.omcb-sinc.y 0.087907386
+setp headheadkins.bcross.omcb-sinc.z 0.000349817
+setp headheadkins.bcross.sinb-sin2c.x -0.045614497
+setp headheadkins.bcross.sinb-sin2c.y -0.027397048
+setp headheadkins.bcross.sinb-sin2c.z -0.011204533
+setp headheadkins.bcross.sinb-cos2c.x -0.020810948
+setp headheadkins.bcross.sinb-cos2c.y 0.060056465
+setp headheadkins.bcross.sinb-cos2c.z -0.003246386
+
+# Mid-B envelope terms: sin(2B)^2 times C harmonics. These are exactly zero
+# at B0 and B+-90 and mainly target the remaining B+-60 residuals.
+setp headheadkins.bmid.base.x 0.072260653
+setp headheadkins.bmid.base.y -0.016840777
+setp headheadkins.bmid.base.z -0.010150241
+setp headheadkins.bmid.cosc.x -0.065673112
+setp headheadkins.bmid.cosc.y 0.001021410
+setp headheadkins.bmid.cosc.z 0.003220997
+setp headheadkins.bmid.sinc.x 0.018716221
+setp headheadkins.bmid.sinc.y -0.073924110
+setp headheadkins.bmid.sinc.z 0.003007059
+setp headheadkins.bmid.cos2c.x -0.019109844
+setp headheadkins.bmid.cos2c.y 0.038329852
+setp headheadkins.bmid.cos2c.z 0.011150299
+setp headheadkins.bmid.sin2c.x 0.027829640
+setp headheadkins.bmid.sin2c.y -0.011700047
+setp headheadkins.bmid.sin2c.z -0.002799022
+
+# Simulation-only manual enable:
+# setp headheadkins.sim-bharm-enable 1

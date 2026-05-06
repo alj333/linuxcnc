@@ -28,6 +28,37 @@ setp headheadkins.bharm-c.sin2.x 0.000000000
 setp headheadkins.bharm-c.sin2.y 0.000000000
 setp headheadkins.bharm-c.sin2.z 0.000000000
 
+# Keep the C-angle harmonic family zero for this older diagnostic.
+setp headheadkins.charm.cos.x 0.000000000
+setp headheadkins.charm.cos.y 0.000000000
+setp headheadkins.charm.cos.z 0.000000000
+setp headheadkins.charm.sin.x 0.000000000
+setp headheadkins.charm.sin.y 0.000000000
+setp headheadkins.charm.sin.z 0.000000000
+setp headheadkins.charm.cos2.x 0.000000000
+setp headheadkins.charm.cos2.y 0.000000000
+setp headheadkins.charm.cos2.z 0.000000000
+setp headheadkins.charm.sin2.x 0.000000000
+setp headheadkins.charm.sin2.y 0.000000000
+setp headheadkins.charm.sin2.z 0.000000000
+
+# Keep the mid-B family zero for this older diagnostic.
+setp headheadkins.bmid.base.x 0.000000000
+setp headheadkins.bmid.base.y 0.000000000
+setp headheadkins.bmid.base.z 0.000000000
+setp headheadkins.bmid.cosc.x 0.000000000
+setp headheadkins.bmid.cosc.y 0.000000000
+setp headheadkins.bmid.cosc.z 0.000000000
+setp headheadkins.bmid.sinc.x 0.000000000
+setp headheadkins.bmid.sinc.y 0.000000000
+setp headheadkins.bmid.sinc.z 0.000000000
+setp headheadkins.bmid.cos2c.x 0.000000000
+setp headheadkins.bmid.cos2c.y 0.000000000
+setp headheadkins.bmid.cos2c.z 0.000000000
+setp headheadkins.bmid.sin2c.x 0.000000000
+setp headheadkins.bmid.sin2c.y 0.000000000
+setp headheadkins.bmid.sin2c.z 0.000000000
+
 # Incremental machine-world B/C cross terms fitted from the completed
 # C0/C180/C90/C270 candidate-on validation rows. These terms are also zero at
 # B0, so enabling at B0 should not move the TCP.
@@ -46,6 +77,12 @@ setp headheadkins.bcross.sinb-cosc.z -0.018569166
 setp headheadkins.bcross.omcb-cosc.x -0.033954526
 setp headheadkins.bcross.omcb-cosc.y 0.071241728
 setp headheadkins.bcross.omcb-cosc.z -0.000964915
+setp headheadkins.bcross.sinb-sin2c.x 0.000000000
+setp headheadkins.bcross.sinb-sin2c.y 0.000000000
+setp headheadkins.bcross.sinb-sin2c.z 0.000000000
+setp headheadkins.bcross.sinb-cos2c.x 0.000000000
+setp headheadkins.bcross.sinb-cos2c.y 0.000000000
+setp headheadkins.bcross.sinb-cos2c.z 0.000000000
 
 # Simulation-only manual enable:
 # setp headheadkins.sim-bharm-enable 1

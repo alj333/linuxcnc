@@ -901,3 +901,84 @@ Refined B/C cross candidate result:
 - the next prepared run is the B0-only reference check in
   `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc` with
   `#711 = 6.0`; keep `headheadkins.sim-bharm-enable = FALSE` for that check
+
+Extended short-probe candidate validation:
+
+- `headheadkins` now has additional zero-default, gated correction pins:
+  `headheadkins.charm.*`, `headheadkins.bcross.sinb-sin2c.*`, and
+  `headheadkins.bcross.sinb-cos2c.*`
+- diagnostic candidate HAL:
+  `configs/sim/head_head_5axis/head_head_short_probe_extended_candidate.hal`
+- validation report:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_EXTENDED_CANDIDATE_VALIDATION_REPORT.md`
+- full safe-grid validation completed in two segments:
+  - first segment accepted pass-2 rows `409-471`
+  - resume segment accepted pass-2 rows `473-529`
+- first segment stopped at `B-90 C90` pass 1 with
+  `-U side touch did not record point data`; `#711 = 14.0` was added to resume
+  from that point with an `8 mm` side probe vector
+- total accepted candidate-on pass-2 rows: `61`
+- no expected safe-grid pass-2 points are missing
+- combined per-segment-reference nonzero-B RMS/max:
+  `0.091875 / 0.189695 mm`
+- worst vector: line `491`, `B-60 C180`,
+  `dX=-0.173795`, `dY=-0.073580`, `dZ=+0.019114`,
+  magnitude `0.189695 mm`
+- current decision:
+  - this candidate validates under the core `0.2 mm` target
+  - it does not meet the secondary `0.1 mm` target everywhere
+  - keep the candidate non-persistent and gated off while validation rows are
+    folded into the next offline fit
+- tool-state caveat:
+  - UI/current tool showed tool `0`, but the program fallback logged probe tool
+    `3`, probe calibration `0.134533`, and zero motion tool offsets
+  - current TCPC kinematics do not use tool length compensation, so this run is
+    still usable
+  - fix tool state before short/long probe comparison
+
+Extended candidate mid-B diagnostic:
+
+- `headheadkins` now also has zero-default, gated mid-B pins:
+  `headheadkins.bmid.base.*`, `.cosc.*`, `.sinc.*`, `.cos2c.*`, `.sin2c.*`
+- the basis is `sin(2B)^2`, so it is zero at `B0` and `B+/-90`
+- refit report:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_EXTENDED_CANDIDATE_REFIT_REPORT.md`
+- diagnostic HAL:
+  `configs/sim/head_head_5axis/head_head_short_probe_extended_midb_candidate.hal`
+- offline fit on rows `409-471` and `473-529`:
+  - current candidate: `0.091875 / 0.189695 mm`
+  - mid-B diagnostic candidate: `0.051958 / 0.099935 mm`
+- holdouts are not strong enough to make the mid-B candidate persistent; use it
+  only for one gated confirmation run
+- next run should be the full safe grid:
+  `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`, `#711 = 13.0`
+- keep `headheadkins.sim-bharm-enable = FALSE` except during the deliberate
+  diagnostic run, and disable it immediately after completion or any error
+
+Balanced final short-probe candidate:
+
+- report:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_SHORT_PROBE_BALANCED_FINAL_REPORT.md`
+- HAL:
+  `configs/sim/head_head_5axis/head_head_short_probe_balanced_final_candidate.hal`
+- expected combined short-probe RMS/max:
+  `0.054136 / 0.110879 mm`
+- this is the last planned short-probe-only confidence candidate before
+  production integration work
+- after this confirmation, stop TCPC probing until the long probe arrives
+- next machine work should move to:
+  - production Probe Basic config with TCPC/TWP
+  - servo speed/acceleration tuning
+  - Probe Basic setup for the real workflow
+
+Balanced final short-probe validation result:
+
+- result rows: `652-771`
+- same-run same-C B0-reference RMS/max:
+  `0.055446 / 0.113585 mm`
+- B0 same-C drift reached about `0.052 mm`; operator reported elevated spindle
+  temperature and possible fractional tool-tip growth
+- production-required TCPC accuracy is met under the current `<0.2 mm` target
+- do not continue short-probe-only TCPC refinement now
+- keep future TCPC refinement for the short/long probe comparison after the
+  long stylus arrives

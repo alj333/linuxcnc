@@ -1,0 +1,93 @@
+# Diagnostic-only balanced short-probe TCPC candidate.
+#
+# Do not include this file in normal machine startup.
+# The enable pin is deliberately left false by default; set it true only for a
+# controlled validation run after loading and inspecting the pins.
+#
+# Fitted from:
+# - extended candidate validation rows 409-471 and 473-529
+# - mid-B diagnostic confirmation rows 530-649
+#
+# This candidate keeps the validated C harmonics and mid-B envelope, then
+# rebalances the existing B/B-C terms against both short-probe runs.
+
+setp headheadkins.sim-bharm-enable 0
+
+# C-angle machine-world harmonic terms from the current validated candidate.
+setp headheadkins.charm.cos.x -0.131593800
+setp headheadkins.charm.cos.y -0.007562306
+setp headheadkins.charm.cos.z 0.016558764
+setp headheadkins.charm.sin.x -0.004929903
+setp headheadkins.charm.sin.y -0.124613220
+setp headheadkins.charm.sin.z 0.006528345
+setp headheadkins.charm.cos2.x -0.011171047
+setp headheadkins.charm.cos2.y 0.018637150
+setp headheadkins.charm.cos2.z 0.010762855
+setp headheadkins.charm.sin2.x 0.016179345
+setp headheadkins.charm.sin2.y -0.013748585
+setp headheadkins.charm.sin2.z -0.001209434
+
+# Balanced machine-fixed B-harmonic terms.
+setp headheadkins.bharm-m.sin.x 0.022462493
+setp headheadkins.bharm-m.sin.y 0.060391187
+setp headheadkins.bharm-m.sin.z 0.416839379
+setp headheadkins.bharm-m.omc.x 0.111250839
+setp headheadkins.bharm-m.omc.y 0.082329999
+setp headheadkins.bharm-m.omc.z -0.334765987
+setp headheadkins.bharm-m.sin2.x 0.007952740
+setp headheadkins.bharm-m.sin2.y 0.006561895
+setp headheadkins.bharm-m.sin2.z -0.159040125
+
+# Keep the C-frame B-harmonic family zero for this diagnostic.
+setp headheadkins.bharm-c.sin.x 0.000000000
+setp headheadkins.bharm-c.sin.y 0.000000000
+setp headheadkins.bharm-c.sin.z 0.000000000
+setp headheadkins.bharm-c.omc.x 0.000000000
+setp headheadkins.bharm-c.omc.y 0.000000000
+setp headheadkins.bharm-c.omc.z 0.000000000
+setp headheadkins.bharm-c.sin2.x 0.000000000
+setp headheadkins.bharm-c.sin2.y 0.000000000
+setp headheadkins.bharm-c.sin2.z 0.000000000
+
+# Balanced machine-world B/C cross terms.
+setp headheadkins.bcross.sinb-cosc.x -0.047274501
+setp headheadkins.bcross.sinb-cosc.y -0.072197836
+setp headheadkins.bcross.sinb-cosc.z -0.018489362
+setp headheadkins.bcross.sinb-sinc.x -0.007719229
+setp headheadkins.bcross.sinb-sinc.y 0.262870386
+setp headheadkins.bcross.sinb-sinc.z 0.117075345
+setp headheadkins.bcross.omcb-sin2c.x 0.012326053
+setp headheadkins.bcross.omcb-sin2c.y -0.250715967
+setp headheadkins.bcross.omcb-sin2c.z -0.049481614
+setp headheadkins.bcross.omcb-cosc.x 0.119684651
+setp headheadkins.bcross.omcb-cosc.y 0.075739903
+setp headheadkins.bcross.omcb-cosc.z 0.002067286
+setp headheadkins.bcross.omcb-sinc.x -0.057410929
+setp headheadkins.bcross.omcb-sinc.y 0.114356944
+setp headheadkins.bcross.omcb-sinc.z -0.000221416
+setp headheadkins.bcross.sinb-sin2c.x -0.048982150
+setp headheadkins.bcross.sinb-sin2c.y -0.032550923
+setp headheadkins.bcross.sinb-sin2c.z -0.010430003
+setp headheadkins.bcross.sinb-cos2c.x -0.021561781
+setp headheadkins.bcross.sinb-cos2c.y 0.062113849
+setp headheadkins.bcross.sinb-cos2c.z -0.001026642
+
+# Mid-B envelope terms carried forward from the confirmed mid-B candidate.
+setp headheadkins.bmid.base.x 0.072260653
+setp headheadkins.bmid.base.y -0.016840777
+setp headheadkins.bmid.base.z -0.010150241
+setp headheadkins.bmid.cosc.x -0.065673112
+setp headheadkins.bmid.cosc.y 0.001021410
+setp headheadkins.bmid.cosc.z 0.003220997
+setp headheadkins.bmid.sinc.x 0.018716221
+setp headheadkins.bmid.sinc.y -0.073924110
+setp headheadkins.bmid.sinc.z 0.003007059
+setp headheadkins.bmid.cos2c.x -0.019109844
+setp headheadkins.bmid.cos2c.y 0.038329852
+setp headheadkins.bmid.cos2c.z 0.011150299
+setp headheadkins.bmid.sin2c.x 0.027829640
+setp headheadkins.bmid.sin2c.y -0.011700047
+setp headheadkins.bmid.sin2c.z -0.002799022
+
+# Simulation-only/manual diagnostic enable:
+# setp headheadkins.sim-bharm-enable 1

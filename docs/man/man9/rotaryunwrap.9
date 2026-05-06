@@ -1,0 +1,56 @@
+.\" -*- mode: troff; coding: utf-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was extracted from hal/components/rotaryunwrap.comp using halcompile.g.
+.\" Modify the source file.
+.\"
+.\"*******************************************************************
+
+.TH ROTARYUNWRAP "9" "2026-05-04" "LinuxCNC Documentation" "HAL Component"
+.SH NAME
+
+rotaryunwrap \- Unwrap wrapped rotary feedback to the nearest commanded angle
+.SH SYNOPSIS
+.HP
+.B loadrt rotaryunwrap [count=\fIN\fB|names=\fIname1\fB[,\fIname2...\fB]]
+.SH DESCRIPTION
+
+
+Converts a wrapped rotary feedback angle into a continuous angle by adding or
+subtracting whole periods until the feedback is nearest the commanded angle.
+
+This is useful for single-turn absolute encoder feedback on rotary joints where
+the encoder reports equivalent angles such as +181 degrees as -179 degrees, but
+LinuxCNC joint following-error checks need continuous feedback near the current
+commanded joint position.
+
+.SH FUNCTIONS
+.TP
+\fBrotaryunwrap.\fIN\fB\fR (requires a floating-point thread)
+
+.SH PINS
+.TP
+.B rotaryunwrap.\fIN\fB.wrapped\fR float in \fR
+Wrapped feedback angle in degrees
+.TP
+.B rotaryunwrap.\fIN\fB.command\fR float in \fR
+Continuous commanded angle in degrees
+.TP
+.B rotaryunwrap.\fIN\fB.unwrapped\fR float out \fR
+Feedback angle shifted by whole periods near command
+.TP
+.B rotaryunwrap.\fIN\fB.correction\fR float out \fR
+Applied whole-period correction in degrees
+.TP
+.B rotaryunwrap.\fIN\fB.error\fR float out \fR
+command minus unwrapped
+.SH PARAMETERS
+.TP
+.B rotaryunwrap.\fIN\fB.wrap-period\fR float rw \fR(default: \fI360.0\fR)
+Rotary wrap period in degrees
+.SH AUTHOR
+
+OpenAI
+.SH LICENSE
+
+GPL

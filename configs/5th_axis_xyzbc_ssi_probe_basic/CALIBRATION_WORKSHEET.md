@@ -972,3 +972,241 @@ Next minimal probing task:
 - run with `headheadkins.sim-bharm-enable = FALSE`
 - compare this B0 reference state with the earlier refined validation and the
   shifted targeted repeats before doing any retune
+
+Extended candidate full safe-grid validation:
+
+- TCPC config was restarted after a CNC hardware power cycle
+- extended kinematics pins were present and zero-defaulted at startup
+- candidate coefficients from
+  `configs/sim/head_head_5axis/head_head_short_probe_extended_candidate.hal`
+  were loaded manually
+- `headheadkins.sim-bharm-enable` was enabled only for the validation run and
+  disabled immediately afterward
+- program default was changed to `#711 = 13.0` for full safe-grid validation
+- the first run completed:
+  - B0 full C sweep
+  - B+30, B+60, B+90 safe C sweeps
+  - B-90 C0 and C45
+- the first run then stopped at the next point, `B-90 C90` pass 1, with:
+  `-U side touch did not record point data`
+- the probe was left beside/under the sphere; operator used MDI to move clear
+  and safe
+- candidate gate was disabled before recovery moves
+- added `#711 = 14.0` resume mode:
+  - starts with fresh `B0 C0`
+  - resumes at `B-90 C90`
+  - completes B-90, B-60, B-30, and final B0 full C closure
+  - increases candidate-validation side probe vector from `6 mm` to `8 mm`
+- resume run completed cleanly
+- machine ended idle at `B0 C0` above the sphere
+- candidate gate verified disabled after completion
+
+Extended candidate validation audit:
+
+- report:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_EXTENDED_CANDIDATE_VALIDATION_REPORT.md`
+- accepted candidate-on pass-2 rows:
+  - first segment: `409-471`
+  - resume segment: `473-529`
+- total accepted pass-2 rows after the baseline: `61`
+- nonzero-B validation rows: `42`
+- no expected safe-grid pass-2 points are missing
+- max pass-2 centering residuals: U `0.007500 mm`, V `0.015833 mm`
+- accepted corrected diameter range: `30.126621` to `30.265788 mm`
+- first segment nonzero-B RMS/max: `0.092310 / 0.179604 mm`
+- resume segment nonzero-B RMS/max: `0.091345 / 0.189695 mm`
+- combined per-segment-reference nonzero-B RMS/max:
+  `0.091875 / 0.189695 mm`
+- first segment B0 C0 first/last drift: `0.013651 mm`
+- resume segment B0 C0 first/last drift: `0.004489 mm`
+- worst measured candidate-on vectors:
+  - line `491`, `B-60 C180`:
+    `dX=-0.173795`, `dY=-0.073580`, `dZ=+0.019114`,
+    magnitude `0.189695 mm`
+  - line `445`, `B+60 C90`:
+    `dX=-0.091015`, `dY=+0.154723`, `dZ=-0.005878`,
+    magnitude `0.179604 mm`
+  - line `489`, `B-60 C90`:
+    `dX=-0.111678`, `dY=+0.127532`, `dZ=+0.030139`,
+    magnitude `0.172176 mm`
+  - line `431`, `B+30 C90`:
+    `dX=-0.052853`, `dY=+0.155606`, `dZ=+0.015937`,
+    magnitude `0.165108 mm`
+  - line `487`, `B-60 C45`:
+    `dX=-0.145588`, `dY=+0.053298`, `dZ=+0.004836`,
+    magnitude `0.155113 mm`
+- the extended candidate validates under the core `0.2 mm` target on the full
+  safe grid
+- it does not yet satisfy the secondary `0.1 mm` target everywhere
+- remaining error is concentrated around `B+60` and `B-60` with strong
+  C-dependence
+- tool state caveat:
+  - Probe Basic/UI displayed tool `0`
+  - program fallback logged `program_probe_tool_number=3`
+  - logged current tool number remained `0`
+  - logged probe calibration offset remained `0.134533`
+  - logged motion tool offsets remained zero
+  - current TCPC kinematics do not use tool length compensation, so this does
+    not invalidate this run
+  - fix tool state before short/long probe comparison or any TCPC tool-length
+    compensation validation
+
+Next offline work:
+
+- keep the extended candidate non-persistent and gated off
+- fold the accepted candidate-on validation rows into the offline analysis
+- refit/inspect residual patterns around `B+60` and `B-60`
+- decide whether a small second candidate is justified or whether this
+  candidate is the practical core-task solution
+- do not request another machine probing run until the validation rows have
+  been fully inspected
+
+Extended candidate second-correction offline refit:
+
+- report:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_EXTENDED_CANDIDATE_REFIT_REPORT.md`
+- new gated kinematics pins:
+  `headheadkins.bmid.base.*`, `.cosc.*`, `.sinc.*`, `.cos2c.*`, `.sin2c.*`
+- diagnostic HAL file:
+  `configs/sim/head_head_5axis/head_head_short_probe_extended_midb_candidate.hal`
+- the mid-B correction basis is `sin(2B)^2` multiplied by C harmonics, so it is
+  zero at `B0` and `B+/-90` and mainly targets `B+/-60`
+- validation-row refit metrics:
+  - no second correction: `0.091875 / 0.189695 mm`
+  - current B/B-C delta only: `0.079707 / 0.150897 mm`
+  - mid-B envelope only: `0.057441 / 0.110980 mm`
+  - current B/B-C delta plus mid-B envelope:
+    `0.051958 / 0.099935 mm`
+- worst selected diagnostic residuals after the offline fit:
+  - line `487`, `B-60 C45`: `0.099935 mm`
+  - line `503`, `B-30 C90`: `0.099413 mm`
+  - line `507`, `B-30 C225`: `0.097876 mm`
+  - line `491`, `B-60 C180`: `0.086384 mm`
+- holdout warning:
+  - segment holdouts predict up to `0.290769 mm`
+  - C-angle holdouts predict above `0.1 mm`
+  - do not persist this candidate from offline fitting alone
+- next confirmation pass:
+  - load the mid-B diagnostic HAL manually with the gate off
+  - run `tcpc_b_angle_scaling_diagnostic.ngc` in full safe-grid mode
+    `#711 = 13.0`
+  - keep B0 opening/closing C sweeps for session-local references
+  - disable the gate immediately after the run or on any stop
+  - restore/verify Tool 3 state before running, so later short/long probe
+    comparisons are clean
+
+Mid-B diagnostic confirmation result:
+
+- full safe-grid `#711 = 13.0` run completed
+- result rows: `530-649`
+- accepted pass-2 rows: `60`
+- nonzero-B rows used for same-C B0 comparison: `42`
+- gate disabled after run: `headheadkins.sim-bharm-enable = FALSE`
+- max accepted pass-2 centering residuals:
+  - U `0.018533 mm`
+  - V `0.024167 mm`
+- accepted corrected diameter range:
+  `30.124690` to `30.263203 mm`
+- B0 same-C drift:
+  - C0 first-to-last `0.022724 mm`
+  - largest same-C B0 drift C45 `0.039738 mm`
+- nonzero-B same-run same-C B0-reference RMS/max:
+  `0.062482 / 0.126795 mm`
+- improvement versus previous extended candidate validation:
+  `0.091875 / 0.189695 mm`
+- largest residuals:
+  - `B+90 C90`, line `581`: `0.126795 mm`
+  - `B-60 C45`, line `607`: `0.114689 mm`
+  - `B+90 C225`, line `585`: `0.111218 mm`
+  - `B-30 C225`, line `627`: `0.110927 mm`
+  - `B-30 C90`, line `623`: `0.101783 mm`
+- current decision:
+  - candidate meets the core `<0.2 mm` target with margin
+  - candidate is close to but not confirmed under the secondary `<0.1 mm` target
+  - because the worst remaining point is at `B+90`, a pure mid-B term cannot
+    remove all remaining error
+  - stop machine probing and continue offline fitting with the confirmation
+    rows included
+
+Balanced final short-probe candidate:
+
+- report:
+  `TCPC_SHORT_PROBE_BALANCED_FINAL_REPORT.md`
+- HAL:
+  `configs/sim/head_head_5axis/head_head_short_probe_balanced_final_candidate.hal`
+- rows used:
+  - `409-471`
+  - `473-529`
+  - `530-649`
+- correction strategy:
+  - keep C harmonics
+  - keep mid-B envelope
+  - rebalance only the existing B/B-C terms
+- offline predicted RMS/max:
+  - previous extended validation: `0.054489 / 0.108865 mm`
+  - mid-B confirmation: `0.053781 / 0.110879 mm`
+  - combined: `0.054136 / 0.110879 mm`
+- final short-probe test plan:
+  - run one full safe-grid pass with this balanced candidate
+  - keep `#711 = 13.0`
+  - disable `headheadkins.sim-bharm-enable` immediately after completion or any
+    stop
+  - if the run remains under `0.2 mm` and broadly matches `~0.11 mm` max, stop
+    TCPC probe refinement until the long stylus arrives
+
+Interrupted final-test note:
+
+- the final balanced-candidate run was stopped before the machine moved beyond
+  the opening `B0 C0` reference
+- the diagnostic gate was disabled after the stop and verified `FALSE`
+- appended rows `650-651` are only `B0 C0 pass 1/2`; exclude them from any
+  completed validation summary
+- rerun the final balanced-candidate full safe-grid test from the beginning
+  when returning to TCPC work
+
+Balanced final short-probe validation:
+
+- operator caveat:
+  - sphere may have shifted fractionally before the run
+  - spindle temperature was elevated from previous work
+  - B-axis-to-tool-tip length may have grown fractionally
+- result rows: `652-771`
+- accepted pass-2 rows: `60`
+- nonzero-B comparison rows: `42`
+- gate disabled after run and verified `FALSE`
+- max pass-2 centering residuals:
+  - U `0.019752 mm`
+  - V `0.011266 mm`
+- accepted corrected diameter range:
+  `30.129891` to `30.261487 mm`
+- B0 drift during run:
+  - C0 first-to-last `0.048338 mm`
+  - largest same-C drift C135 `0.051941 mm`
+- nonzero-B same-run same-C B0-reference RMS/max:
+  `0.055446 / 0.113585 mm`
+- largest residuals:
+  - `B+90 C90`, line `703`: `0.113585 mm`
+  - `B-30 C90`, line `745`: `0.100829 mm`
+  - `B-30 C225`, line `749`: `0.095843 mm`
+  - `B-60 C180`, line `733`: `0.091404 mm`
+  - `B-90 C270`, line `723`: `0.086605 mm`
+- current calibration decision:
+  - production accuracy requirement is met
+  - secondary `<0.1 mm` target is nearly met but not guaranteed with current
+    thermal/reference drift
+  - stop short-probe-only TCPC probing now
+  - next useful TCPC calibration pass is the future short/long probe
+    back-to-back after the long stylus arrives
+
+Post-TCPC short-probe plan:
+
+- production implementation work:
+  - finish full Probe Basic config with TCPC and TWP
+  - move useful calibration-overlay behavior into the production config
+  - tune servo speeds and accelerations
+  - clean up Probe Basic for the intended use case
+- future calibration work:
+  - repeat the same grid short/long back-to-back after the long probe arrives
+  - do not move the sphere between those runs
+  - use the change with tool length to identify alignment errors that cannot be
+    solved from short-probe data alone

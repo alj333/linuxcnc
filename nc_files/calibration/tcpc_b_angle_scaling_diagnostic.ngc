@@ -12,8 +12,11 @@
 (   8=tool-length baseline core; run short probe now, repeat with long probe later,)
 (   9=resume tool-length baseline after completed B0 reference,)
 (   10=C90/C270 supplemental tool-length coverage only,)
-(   11=resume C90/C270 supplement after completed B-60 C90/C270.)
-(4. Modes 0-6 use C quadrants only; modes 7-11 use extended C sweeps.)
+(   11=resume C90/C270 supplement after completed B-60 C90/C270,)
+(   12=extended TCPC candidate spot-check at worst current/residual poses,)
+(   13=full safe-grid extended TCPC candidate validation,)
+(   14=resume extended candidate full grid after B-90 C45 completed.)
+(4. Modes 0-6 use C quadrants only; modes 7-14 use extended C sweeps.)
 (5. B0 is probed only at open and close to reduce runtime.)
 
 (Sequence:)
@@ -104,7 +107,11 @@ o<probe_cal_offset_default> endif
 #708 = 1.0            (reserved)
 #709 = 90.0           (reserved)
 #710 = 0.0            (reserved)
-#711 = 11.0           (C coverage; 11=resume supplement from B-30)
+#711 = 13.0           (C coverage; 13=full extended candidate validation)
+
+o<extended_candidate_side_probe_margin> if [#711 GT 12.5]
+  #511 = 8.0          (extra side-probe margin for candidate validation)
+o<extended_candidate_side_probe_margin> endif
 
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
@@ -682,6 +689,9 @@ o<tcpc_measure_pose> endsub
 (#711=7 runs B0/B+10/B-10/B+30/B-30 at C every 45 degrees.)
 (#711=8 runs the tool-length baseline core.)
 (#711=9 resumes the tool-length baseline with a fresh B0 C0 center.)
+(#711=12 runs a focused extended-candidate spot-check.)
+(#711=13 runs full safe-grid extended-candidate validation.)
+(#711=14 resumes the full safe-grid validation after B-90 C45.)
 #712 = 0.0
 #713 = 0.0
 o<c0_requested_low_mode> if [#711 LT 1.5]
@@ -846,6 +856,42 @@ o<tcpc_tool_length_non_b0_groups> sub
   o<tcpc_tool_length_c_sweep_at_b> call [0.0] [0.0]
 o<tcpc_tool_length_non_b0_groups> endsub
 
+o<tcpc_full_safe_grid_non_b0_groups> sub
+  (Positive B groups, sweeping all safe C points at each B.)
+  o<tcpc_tool_length_c_sweep_at_b> call [30.0] [1.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [60.0] [1.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [90.0] [1.0]
+
+  (Negative B groups, sweeping all safe C points at each B.)
+  o<tcpc_tool_length_c_sweep_at_b> call [-90.0] [1.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [-60.0] [1.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [-30.0] [1.0]
+
+  (Final B0 full C closure.)
+  o<tcpc_tool_length_c_sweep_at_b> call [0.0] [1.0]
+o<tcpc_full_safe_grid_non_b0_groups> endsub
+
+o<tcpc_full_safe_grid_resume_after_bminus90_c45> sub
+  (Resume after B-90 C45 completed and B-90 C90 missed first -U touch.)
+  (Operator start: B0 C0, 3-8 mm above the sphere.)
+  (Fresh B0 C0 gives a current center without repeating the completed grid.)
+  o<tcpc_measure_pose> call [0.0] [0.0]
+
+  (Finish the interrupted B-90 C group from C90 onward.)
+  o<tcpc_measure_pose> call [-90.0] [90.0]
+  o<tcpc_measure_pose> call [-90.0] [180.0]
+  o<tcpc_measure_pose> call [-90.0] [225.0]
+  o<tcpc_measure_pose> call [-90.0] [270.0]
+  o<tcpc_measure_pose> call [-90.0] [0.0]
+
+  (Remaining negative B groups.)
+  o<tcpc_tool_length_c_sweep_at_b> call [-60.0] [1.0]
+  o<tcpc_tool_length_c_sweep_at_b> call [-30.0] [1.0]
+
+  (Final B0 full C closure.)
+  o<tcpc_tool_length_c_sweep_at_b> call [0.0] [1.0]
+o<tcpc_full_safe_grid_resume_after_bminus90_c45> endsub
+
 o<tcpc_tool_length_c90_c270_at_b> sub
   #<sweep_b> = #1
 
@@ -915,6 +961,81 @@ o<run_tool_length_c90_c270_after_bminus60> if [#711 GT 10.5]
     o<tcpc_tool_length_c90_c270_after_bminus60> call
   o<run_tool_length_c90_c270_after_bminus60_only> endif
 o<run_tool_length_c90_c270_after_bminus60> endif
+
+o<run_extended_candidate_spot_check> if [#711 GT 11.5]
+  o<run_extended_candidate_spot_check_only> if [#711 LT 12.5]
+    (Focused validation for the short-probe extended TCPC candidate.)
+    (Run only after the extended candidate HAL is loaded and deliberately)
+    (enabled. This checks current worst vectors plus fitted residuals.)
+    (Safety: no C135/C315 poses. C45/C225/C270 were previously confirmed clear.)
+
+    (C0 high-B correction check.)
+    o<tcpc_measure_pose> call [0.0] [0.0]
+    o<tcpc_measure_pose> call [90.0] [0.0]
+    o<tcpc_measure_pose> call [-90.0] [0.0]
+    o<tcpc_measure_pose> call [0.0] [0.0]
+
+    (C45 spot checks.)
+    o<tcpc_measure_pose> call [0.0] [45.0]
+    o<tcpc_measure_pose> call [30.0] [45.0]
+    o<tcpc_measure_pose> call [-60.0] [45.0]
+    o<tcpc_measure_pose> call [0.0] [45.0]
+
+    (C90 high-B and residual checks.)
+    o<tcpc_measure_pose> call [0.0] [90.0]
+    o<tcpc_measure_pose> call [30.0] [90.0]
+    o<tcpc_measure_pose> call [60.0] [90.0]
+    o<tcpc_measure_pose> call [90.0] [90.0]
+    o<tcpc_measure_pose> call [-60.0] [90.0]
+    o<tcpc_measure_pose> call [-90.0] [90.0]
+    o<tcpc_measure_pose> call [0.0] [90.0]
+
+    (C180 negative/high-B checks.)
+    o<tcpc_measure_pose> call [0.0] [180.0]
+    o<tcpc_measure_pose> call [60.0] [180.0]
+    o<tcpc_measure_pose> call [-60.0] [180.0]
+    o<tcpc_measure_pose> call [-90.0] [180.0]
+    o<tcpc_measure_pose> call [0.0] [180.0]
+
+    (C225 spot check.)
+    o<tcpc_measure_pose> call [0.0] [225.0]
+    o<tcpc_measure_pose> call [90.0] [225.0]
+    o<tcpc_measure_pose> call [0.0] [225.0]
+
+    (C270 side checks.)
+    o<tcpc_measure_pose> call [0.0] [270.0]
+    o<tcpc_measure_pose> call [60.0] [270.0]
+    o<tcpc_measure_pose> call [90.0] [270.0]
+    o<tcpc_measure_pose> call [-60.0] [270.0]
+    o<tcpc_measure_pose> call [0.0] [270.0]
+
+    o<tcpc_measure_pose> call [0.0] [0.0]
+  o<run_extended_candidate_spot_check_only> endif
+o<run_extended_candidate_spot_check> endif
+
+o<run_extended_candidate_full_safe_grid> if [#711 GT 12.5]
+  o<run_extended_candidate_full_safe_grid_only> if [#711 LT 13.5]
+    (Full safe-grid validation for the short-probe extended TCPC candidate.)
+    (Run only after the extended candidate HAL is loaded and deliberately)
+    (enabled. This repeats the full short-probe safe coverage in one cycle.)
+    (B0 runs all C45 increments. Nonzero B skips only C135 and C315.)
+    (C45 and C225 are included; C135/C315 are not used at tilted B.)
+
+    (Opening B0 full C reference.)
+    o<tcpc_tool_length_c_sweep_at_b> call [0.0] [1.0]
+
+    o<tcpc_full_safe_grid_non_b0_groups> call
+  o<run_extended_candidate_full_safe_grid_only> endif
+o<run_extended_candidate_full_safe_grid> endif
+
+o<run_extended_candidate_full_safe_grid_resume> if [#711 GT 13.5]
+  o<run_extended_candidate_full_safe_grid_resume_only> if [#711 LT 14.5]
+    (Resume the full safe-grid validation after the first B-90 C90 miss.)
+    (Run only after repositioning to B0 C0 above the sphere and enabling the)
+    (extended candidate.)
+    o<tcpc_full_safe_grid_resume_after_bminus90_c45> call
+  o<run_extended_candidate_full_safe_grid_resume_only> endif
+o<run_extended_candidate_full_safe_grid_resume> endif
 
 G90
 F#705

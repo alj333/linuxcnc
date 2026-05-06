@@ -4872,3 +4872,223 @@ Completed `#711 = 11.0` continuation audit:
   rows do not show the large diameter/residual signature seen in the failed
   `B-60 C0 pass 1` row
 - continue excluding row `395` from fitting
+
+Extended candidate validation handoff:
+
+- added gated kinematics support for the short-probe extended candidate:
+  `headheadkins.charm.*`, `headheadkins.bcross.sinb-sin2c.*`, and
+  `headheadkins.bcross.sinb-cos2c.*`
+- candidate HAL file:
+  `configs/sim/head_head_5axis/head_head_short_probe_extended_candidate.hal`
+- full validation report:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_EXTENDED_CANDIDATE_VALIDATION_REPORT.md`
+- candidate full safe-grid run completed in two parts:
+  - first segment pass-2 rows `409-471`
+  - resume segment pass-2 rows `473-529`
+- first segment aborted at `B-90 C90` pass 1 with
+  `-U side touch did not record point data`; resume mode `#711=14` completed
+  from that point using an `8 mm` side probe vector
+- accepted candidate-on pass-2 rows: `61`
+- nonzero-B rows: `42`
+- no expected safe-grid pass-2 points are missing
+- candidate-on nonzero-B RMS/max using per-segment B0 references:
+  `0.091875 / 0.189695 mm`
+- worst vector: line `491`, `B-60 C180`,
+  `dX=-0.173795`, `dY=-0.073580`, `dZ=+0.019114`,
+  magnitude `0.189695 mm`
+- machine ended idle at `B0 C0` above the sphere
+- `headheadkins.sim-bharm-enable` was disabled after the run and verified
+  `FALSE`
+- UI/current tool showed tool `0`, but the program fallback logged probe tool
+  `3`, probe calibration `0.134533`, and zero motion tool offsets; this does
+  not invalidate this TCPC run because tool length compensation is not used by
+  the current kinematics
+- next work is offline analysis of rows `409-529`, especially the remaining
+  `B+60` and `B-60` C-dependent residuals; do not request another machine
+  probing cycle until that is complete
+
+Offline refit result, powered-off night session:
+
+- added zero-default, gated mid-B correction support in `headheadkins`:
+  `headheadkins.bmid.base.*`, `.cosc.*`, `.sinc.*`, `.cos2c.*`, `.sin2c.*`
+- the mid-B envelope is `sin(2B)^2`; it is exactly zero at `B0` and `B+/-90`
+  and mainly affects the remaining mid-angle B region
+- generated report:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_EXTENDED_CANDIDATE_REFIT_REPORT.md`
+- generated diagnostic HAL:
+  `configs/sim/head_head_5axis/head_head_short_probe_extended_midb_candidate.hal`
+- the current validated extended candidate remains a good core-task solution:
+  same-segment same-C residual RMS/max `0.091875 / 0.189695 mm`
+- offline second-correction fits:
+  - current B/B-C delta only: `0.079707 / 0.150897 mm`
+  - mid-B envelope only: `0.057441 / 0.110980 mm`
+  - current B/B-C delta plus mid-B envelope:
+    `0.051958 / 0.099935 mm`
+- the sub-`0.1 mm` result is not proven robust:
+  - first/resume segment holdouts predict up to `0.290769` and `0.215730 mm`
+  - C-angle holdouts still predict above `0.1 mm`
+- conclusion: under `0.1 mm` is viable on the measured short-probe validation
+  grid, but the mid-B candidate must be treated as a confirmation candidate,
+  not a production calibration
+- `tcpc_b_angle_scaling_diagnostic.ngc` default is back to `#711 = 13.0` for a
+  fresh full safe-grid validation; `#711 = 14.0` remains the resume mode
+- next machine task when powered and thermally stable:
+  - start the TCPC Probe Basic config
+  - fix/verify LinuxCNC/Probe Basic tool state shows Tool 3 with the short probe
+  - load `head_head_short_probe_extended_midb_candidate.hal` while idle; keep
+    `headheadkins.sim-bharm-enable = FALSE` until ready
+  - run the full safe-grid program with the gate enabled only for the run
+  - disable `headheadkins.sim-bharm-enable` immediately after completion or any
+    stop/error
+
+Mid-B diagnostic confirmation run:
+
+- machine restarted on 2026-05-06, Tool 3 short probe loaded, XYZBC homed,
+  positioned at `B0 C0` above the sphere
+- loaded:
+  `configs/sim/head_head_5axis/head_head_short_probe_extended_midb_candidate.hal`
+- reloaded:
+  `nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`
+- confirmed before cycle start:
+  - `headheadkins.sim-bharm-enable = TRUE`
+  - tool in spindle `3`
+  - program default `#711 = 13.0`
+- run completed without reported probe stops
+- immediately after completion, disabled and verified:
+  `headheadkins.sim-bharm-enable = FALSE`
+- new result rows: `530-649`
+- accepted pass-2 rows: `60`
+- nonzero-B comparison rows: `42`
+- max pass-2 centering residuals: U `0.018533 mm`, V `0.024167 mm`
+- accepted corrected diameter range: `30.124690` to `30.263203 mm`
+- B0 same-C reference drift over the run:
+  - C0 first-to-last drift `0.022724 mm`
+  - largest same-C B0 opening/closing drift: C45 `0.039738 mm`
+- same-run same-C B0-reference nonzero-B metrics:
+  `0.062482 / 0.126795 mm`
+- this is a clear improvement versus the prior extended candidate
+  `0.091875 / 0.189695 mm`, but it does not confirm a hard `<0.1 mm` max
+- worst mid-B confirmation vectors:
+  - line `581`, `B+90 C90`:
+    `dX=-0.002006`, `dY=-0.125467`, `dZ=-0.018198`,
+    magnitude `0.126795 mm`
+  - line `607`, `B-60 C45`:
+    `dX=-0.102561`, `dY=-0.050068`, `dZ=-0.011313`,
+    magnitude `0.114689 mm`
+  - line `585`, `B+90 C225`:
+    `dX=+0.081285`, `dY=+0.075206`, `dZ=+0.010312`,
+    magnitude `0.111218 mm`
+  - line `627`, `B-30 C225`:
+    `dX=+0.100822`, `dY=+0.042838`, `dZ=+0.017454`,
+    magnitude `0.110927 mm`
+  - line `623`, `B-30 C90`:
+    `dX=+0.066635`, `dY=-0.076685`, `dZ=-0.006236`,
+    magnitude `0.101783 mm`
+- group metrics after confirmation:
+  - B+90: `0.084117 / 0.126795 mm`
+  - B-30: `0.073964 / 0.110927 mm`
+  - B-60: `0.060289 / 0.114689 mm`
+  - B+60: `0.039074 / 0.053072 mm`
+- interpretation:
+  - the mid-B diagnostic layer is directionally useful and should remain the
+    current best short-probe candidate
+  - the remaining max error is now partly at `B+90`, where `sin(2B)^2` is zero;
+    another mid-B-only refit cannot correct that
+  - do not run another full probing pass immediately; fold this confirmation
+    data into offline analysis first
+
+Balanced final short-probe candidate:
+
+- report:
+  `configs/5th_axis_xyzbc_ssi_probe_basic/TCPC_SHORT_PROBE_BALANCED_FINAL_REPORT.md`
+- diagnostic HAL:
+  `configs/sim/head_head_5axis/head_head_short_probe_balanced_final_candidate.hal`
+- fit input:
+  - previous extended validation rows `409-471` and `473-529`
+  - mid-B confirmation rows `530-649`
+- fitting choice:
+  - keep validated `charm.*` terms
+  - keep confirmed `bmid.*` terms
+  - rebalance only existing B/B-C terms
+  - do not add more correction families before long-probe data exists
+- offline predicted metrics:
+  - previous validation rows: `0.054489 / 0.108865 mm`
+  - mid-B confirmation rows: `0.053781 / 0.110879 mm`
+  - combined: `0.054136 / 0.110879 mm`
+- this is the final short-probe-only confidence candidate, not a sub-`0.1 mm`
+  claim
+- run one final full safe-grid pass with this balanced candidate; if it lands
+  under `0.2 mm` and close to the predicted `~0.11 mm` max, stop TCPC probing
+  until the longer stylus arrives
+
+Final balanced candidate run interrupted:
+
+- operator stopped the final balanced-candidate validation to switch to a
+  required 3-axis run
+- `headheadkins.sim-bharm-enable` was disabled immediately and verified
+  `FALSE`
+- LinuxCNC was idle/in-position after the stop
+- only two new result rows were appended after the completed mid-B confirmation
+  block:
+  - line `650`: `B0 C0 pass 1`
+  - line `651`: `B0 C0 pass 2`
+- do not use rows `650-651` as a completed balanced-candidate validation
+- when returning to TCPC, reload the balanced final candidate HAL, enable the
+  gate only for the run, and restart the full safe-grid validation from the
+  beginning
+
+Balanced final short-probe candidate validation:
+
+- operator noted before/after the run:
+  - the sphere may have moved fractionally before this run
+  - spindle temperature was still elevated from previous work
+  - B-axis-to-tool-tip length may have grown fractionally from heat
+- balanced final candidate was reloaded and run as a full safe-grid
+  validation
+- after completion, `headheadkins.sim-bharm-enable` was disabled and verified
+  `FALSE`
+- result rows: `652-771`
+- accepted pass-2 rows: `60`
+- nonzero-B same-C B0 comparison rows: `42`
+- max accepted pass-2 centering residuals: U `0.019752 mm`, V `0.011266 mm`
+- accepted corrected diameter range: `30.129891` to `30.261487 mm`
+- B0 same-C drift during the run:
+  - C0 first-to-last drift `0.048338 mm`
+  - largest same-C drift C135 `0.051941 mm`
+  - this drift is consistent with the reported warm spindle / possible thermal
+    growth caveat
+- same-run same-C B0-reference nonzero-B metrics:
+  `0.055446 / 0.113585 mm`
+- worst residuals:
+  - line `703`, `B+90 C90`: `0.113585 mm`
+  - line `745`, `B-30 C90`: `0.100829 mm`
+  - line `749`, `B-30 C225`: `0.095843 mm`
+  - line `733`, `B-60 C180`: `0.091404 mm`
+  - line `723`, `B-90 C270`: `0.086605 mm`
+- group metrics:
+  - B+90: `0.062910 / 0.113585 mm`
+  - B-30: `0.068710 / 0.100829 mm`
+  - B-60: `0.062106 / 0.091404 mm`
+  - B+60: `0.039242 / 0.059165 mm`
+- decision:
+  - balanced final candidate confirms production-required TCPC accuracy with
+    margin under the `0.2 mm` target
+  - it is close to, but not guaranteed below, the secondary `0.1 mm` target
+    under thermal/reference drift
+  - stop short-probe TCPC calibration now
+  - revisit refinement only after the long probe arrives and short/long
+    back-to-back data can identify tool-length-dependent alignment terms
+
+Future work split:
+
+- after the final short-probe confidence pass, move machine focus to production
+  config work:
+  - full Probe Basic config with TCPC and TWP
+  - integrate the behavior out of the calibration overlay
+  - servo tuning speeds and accelerations
+  - Probe Basic workflow/setup cleanup
+- revisit TCPC refinement when the long probe arrives:
+  - run short and long probe back-to-back without moving the sphere
+  - compare residual change per added probe length
+  - use that to separate tool-length-dependent alignment errors from
+    machine-fixed B/C harmonic errors
