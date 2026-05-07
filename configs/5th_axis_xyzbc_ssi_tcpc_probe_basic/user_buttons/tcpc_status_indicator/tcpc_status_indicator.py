@@ -14,7 +14,7 @@ class UserButton(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("TCPC_STATUS_INDICATOR")
-        self.setFixedHeight(30)
+        self.setFixedHeight(20)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

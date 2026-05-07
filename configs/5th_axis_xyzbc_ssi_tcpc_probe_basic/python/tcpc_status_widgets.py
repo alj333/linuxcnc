@@ -11,6 +11,7 @@ from qtpy.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -202,20 +203,20 @@ class TcpcStatusLed(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.reader = TcpcStatusReader()
-        self.setFixedHeight(22)
+        self.setFixedHeight(18)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.led = QLabel()
-        self.led.setFixedSize(12, 12)
+        self.led.setFixedSize(9, 9)
         self.label = QLabel("TCPC --")
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.label.setStyleSheet(
-            "QLabel { color: #d7dee8; font: 700 8pt 'DejaVu Sans'; padding: 0; }"
+            "QLabel { color: #d7dee8; font: 700 7pt 'DejaVu Sans'; padding: 0; }"
         )
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 0, 4, 0)
-        layout.setSpacing(5)
+        layout.setContentsMargins(2, 0, 2, 0)
+        layout.setSpacing(4)
         layout.addStretch(1)
         layout.addWidget(self.led)
         layout.addWidget(self.label)
@@ -255,28 +256,42 @@ class TcpcStatusTab(QWidget):
         self.setObjectName("TCPC_STATUS")
         self.setProperty("sidebar", False)
 
-        self.strip = TcpcStatusStrip()
+        self.strip = TcpcStatusStrip(compact=True)
         self.fields = {}
         self.rotary_fields = {}
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(14)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        outer_layout.addWidget(scroll)
+
+        content = QWidget()
+        content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        scroll.setWidget(content)
+
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(7)
 
         title = QLabel("TCPC / TWP STATUS")
-        title.setStyleSheet("font: 700 18pt 'DejaVu Sans'; color: #f1f5f9;")
+        title.setStyleSheet("font: 700 14pt 'DejaVu Sans'; color: #f1f5f9;")
         layout.addWidget(title)
         layout.addWidget(self.strip)
 
         frame = QFrame()
         frame.setStyleSheet(
             "QFrame { background-color: #111827; border: 1px solid #2f3b4a; border-radius: 8px; }"
-            "QLabel { color: #d7dee8; font: 12pt 'DejaVu Sans'; }"
+            "QLabel { color: #d7dee8; font: 10pt 'DejaVu Sans'; }"
         )
         grid = QGridLayout(frame)
-        grid.setContentsMargins(14, 12, 14, 12)
-        grid.setHorizontalSpacing(18)
-        grid.setVerticalSpacing(8)
+        grid.setContentsMargins(10, 8, 10, 8)
+        grid.setHorizontalSpacing(14)
+        grid.setVerticalSpacing(3)
         layout.addWidget(frame)
 
         rows = [
@@ -297,23 +312,26 @@ class TcpcStatusTab(QWidget):
             ("TCPC entry C", "tcpc_entry_c"),
             ("Refined fit", "refined_fit_enabled"),
         ]
-        for row, (label, key) in enumerate(rows):
+        split_at = (len(rows) + 1) // 2
+        for index, (label, key) in enumerate(rows):
+            row = index if index < split_at else index - split_at
+            col = 0 if index < split_at else 2
             name = QLabel(label)
             value = QLabel("--")
             value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            grid.addWidget(name, row, 0)
-            grid.addWidget(value, row, 1)
+            grid.addWidget(name, row, col)
+            grid.addWidget(value, row, col + 1)
             self.fields[key] = value
 
         rotary_frame = QFrame()
         rotary_frame.setStyleSheet(
             "QFrame { background-color: #111827; border: 1px solid #2f3b4a; border-radius: 8px; }"
-            "QLabel { color: #d7dee8; font: 11pt 'DejaVu Sans'; }"
+            "QLabel { color: #d7dee8; font: 10pt 'DejaVu Sans'; }"
         )
         rotary_grid = QGridLayout(rotary_frame)
-        rotary_grid.setContentsMargins(14, 12, 14, 12)
-        rotary_grid.setHorizontalSpacing(18)
-        rotary_grid.setVerticalSpacing(6)
+        rotary_grid.setContentsMargins(10, 8, 10, 8)
+        rotary_grid.setHorizontalSpacing(14)
+        rotary_grid.setVerticalSpacing(3)
         layout.addWidget(rotary_frame)
 
         for col, label in ((1, "B"), (2, "C")):
@@ -340,15 +358,10 @@ class TcpcStatusTab(QWidget):
                 rotary_grid.addWidget(value, row, col)
                 self.rotary_fields[f"{axis}_{key}"] = (value, formatter)
 
-        note = QLabel(
-            "Production TCPC: G43.4 enters after homing, G49.1 exits only after G69 "
-            "and after B/C return to the TCPC entry orientation. Apply G43 Hn before "
-            "TCPC; G43/G49 are blocked while TCPC is active."
-        )
+        note = QLabel("G43 Hn before G43.4. Use G69, return B/C, then G49.1 before G49.")
         note.setWordWrap(True)
-        note.setStyleSheet("color: #fbbf24; font: 11pt 'DejaVu Sans';")
+        note.setStyleSheet("color: #fbbf24; font: 9pt 'DejaVu Sans';")
         layout.addWidget(note)
-        layout.addStretch(1)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_status)
