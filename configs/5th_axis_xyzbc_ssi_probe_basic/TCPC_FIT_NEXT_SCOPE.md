@@ -64,9 +64,13 @@ Live checks completed on 2026-05-07:
   and manual recovery with `G0 B0 C0`, `G49.1`, then `G49` clears cleanly.
 - unsetting `ON_ABORT_COMMAND` eliminated the earlier unreliable
   `Oon_abort` lookup error during the guard smoke test.
-- after recovery, T3 may remain the current tool, but active
-  `motion.tooloffset.*` must be zero/G49 unless the program explicitly applies
-  `G43 Hn`.
+- after manual TCPC recovery, T3 may remain the current tool while active
+  `motion.tooloffset.*` is zero/G49 if the operator finished with `G49`.
+- on fresh Probe Basic startup after all axes are homed, the tool table plugin
+  may intentionally restore the remembered spindle tool with `M61 Qn G43`.
+  Keep this behavior for crash prevention when a physical tool is still loaded;
+  TCPC checks must use live `motion.tooloffset.*`/G43 state as the source of
+  truth before `G43.4`.
 
 Before production release, still cover these items:
 

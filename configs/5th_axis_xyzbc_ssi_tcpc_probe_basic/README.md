@@ -243,6 +243,19 @@ Follow-up recovery/status check, 2026-05-07 21:02 +07:
   production TCPC must treat active `motion.tooloffset.*`/G43 state as the
   source of truth before `G43.4`
 
+Fresh startup/homing tool-restore check, 2026-05-07 21:10 +07:
+
+- after a clean TCPC Probe Basic restart and homing, Probe Basic's tool table
+  plugin restored the remembered spindle tool by issuing `M61 Q3 G43`
+- live state became `tool_in_spindle = 3`, modal `G43`, and
+  `motion.tooloffset.z = 128.6067` while TCPC remained off
+- this is desired production safety behavior: if the machine is powered up with
+  a physical tool still in the spindle, startup/homing should restore tool
+  compensation before normal operator commands can crash the loaded tool
+- do not disable `remember_tool_in_spindle` for the production TCPC config;
+  instead, TCPC programs and checks must verify the live active TLO before
+  `G43.4` and keep all `G43`/`G49` changes outside active TCPC
+
 ## Pause Status - 2026-04-27 10:50 +07
 
 TCPC work was paused so the machine can be prepared for later 3-axis work.
