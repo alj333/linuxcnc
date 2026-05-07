@@ -22,6 +22,11 @@ def default_tcpc_enabled():
     return value not in ("0", "false", "no", "off")
 
 
+def tcpc_tool_length_guard_enabled():
+    value = os.environ.get("HEADHEAD_TWP_TOOL_LENGTH_GUARD", "0").strip().lower()
+    return value not in ("0", "false", "no", "off")
+
+
 def rotate_y(angle_deg, vec):
     angle = math.radians(angle_deg)
     c = math.cos(angle)
@@ -40,6 +45,10 @@ def rotate_z(angle_deg, vec):
 
 def vec_add(a, b):
     return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
+
+
+def vec_sub(a, b):
+    return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
 
 
 def vec_scale(scale, vec):
@@ -72,6 +81,9 @@ class HeadHeadTwpState:
         # configs can start fail-safe with HEADHEAD_TWP_DEFAULT_TCPC=0.
         self.default_tcpc_enabled = default_tcpc_enabled()
         self.tcpc_enabled = self.default_tcpc_enabled
+        self.tcpc_tool_length_guard = tcpc_tool_length_guard_enabled()
+        self.tcpc_origin = (0.0, 0.0, 0.0)
+        self.tcpc_entry_bc = (0.0, 0.0)
 
     def _pin_bit_in(self, name):
         self.comp.newpin(name, hal.HAL_BIT, hal.HAL_IN)
@@ -101,6 +113,9 @@ class HeadHeadTwpState:
 
         self._pin_float_in("b_zero_offset")
         self._pin_float_in("c_zero_offset")
+        self._pin_bit_in("use_external_tool_offset")
+        for axis in ("x", "y", "z"):
+            self._pin_float_in(f"external_tool_offset_{axis}")
         self._pin_float_in("requested_b_angle")
         self._pin_float_in("requested_c_angle")
         self._pin_float_in("requested_normal_rotation")
@@ -126,11 +141,15 @@ class HeadHeadTwpState:
 
         for axis in ("x", "y", "z"):
             self._pin_float_out(f"current_tool_{axis}")
+            self._pin_float_out(f"current_tcp_{axis}")
             self._pin_float_out(f"twp_origin_{axis}")
+            self._pin_float_out(f"tcpc_origin_{axis}")
 
         self._pin_float_out("twp_b_angle")
         self._pin_float_out("twp_c_angle")
         self._pin_float_out("twp_normal_rotation")
+        self._pin_float_out("tcpc_entry_b_angle")
+        self._pin_float_out("tcpc_entry_c_angle")
 
         for vec_name in ("plane_x", "plane_y", "plane_z"):
             for axis in ("x", "y", "z"):
@@ -142,6 +161,7 @@ class HeadHeadTwpState:
         self._pin_bit_out("active")
         self._pin_bit_out("motion_enabled")
         self._pin_bit_out("tcpc_enabled")
+        self._pin_bit_out("tcpc_tool_length_guard")
         self._pin_s32_out("state_code")
 
     def _get(self, name):
@@ -168,6 +188,15 @@ class HeadHeadTwpState:
         )
 
     def _tool_offset_world(self, b_cmd, c_cmd):
+        if bool(self.comp["use_external_tool_offset"]):
+            external_offset = (
+                self._get("external_tool_offset_x"),
+                self._get("external_tool_offset_y"),
+                self._get("external_tool_offset_z"),
+            )
+            if any(abs(value) > 1e-9 for value in external_offset):
+                return external_offset
+
         b_eff, c_eff = self._effective_angles(b_cmd, c_cmd)
         c_to_b = self._combined_c_to_b()
         b_to_tool = self._combined_b_to_tool()
@@ -188,6 +217,13 @@ class HeadHeadTwpState:
         x, y, z, b, c = self._current_joint_pose()
         tool_offset = self._tool_offset_world(b, c)
         return vec_add((x, y, z), tool_offset), (b, c)
+
+    def _current_tcp_pose(self):
+        current_tool_xyz, current_bc = self._current_tool_pose()
+        if self.tcpc_enabled:
+            return vec_sub(current_tool_xyz, self.tcpc_origin), current_bc
+        x, y, z, _, _ = self._current_joint_pose()
+        return (x, y, z), current_bc
 
     def _plane_axes(self, b_deg, c_deg, normal_rotation):
         b_eff, c_eff = self._effective_angles(b_deg, c_deg)
@@ -236,6 +272,8 @@ class HeadHeadTwpState:
 
     def _clear_for_machine_reset(self):
         self._clear_state()
+        self.tcpc_origin = (0.0, 0.0, 0.0)
+        self.tcpc_entry_bc = (0.0, 0.0)
         # Reset to the configured startup mode after estop/off.
         self.tcpc_enabled = self.default_tcpc_enabled
 
@@ -257,17 +295,24 @@ class HeadHeadTwpState:
         if self._rising_edge("cmd_set_normal_rotation"):
             self.normal_rotation = self._get("requested_normal_rotation")
 
+        current_tool_xyz, current_bc = self._current_tool_pose()
+        current_tcp_xyz, _ = self._current_tcp_pose()
+
         if self._rising_edge("cmd_enable_tcpc"):
+            if not self.tcpc_enabled:
+                self.tcpc_origin = self._tool_offset_world(current_bc[0], current_bc[1])
+                self.tcpc_entry_bc = current_bc
             self.tcpc_enabled = True
 
         if self._rising_edge("cmd_disable_tcpc"):
             self.tcpc_enabled = False
             self.motion_enabled = False
-
-        current_tool_xyz, current_bc = self._current_tool_pose()
+            self.tcpc_origin = (0.0, 0.0, 0.0)
+            self.tcpc_entry_bc = (0.0, 0.0)
+            current_tcp_xyz, _ = self._current_tcp_pose()
 
         if self._rising_edge("cmd_set_origin_from_current"):
-            self.twp_origin = current_tool_xyz
+            self.twp_origin = current_tcp_xyz
             self.origin_defined = True
 
         if self._rising_edge("cmd_set_orientation_from_current"):
@@ -275,13 +320,13 @@ class HeadHeadTwpState:
             self.orientation_defined = True
 
         if self._rising_edge("cmd_set_from_current"):
-            self.twp_origin = current_tool_xyz
+            self.twp_origin = current_tcp_xyz
             self.twp_bc = current_bc
             self.origin_defined = True
             self.orientation_defined = True
 
         if self._rising_edge("cmd_set_from_current_and_requested"):
-            self.twp_origin = current_tool_xyz
+            self.twp_origin = current_tcp_xyz
             self.twp_bc = (
                 self._get("requested_b_angle"),
                 self._get("requested_c_angle"),
@@ -312,6 +357,7 @@ class HeadHeadTwpState:
 
     def _update_outputs(self):
         current_tool_xyz, _ = self._current_tool_pose()
+        current_tcp_xyz, _ = self._current_tcp_pose()
         plane_x, plane_y, plane_z = self._plane_axes(
             self.twp_bc[0], self.twp_bc[1], self.normal_rotation
         )
@@ -319,13 +365,21 @@ class HeadHeadTwpState:
         self.comp["current_tool_x"] = current_tool_xyz[0]
         self.comp["current_tool_y"] = current_tool_xyz[1]
         self.comp["current_tool_z"] = current_tool_xyz[2]
+        self.comp["current_tcp_x"] = current_tcp_xyz[0]
+        self.comp["current_tcp_y"] = current_tcp_xyz[1]
+        self.comp["current_tcp_z"] = current_tcp_xyz[2]
 
         self.comp["twp_origin_x"] = self.twp_origin[0]
         self.comp["twp_origin_y"] = self.twp_origin[1]
         self.comp["twp_origin_z"] = self.twp_origin[2]
+        self.comp["tcpc_origin_x"] = self.tcpc_origin[0]
+        self.comp["tcpc_origin_y"] = self.tcpc_origin[1]
+        self.comp["tcpc_origin_z"] = self.tcpc_origin[2]
         self.comp["twp_b_angle"] = self.twp_bc[0]
         self.comp["twp_c_angle"] = self.twp_bc[1]
         self.comp["twp_normal_rotation"] = self.normal_rotation
+        self.comp["tcpc_entry_b_angle"] = self.tcpc_entry_bc[0]
+        self.comp["tcpc_entry_c_angle"] = self.tcpc_entry_bc[1]
 
         self.comp["plane_x_x"] = plane_x[0]
         self.comp["plane_x_y"] = plane_x[1]
@@ -342,6 +396,7 @@ class HeadHeadTwpState:
         self.comp["valid"] = self.origin_defined and self.orientation_defined
         self.comp["motion_enabled"] = self.motion_enabled
         self.comp["tcpc_enabled"] = self.tcpc_enabled
+        self.comp["tcpc_tool_length_guard"] = self.tcpc_tool_length_guard
         self.comp["state_code"] = self._state_code()
 
     def run(self):

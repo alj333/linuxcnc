@@ -346,9 +346,9 @@ B-axis vector probing rule:
     `309 mm` B-to-tip lever arm
   - conclusion: trust the encoder data; it exposed that LinuxCNC B backlash
     compensation was shifting the rotary output position in the TCPC config
-  - TCPC test config now sets B and C backlash compensation to zero; restart
-    LinuxCNC and rerun the B0 approach/reversal diagnostic before changing TCPC
-    geometry
+  - SSI Probe Basic configs now set B and C backlash compensation to zero;
+    restart LinuxCNC and rerun the B0 approach/reversal diagnostic before
+    changing TCPC geometry
   - post-restart rerun confirmed the fix: direct B SSI zeroed-position split
     from `B+5 -> B0` versus `B-5 -> B0` was `0.000000 deg`, raw SSI split was
     `0.0 counts`, and accepted sphere center split dropped to `0.004201 mm`
@@ -534,6 +534,9 @@ Use the following rules for the next calibration session:
 
 - Trust SSI differential B/C angles unless future direct evidence contradicts
   them.
+- B/C now use `HOME_ABSOLUTE_ENCODER = 2` in the SSI Probe Basic configs, so
+  homing should preserve the calibrated SSI-derived B/C position instead of
+  redefining the current rotary position as B0/C0.
 - Treat all machine geometry as variable: C/Z alignment, B/C orthogonality,
   B-axis centering, tool/probe vector angle, and linear-axis scale/squareness.
 - Exclude the earlier corrupt B90 line `17` caused by probe reset.

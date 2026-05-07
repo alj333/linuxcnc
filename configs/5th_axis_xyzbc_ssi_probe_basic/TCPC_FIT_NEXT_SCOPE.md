@@ -20,6 +20,68 @@ config after the machine was stable again.
 probe, overwrite, or use `G55` for TCPC calibration/validation until the
 operator explicitly releases it.
 
+## TCPC Tool-Length Integration - 2026-05-07
+
+The TCPC work config now treats `headheadkins.nominal-b-to-tool.*` as
+B-axis centerline to spindle nose. The previous short-probe tip baseline was
+kept as the reference data point by removing T3 H3 from the Z term:
+
+- previous nominal `b-to-tool.z`: `-308.980001`
+- current T3 H3 tool length: `+128.606729 mm`
+- new nominal B-to-spindle-nose `z`: `-180.373272`
+- retained fitted `cal-b-to-tool.z`: `+0.815000`
+
+`motion.tooloffset.x/y/z` is now netted into
+`headheadkins.active-tool-offset.x/y/z`. In the kinematics, active Z tool
+length is applied along the local negative tool axis, so `G43 H3` reconstructs
+the same short-probe tip geometry used for the current fitted correction.
+
+Interpreter guard added: ordinary tool-length changes (`G43`, `G43.1`,
+`G43.2`, and `G49`) are rejected while `headheadtwp.tcpc_enabled` is true.
+The required order is `G43 Hn` before `G43.4`, then `G49.1` before any `G49`
+or different `G43 Hn`. The guard is gated by
+`headheadtwp.tcpc_tool_length_guard`; the real TCPC fail-safe wrapper enables
+that pin, while older simulator configs without the guard pin keep their
+historical behavior.
+
+The TCPC work config now has its own abort subroutine,
+`on_abort_tcpc.ngc`. It runs the normal modal cleanup but skips `G49` while
+TCPC is active, because clearing tool length at that point would change the
+TCPC kinematics. Recovery order after a TCPC abort is to make the machine safe,
+return B/C to the saved TCPC entry orientation, run `G49.1`, then use `G49` if
+tool length must be cleared.
+
+## TCP Production Readiness Checkpoint - 2026-05-07
+
+The current TCPC work config is close enough for controlled production
+validation, but it is not released as the default production configuration yet.
+Before production release, cover these items:
+
+- Restart LinuxCNC so the rebuilt `headheadkins`, interpreter, and Probe Basic
+  TCPC config are actually loaded.
+- With tool 3 loaded, run `G43 H3` before `G43.4` and confirm the short-probe
+  effective tip position matches the pre-tool-length baseline.
+- Run the no-cut TCPC entry/exit smoke program and confirm `G49`/`G43.1` are
+  rejected while TCPC is active, `G49.1` exits only at the entry B/C
+  orientation, and `G49` works after `G49.1`.
+- Run one short-probe sphere validation pass with active `G43 H3`; compare
+  residuals against the last accepted refined-fit data. This is the regression
+  proving that the spindle-nose split plus T3 length did not shift the fit.
+- Confirm abort recovery: while TCPC is active, abort must not clear tool
+  length. Recovery remains manual-safe: make the machine safe, return B/C to
+  entry orientation, run `G49.1`, then `G49` if required.
+- Review tool-change paths and post output. Production programs should not
+  issue `M6`, `M61`, `G43`, `G43.1`, `G43.2`, or `G49` inside active TCPC/TWP.
+  If operator workflow can trigger tool changes while TCPC is active, add an
+  interpreter guard for `M6`/`M61` under the same TCPC guard pin.
+- When the long probe arrives, run short/long back-to-back validation using
+  `G43 H3` and the long-probe `G43 Hn`. This is still the key test for whether
+  remaining errors are true rotary geometry versus tool-vector/tool-length
+  model errors.
+- Before using TCPC for unattended production, validate TWP entry/exit with a
+  real post sample: `G43 Hn -> G43.4 -> optional G68.2/G69 -> return B/C ->
+  G49.1 -> G49`.
+
 ## Current Shutdown Status - 2026-05-03
 
 This section supersedes the older first-fit direction-test guidance below for
@@ -191,10 +253,11 @@ Interpretation caveats:
 - This is a practical first visual check, not the final mechanical model.
 - Tool table length correction is not solved yet; `motion.tooloffset.z` exists
   but is not currently wired into `headheadkins`.
-- Live `G43.4/G49.1` switching produced a large kinematics discontinuity when
-  enabling TCPC from identity mode. The TCPC test config now starts with TCPC
-  enabled, accepts `G43.4` only as an already-on confirmation, and blocks
-  `G49.1` until a safe transition strategy is implemented.
+- Live `G43.4/G49.1` switching originally produced a large kinematics
+  discontinuity when enabling TCPC from identity mode. As of 2026-05-07, the
+  TCPC Probe Basic config starts fail-safe with TCPC off; `G43.4` sets a TCPC
+  entry origin in `headheadkins`, and `G49.1` is guarded so it can only exit
+  after `G69` and after B/C return to the saved TCPC entry orientation.
 - Positive C quadrant testing exposed the single-turn SSI wrap at physical
   `C180`: just over `+180 deg`, the old feedback path reported about
   `-178 deg`, causing a LinuxCNC joint-4 following error with no servo-drive
@@ -2890,3 +2953,31 @@ Live update:
 - for the immediate resume, start at `B0 C0`, `3-8 mm` above the sphere; the
   program will probe `B0 C0`, then run the non-B0 B-grouped sweeps and final
   B0 closure
+
+## Persistent Refined Candidate Decision - 2026-05-07
+
+Operator decision: the TCPC Probe Basic work config will not be used for
+production until the remaining commissioning tasks are complete, so the best
+validated refined fit should be persistent for all further TCPC/TWP testing.
+
+Applied to `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/5th_axis_xyzbc_ssi_tcpc_probe_basic.hal`:
+
+- copied the refined B-harmonic/B-cross coefficients from
+  `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal`
+- set `headheadkins.sim-bharm-enable = 1` at startup
+- kept the base fixed-tip correction active:
+  - `cal-c-to-b.x = 0.035886006`
+  - `cal-c-to-b.y = 0.009526306`
+  - `cal-b-to-tool.z = 0.815000`
+  - `c-zero-offset = -0.024500`
+- added `headheadtwp.use_external_tool_offset = 1` and netted
+  `headheadkins.tool-offset.*` into `headheadtwp.external_tool_offset_*`, so
+  TCPC/TWP state calculations use the same fitted tool offset as kinematics
+
+Important caveat:
+
+- the HAL pin still has the historical `sim-bharm-enable` name, but in this
+  TCPC work config it is now the persistent refined-candidate enable
+- this changes the commissioning baseline: future probe data should be treated
+  as refined-candidate-on data unless the pin is deliberately set false and
+  logged

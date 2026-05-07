@@ -1,7 +1,8 @@
 # 5th Axis XYZBC SSI TCPC Probe Basic Config
 
-This is a separate real-machine TCPC test config. It is not the maintenance or
-setup config.
+This is the separate real-machine TCPC/TWP Probe Basic config. It is not the
+maintenance or setup config, and it remains a commissioning work config until
+the full TCPC/TWP task list is complete.
 
 Current status:
 
@@ -10,20 +11,203 @@ Current status:
   `configs/5th_axis_xyzbc_ssi_probe_basic`
 - reuses the existing Probe Basic UI, subroutines, XHC HAL, shutdown HAL, and
   tool table from the trivkins Probe Basic config
-- uses its own LinuxCNC parameter file so test WCS changes do not write back to
-  the normal Probe Basic parameter file
-- starts with TCPC enabled so there is no live kinematics jump when testing
-- `G43.4` is accepted only while TCPC is already enabled; `G49.1` is blocked in
-  this test config until a safe live transition strategy is implemented
-- `headheadtwp.tcpc_enabled` gates `headheadkins.tcpc-enable`
+- uses its own LinuxCNC parameter file so TCPC/TWP WCS changes do not write
+  back to the normal Probe Basic parameter file
+- starts fail-safe with TCPC disabled; production G-code must enter TCPC with
+  `G43.4` after the machine is enabled and all XYZBC joints are homed
+- `G43.4` sets a live TCPC entry origin in `headheadkins` so entry does not
+  cause a kinematics position jump
+- `G49.1` exits TCPC only when TWP is fully cancelled with `G69` and B/C are
+  back at the TCPC entry orientation; otherwise it aborts with an operator
+  error
+- `headheadtwp.tcpc_enabled` gates `headheadkins.tcpc-enable`, and
+  `headheadtwp.tcpc_origin_*` feeds `headheadkins.tcpc-origin.*`
+- the refined B-harmonic/B-cross fitted correction is now persistent in this
+  TCPC work config and starts enabled with `headheadkins.sim-bharm-enable = 1`
+- `headheadtwp` uses the live `headheadkins.tool-offset.*` pins for TCPC/TWP
+  state calculations, so the helper state sees the same fitted tool offset as
+  the kinematics layer
 - unwraps the single-turn C SSI feedback to the nearest commanded C angle with
   `rotaryunwrap` before feeding joint 4
 - requires homing before motion with `NO_FORCE_HOMING = 0`
+- B/C homing uses `HOME_ABSOLUTE_ENCODER = 2`, so homing no longer redefines
+  B0/C0 at the current rotary position; B/C machine position remains the
+  SSI-derived angle from the calibrated HAL zero constants
 - adds TCPC/TWP indicators to Probe Basic:
   - compact single-LED `TCPC OFF` / `TCPC ON` / `TCPC TWP` status in the
     user-button area
-  - detailed `TCPC STATUS` user tab showing state, angles, tool vector, and
-    tool offset pins
+  - detailed `TCPC STATUS` user tab showing state, angles, tool vector, tool
+    offset, TCPC origin, TCPC entry B/C pins, direct B/C SSI absolute and
+    zeroed positions, raw SSI counts, invalid flags, and joint command/feedback
+
+## B/C SSI Homing and Zero Verification - 2026-05-07 +07
+
+The B and C axes use direct single-turn SSI encoder feedback at the rotary
+output. The calibrated zero constants live in the shared SSI HAL:
+
+- `b_ssi_zero.in1`
+- `c_ssi_zero.in1`
+
+The TCPC overlay flips the B convention to match TCPC sign convention, so it
+also overrides the B SSI scale and `b_ssi_zero.in1`.
+
+Both Probe Basic SSI configs now use:
+
+```ini
+HOME_ABSOLUTE_ENCODER = 2
+```
+
+for `[JOINT_3]` and `[JOINT_4]`. This prevents immediate homing from masking a
+wrong rotary position by declaring the current B/C position to be zero. After
+homing, B/C displayed machine position should therefore match the SSI-derived
+zeroed angle. If the rotary is not truly at B0/C0, the DRO should show the
+residual instead of silently creating a new home offset.
+
+A no-motion check program is available:
+
+```ngc
+nc_files/calibration/rotary_ssi_zero_verify.ngc
+```
+
+Run it after homing when B/C are expected to be at machine zero. It aborts if
+either SSI channel is invalid or if `joint.3.motor-pos-fb` /
+`joint.4.motor-pos-fb` is more than `0.020 deg` from zero.
+
+## Persistent Refined TCPC Candidate - 2026-05-07 +07
+
+The refined B-harmonic/B-cross correction has been moved from manually gated
+diagnostic use into the persistent TCPC work config. This does not mark the
+machine as released for production; it means all remaining TCPC/TWP
+commissioning runs now exercise the full fitted correction by default.
+
+Startup behavior in `5th_axis_xyzbc_ssi_tcpc_probe_basic.hal`:
+
+- base fixed-tip correction remains active:
+  - `cal-c-to-b.x = 0.035886006`
+  - `cal-c-to-b.y = 0.009526306`
+  - `cal-b-to-tool.z = 0.815000`
+  - `c-zero-offset = -0.024500`
+- refined fitted coefficients from
+  `configs/sim/head_head_5axis/head_head_bharmonic_refined_candidate.hal` are
+  copied into this real-machine TCPC work HAL
+- `headheadkins.sim-bharm-enable = 1` at startup
+- `headheadtwp.use_external_tool_offset = 1`, with
+  `headheadkins.tool-offset.*` netted into `headheadtwp.external_tool_offset_*`
+- `motion.tooloffset.x/y/z` is netted into
+  `headheadkins.active-tool-offset.x/y/z`
+- `headheadkins.nominal-b-to-tool.z` is now the B-axis centerline to spindle
+  nose, not the short-probe tip; the previous short-probe baseline
+  `-308.980001` had T3 H3 `128.606729 mm` removed, giving `-180.373272`
+
+The enable pin still has the historical `sim-bharm-enable` name, but it is now
+the persistent fitted-correction enable for this TCPC work config.
+
+## Production TCPC Entry/Exit - 2026-05-07 +07
+
+Production entry/exit behavior is now implemented in the real-machine remap:
+
+- `G43.4` checks that the machine is enabled, all five joints are homed, TWP is
+  not active/defined, and no nonzero `G52/G92` offset is active.
+- `G43.4` is idempotent while TCPC is already enabled.
+- on first `G43.4`, `headheadtwp` stores the current B/C as the TCPC entry
+  orientation and stores the current tool-offset vector as `tcpc_origin`.
+- `headheadkins` subtracts `tcpc-origin` while TCPC/TWP are active, so the
+  current program position and physical joints remain continuous when TCPC is
+  entered live.
+- `G49.1` is idempotent while TCPC is already disabled.
+- `G49.1` is rejected while TWP is active or still defined; run `G69` first.
+- `G49.1` is rejected unless B/C have returned to the saved TCPC entry
+  orientation within `0.01 deg`; this prevents the old exit discontinuity.
+- ordinary tool-length changes (`G43`, `G43.1`, `G43.2`, and `G49`) are
+  rejected while TCPC is active; apply `G43 Hn` before `G43.4`, and clear tool
+  length with `G49` only after `G49.1`
+- active `G43 Hn` length is included in the head-head kinematics as local tool
+  length, so the same B-to-spindle-nose geometry can handle different tools
+- the TCPC tool-length guard is enabled by
+  `headheadtwp.tcpc_tool_length_guard`; the real fail-safe state wrapper sets
+  this pin true so the interpreter blocks tool-length changes only for guarded
+  TCPC configs
+- the TCPC config uses `on_abort_tcpc.ngc`; abort recovery leaves `G49` alone
+  while TCPC is still active, then the operator can return B/C to the TCPC entry
+  orientation, run `G49.1`, and only then clear tool length with `G49`
+
+Recommended production program envelope:
+
+```ngc
+G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
+(machine enabled and homed before this program starts)
+Tn M6
+G43 Hn
+G43.4
+(normal TCPC or TWP work)
+G69     (only needed if TWP was used)
+G0 B0 C0 (or the B/C orientation where G43.4 was entered)
+G49.1
+G49
+M30
+```
+
+Production-release items still open:
+
+- restart LinuxCNC before testing; currently running processes do not pick up
+  rebuilt kinematics/interpreter code
+- validate the spindle-nose split with tool 3 active: `G43 H3` before `G43.4`
+  should reproduce the previous short-probe TCPC fit
+- run the no-cut smoke program and one active-`G43 H3` sphere validation pass
+- decide whether to add the same guarded-TCPC rejection to `M6`/`M61`; current
+  production guidance is that tool changes/current-tool changes must happen
+  outside TCPC
+- repeat short/long probe validation when the long probe arrives
+
+Headless regression added:
+
+```bash
+cd /home/cnc5/linuxcnc-dev/tests/kinematics/head-head-tcpc-entry-exit
+rm -f sim.var
+/home/cnc5/linuxcnc-dev/scripts/rip-environment linuxcnc -r test.ini
+```
+
+This test verifies fail-safe startup, `G43.4` entry continuity, idempotent
+`G43.4`, ordinary `G49`/`G43.1` rejection while TCPC is active, rotary TCPC
+compensation, unsafe `G49.1` rejection away from entry B/C, continuous
+`G49.1` exit after returning to entry B/C, `G68.2` rejection while TCPC is off,
+and `G49.1` rejection while TWP is active.
+
+Machine no-cut smoke program:
+
+- `nc_files/calibration/tcpc_production_entry_exit_smoke.ngc`
+- start homed, machine enabled, at safe clearance near `B0 C0`, with TCPC off
+- a real tool must be loaded and selected; the smoke program applies
+  `G43 H#<_current_tool>` before `G43.4`
+- the program checks HAL state and displayed XYZ continuity around `G43.4` and
+  `G49.1`
+
+Real-machine result, 2026-05-07 08:24 +07:
+
+- TCPC Probe Basic started fail-safe with `TCPC OFF`
+- machine homed normally
+- live HAL confirmed TCPC off, TWP off, all joints homed, machine enabled
+- `B` command state reported as wrapped `360.02 deg`, equivalent to B0 for the
+  smoke start; the smoke program now normalizes B/C before the start check
+- `nc_files/calibration/tcpc_production_entry_exit_smoke.ngc` ran and completed
+  successfully on the real machine
+- this validates the basic production path:
+  `G43.4 -> small B/C TCPC move -> return to entry B/C -> G49.1`
+
+Real-machine G49.1 guard result, 2026-05-07 08:26 +07:
+
+- `nc_files/calibration/tcpc_production_g49_guard_smoke.ngc` intentionally
+  attempted `G49.1` at `B5 C5`
+- the remap correctly rejected the exit with:
+  `G49.1 requires B/C back at the TCPC entry orientation`
+- live state after the intentional error was TCPC still enabled, TWP off, and
+  B/C still away from the entry orientation; recover with MDI `G0 B0 C0`,
+  then `G49.1`
+- the test also exposed two abort-handler issues: the TCPC config's relative
+  `SUBROUTINE_PATH` did not find `on_abort.ngc`, and the abort command syntax
+  was parsed unreliably; the TCPC INI now uses absolute subroutine paths to the
+  shared Probe Basic `subroutines`/`remap_subs` folders and the tested
+  `O <on_abort> call` form
 
 ## Pause Status - 2026-04-27 10:50 +07
 
@@ -173,8 +357,10 @@ Important limitations:
   from real sphere data; it is not final cutting data
 - first slow no-cut real-machine B/C direction validation has passed in all C
   quadrants, including the C wrap crossing after `rotaryunwrap`
-- live `G43.4/G49.1` TCPC switching is intentionally disabled for safety
-- do not use this config for cutting until fixed-tip and moving TCP checks pass
+- live `G43.4/G49.1` switching is now guarded and regression-tested, but
+  first real-machine validation should still be a no-cut commissioning run
+- do not use this config for unsupervised cutting until the entry/exit smoke
+  path and a short production-style no-cut TCPC/TWP path pass on the machine
 
 Launch:
 
@@ -184,10 +370,14 @@ Launch:
 
 First validation path:
 
-1. Launch and confirm the machine starts with `TCPC ON` and without enabling TWP.
+1. Launch and confirm the machine starts with `TCPC OFF` and without enabling TWP.
 2. Home all axes.
-3. Run only no-cut, slow fixed-tip validation moves.
-4. Do not use `G49.1`; close/restart the config to leave TCPC testing.
+3. In MDI at a safe B/C orientation, run `G43.4` and confirm `TCPC ON`.
+4. Run a slow no-cut TCPC entry/exit smoke path:
+   `G43.4`, safe B/C move, return to entry B/C, `G49.1`.
+5. Confirm `G49.1` is rejected if B/C are not back at the entry orientation.
+6. Confirm `G68.2` is rejected while TCPC is off, and that `G49.1` is rejected
+   while TWP is active until `G69` has run.
 
 ## Runtime Update - 2026-04-27 20:11 +07
 
@@ -819,6 +1009,10 @@ Shutdown handover, 2026-05-02 20:50 +07:
 The 2026-05-02 hold status above has been superseded by later probe runs and
 offline fitting.
 
+The non-persistent decision recorded in this section has also been superseded:
+as of 2026-05-07 the refined B-harmonic/B-cross candidate is persistent and
+enabled in this TCPC work config for continued commissioning.
+
 Startup HAL is now prepared with the validated C-center correction:
 
 ```hal
@@ -828,10 +1022,10 @@ setp headheadtwp.cal_c_to_b_x 0.035886006
 setp headheadtwp.cal_c_to_b_y 0.009526306
 ```
 
-The high-B B-harmonic candidate has passed offline math checks and a dedicated
-LinuxCNC sim fixed-tip smoke test with `0.000000000 mm` disabled/enabled TCP
-error, but it is still diagnostic-only. Do not make it persistent in this real
-machine config.
+The earlier high-B B-harmonic-only candidate passed offline math checks and a
+dedicated LinuxCNC sim fixed-tip smoke test with `0.000000000 mm`
+disabled/enabled TCP error, but the later refined B/C cross candidate replaced
+it as the persistent work-config candidate.
 
 Current live decision after the C0/C180/C90/C270 candidate-on validations and
 offline B/C cross fitting:

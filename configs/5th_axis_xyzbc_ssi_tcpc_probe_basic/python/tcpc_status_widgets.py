@@ -39,6 +39,24 @@ def _fmt_float(value, digits=3):
     return f"{float(value):.{digits}f}"
 
 
+def _fmt_int(value):
+    if value is None:
+        return "--"
+    return str(int(value))
+
+
+def _fmt_bool(value):
+    if value is None:
+        return "--"
+    return "TRUE" if bool(value) else "FALSE"
+
+
+def _diff(lhs, rhs):
+    if lhs is None or rhs is None:
+        return None
+    return float(lhs) - float(rhs)
+
+
 class StatusPill(QLabel):
     def __init__(self, title, parent=None, compact=False):
         super().__init__(parent)
@@ -81,6 +99,10 @@ class TcpcStatusReader:
         motion = _read_pin("headheadtwp.motion_enabled")
         valid = _read_pin("headheadtwp.valid")
         state_code = _read_pin("headheadtwp.state_code")
+        b_joint_cmd = _read_pin("joint.3.motor-pos-cmd")
+        b_joint_fb = _read_pin("joint.3.motor-pos-fb")
+        c_joint_cmd = _read_pin("joint.4.motor-pos-cmd")
+        c_joint_fb = _read_pin("joint.4.motor-pos-fb")
 
         available = tcpc is not None and active is not None and motion is not None
         return {
@@ -99,6 +121,26 @@ class TcpcStatusReader:
             "tool_offset_x": _read_pin("headheadkins.tool-offset.x"),
             "tool_offset_y": _read_pin("headheadkins.tool-offset.y"),
             "tool_offset_z": _read_pin("headheadkins.tool-offset.z"),
+            "tcpc_origin_x": _read_pin("headheadtwp.tcpc_origin_x"),
+            "tcpc_origin_y": _read_pin("headheadtwp.tcpc_origin_y"),
+            "tcpc_origin_z": _read_pin("headheadtwp.tcpc_origin_z"),
+            "tcpc_entry_b": _read_pin("headheadtwp.tcpc_entry_b_angle"),
+            "tcpc_entry_c": _read_pin("headheadtwp.tcpc_entry_c_angle"),
+            "refined_fit_enabled": _read_pin("headheadkins.sim-bharm-enable"),
+            "b_ssi_abs_position": _read_pin("b-ssi-abs-position"),
+            "b_ssi_zeroed_position": _read_pin("b-ssi-zeroed-position"),
+            "b_ssi_rawcounts": _read_pin("hm2_7i95.0.ssi.00.abs.rawcounts"),
+            "b_ssi_invalid": _read_pin("b-ssi-invalid"),
+            "b_joint_cmd": b_joint_cmd,
+            "b_joint_fb": b_joint_fb,
+            "b_following_error": _diff(b_joint_fb, b_joint_cmd),
+            "c_ssi_abs_position": _read_pin("c-ssi-abs-position"),
+            "c_ssi_zeroed_position": _read_pin("c-ssi-zeroed-position"),
+            "c_ssi_rawcounts": _read_pin("hm2_7i95.0.ssi.01.abs.rawcounts"),
+            "c_ssi_invalid": _read_pin("c-ssi-invalid"),
+            "c_joint_cmd": c_joint_cmd,
+            "c_joint_fb": c_joint_fb,
+            "c_following_error": _diff(c_joint_fb, c_joint_cmd),
         }
 
 
@@ -215,6 +257,7 @@ class TcpcStatusTab(QWidget):
 
         self.strip = TcpcStatusStrip()
         self.fields = {}
+        self.rotary_fields = {}
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 18)
@@ -247,6 +290,12 @@ class TcpcStatusTab(QWidget):
             ("Tool offset X", "tool_offset_x"),
             ("Tool offset Y", "tool_offset_y"),
             ("Tool offset Z", "tool_offset_z"),
+            ("TCPC origin X", "tcpc_origin_x"),
+            ("TCPC origin Y", "tcpc_origin_y"),
+            ("TCPC origin Z", "tcpc_origin_z"),
+            ("TCPC entry B", "tcpc_entry_b"),
+            ("TCPC entry C", "tcpc_entry_c"),
+            ("Refined fit", "refined_fit_enabled"),
         ]
         for row, (label, key) in enumerate(rows):
             name = QLabel(label)
@@ -256,9 +305,45 @@ class TcpcStatusTab(QWidget):
             grid.addWidget(value, row, 1)
             self.fields[key] = value
 
+        rotary_frame = QFrame()
+        rotary_frame.setStyleSheet(
+            "QFrame { background-color: #111827; border: 1px solid #2f3b4a; border-radius: 8px; }"
+            "QLabel { color: #d7dee8; font: 11pt 'DejaVu Sans'; }"
+        )
+        rotary_grid = QGridLayout(rotary_frame)
+        rotary_grid.setContentsMargins(14, 12, 14, 12)
+        rotary_grid.setHorizontalSpacing(18)
+        rotary_grid.setVerticalSpacing(6)
+        layout.addWidget(rotary_frame)
+
+        for col, label in ((1, "B"), (2, "C")):
+            heading = QLabel(label)
+            heading.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            heading.setStyleSheet("font-weight: 700;")
+            rotary_grid.addWidget(heading, 0, col)
+
+        rotary_rows = [
+            ("SSI abs deg", "ssi_abs_position", _fmt_float),
+            ("SSI zeroed deg", "ssi_zeroed_position", _fmt_float),
+            ("SSI raw counts", "ssi_rawcounts", _fmt_int),
+            ("Joint cmd", "joint_cmd", _fmt_float),
+            ("Joint fb", "joint_fb", _fmt_float),
+            ("Fb-cmd deg", "following_error", lambda value: _fmt_float(value, 6)),
+            ("SSI invalid", "ssi_invalid", _fmt_bool),
+        ]
+        for row, (label, key, formatter) in enumerate(rotary_rows, start=1):
+            name = QLabel(label)
+            rotary_grid.addWidget(name, row, 0)
+            for axis, col in (("b", 1), ("c", 2)):
+                value = QLabel("--")
+                value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                rotary_grid.addWidget(value, row, col)
+                self.rotary_fields[f"{axis}_{key}"] = (value, formatter)
+
         note = QLabel(
-            "Fail-safe test config: G68.2 should stay rejected until G43.4 enables TCPC. "
-            "When TWP MOTION shows LOCAL XYZ, ordinary X/Y/Z moves are plane-local."
+            "Production TCPC: G43.4 enters after homing, G49.1 exits only after G69 "
+            "and after B/C return to the TCPC entry orientation. Apply G43 Hn before "
+            "TCPC; G43/G49 are blocked while TCPC is active."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #fbbf24; font: 11pt 'DejaVu Sans';")
@@ -283,5 +368,14 @@ class TcpcStatusTab(QWidget):
             "tool_offset_x",
             "tool_offset_y",
             "tool_offset_z",
+            "tcpc_origin_x",
+            "tcpc_origin_y",
+            "tcpc_origin_z",
+            "tcpc_entry_b",
+            "tcpc_entry_c",
         ):
             self.fields[key].setText(_fmt_float(state[key]))
+        self.fields["refined_fit_enabled"].setText(_fmt_bool(state["refined_fit_enabled"]))
+
+        for key, (field, formatter) in self.rotary_fields.items():
+            field.setText(formatter(state[key]))

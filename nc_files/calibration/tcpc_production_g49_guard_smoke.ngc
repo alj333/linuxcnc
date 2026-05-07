@@ -1,0 +1,34 @@
+%
+(Production TCPC G49.1 guard smoke check)
+(Expected result: program aborts at G49.1 while B/C are away from entry.)
+(Run only at safe no-cut clearance, homed, machine enabled, near B0 C0.)
+
+G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
+F300
+
+#<smoke_tool> = #<_current_tool>
+o090 if [#<smoke_tool> LT 1]
+  (abort, G49 guard smoke requires a loaded tool so G43 Hn can be active before G43.4)
+o090 endif
+G43 H#<smoke_tool>
+
+o100 if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, G49 guard smoke must start with TCPC off)
+o100 endif
+o101 if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, G49 guard smoke must start with TWP motion off)
+o101 endif
+
+G43.4
+o110 if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  (abort, G43.4 did not enable TCPC)
+o110 endif
+
+G0 B5.0 C5.0
+
+(The next line must be rejected by the production remap.)
+G49.1
+
+(If this line executes, the guard failed.)
+(abort, G49.1 guard failed; TCPC exited away from entry B/C)
+%

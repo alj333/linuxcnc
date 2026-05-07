@@ -1,0 +1,26 @@
+%
+(No-motion B/C SSI zero verification.)
+(Run after homing, before TCPC/TWP tests, with B/C expected at machine zero.)
+
+#<rotary_zero_tol_deg> = 0.020
+
+o100 if [#<_hal[b-ssi-invalid]> GT 0.5]
+  (abort, B SSI data-invalid is active)
+o100 endif
+o101 if [#<_hal[c-ssi-invalid]> GT 0.5]
+  (abort, C SSI data-invalid is active)
+o101 endif
+
+#<b_fb> = #<_hal[joint.3.motor-pos-fb]>
+#<c_fb> = #<_hal[joint.4.motor-pos-fb]>
+
+o110 if [ABS[#<b_fb>] GT #<rotary_zero_tol_deg>]
+  (abort, B SSI zero check failed: joint.3 feedback is outside tolerance)
+o110 endif
+o111 if [ABS[#<c_fb>] GT #<rotary_zero_tol_deg>]
+  (abort, C SSI zero check failed: joint.4 feedback is outside tolerance)
+o111 endif
+
+(debug, B/C SSI zero check passed)
+M2
+%

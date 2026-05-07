@@ -64,6 +64,16 @@ static bool headhead_twp_is_active()
     return hal_bit_pin_is_true("headheadtwp.active");
 }
 
+static bool headhead_tcpc_is_active()
+{
+    return hal_bit_pin_is_true("headheadtwp.tcpc_enabled");
+}
+
+static bool headhead_tcpc_tool_length_guard_enabled()
+{
+    return hal_bit_pin_is_true("headheadtwp.tcpc_tool_length_guard");
+}
+
 // These four functions help make the rest of cutter comp
 // plane-agnostic in much the same way the ARC_FEED canon call is.
 // The programmer can gleefully think of only the XY plane when
@@ -5685,6 +5695,8 @@ int Interp::convert_tool_length_offset(int g_code,       //!< g_code being execu
        (_("Cannot change tool offset with cutter radius compensation on")));
   CHKS((headhead_twp_is_active()),
        (_("Cannot change tool length compensation while TWP is active")));
+  CHKS((headhead_tcpc_tool_length_guard_enabled() && headhead_tcpc_is_active()),
+       (_("Cannot change tool length compensation while TCPC is active; exit TCPC with G49.1 first")));
   if (g_code == G_49) {
     idx = 0;
   } else if (g_code == G_43) {

@@ -5,8 +5,9 @@ This directory is the Probe Basic calibration copy of the locked
 
 Scope:
 
-- keep the live machine motion, homing, limits, probe wiring, and B/C SSI
-  feedback path identical to the locked AXIS maintenance config
+- keep the live machine motion, limits, probe wiring, and B/C SSI feedback path
+  aligned with the locked AXIS maintenance config; B/C homing now uses absolute
+  encoder mode so rotary zero cannot be redefined at an arbitrary position
 - switch the UI to Probe Basic for probing, calibration, and upcoming TCPC work
 - leave the AXIS maintenance config untouched as the fallback machine baseline
 
@@ -16,6 +17,12 @@ Current machine assumptions:
 - kinematics remain `trivkins coordinates=XYZBC`
 - X/Y/Z homing remains enabled exactly as in the locked maintenance config
 - B/C use the validated SSI zero constants and wrap normalization
+- B/C backlash compensation is disabled because the rotary output position is
+  already measured directly by SSI feedback
+- B/C use `HOME_ABSOLUTE_ENCODER = 2`, so homing preserves the SSI-derived
+  rotary angle instead of redefining the current position as B0/C0
+- `nc_files/calibration/rotary_ssi_zero_verify.ngc` is available as a
+  no-motion post-home B/C SSI zero check
 - the touch probe path is live through `motion.probe-input`
 - manual tool release still uses the spindle-off interlock on input `16`
 

@@ -72,18 +72,113 @@ setp headheadkins.nominal-c-to-b.y 0.0
 setp headheadkins.nominal-c-to-b.z -270.0
 setp headheadkins.nominal-b-to-tool.x -0.668710
 setp headheadkins.nominal-b-to-tool.y -26.721365
-setp headheadkins.nominal-b-to-tool.z -308.980001
+# B-to-tool is the B-axis centerline to spindle nose. The previous value was
+# the short probe tip baseline, so T3 H3 is removed here and added back through
+# active G43 tool length in headheadkins.
+setp headheadkins.nominal-b-to-tool.z -180.373272
 setp headheadkins.cal-c-to-b.x 0.035886006
 setp headheadkins.cal-c-to-b.y 0.009526306
 setp headheadkins.cal-c-to-b.z 0.0
 setp headheadkins.cal-b-to-tool.x 0.0
 setp headheadkins.cal-b-to-tool.y 0.0
 setp headheadkins.cal-b-to-tool.z 0.815000
+net tcpc-active-tool-offset-x motion.tooloffset.x => headheadkins.active-tool-offset.x
+net tcpc-active-tool-offset-y motion.tooloffset.y => headheadkins.active-tool-offset.y
+net tcpc-active-tool-offset-z motion.tooloffset.z => headheadkins.active-tool-offset.z
 setp headheadkins.b-zero-offset 0.0
 setp headheadkins.c-zero-offset -0.024500
 
-# Start TCPC/TWP fail-safe: G68.2 is rejected until G43.4 has been run.
+# Refined persistent TCPC correction candidate.
+# This work config is not released for production use yet. These terms are the
+# best live-tested short-probe fit to date and are kept active here so the
+# remaining commissioning tests exercise the full candidate system.
+setp headheadkins.bharm-m.sin.x 0.015577123
+setp headheadkins.bharm-m.sin.y 0.060508594
+setp headheadkins.bharm-m.sin.z 0.312123080
+setp headheadkins.bharm-m.omc.x 0.141330042
+setp headheadkins.bharm-m.omc.y 0.111703959
+setp headheadkins.bharm-m.omc.z -0.338104991
+setp headheadkins.bharm-m.sin2.x -0.013271805
+setp headheadkins.bharm-m.sin2.y 0.050707231
+setp headheadkins.bharm-m.sin2.z -0.156014210
+
+setp headheadkins.bharm-c.sin.x 0.000000000
+setp headheadkins.bharm-c.sin.y 0.000000000
+setp headheadkins.bharm-c.sin.z 0.000000000
+setp headheadkins.bharm-c.omc.x 0.000000000
+setp headheadkins.bharm-c.omc.y 0.000000000
+setp headheadkins.bharm-c.omc.z 0.000000000
+setp headheadkins.bharm-c.sin2.x 0.000000000
+setp headheadkins.bharm-c.sin2.y 0.000000000
+setp headheadkins.bharm-c.sin2.z 0.000000000
+
+setp headheadkins.charm.cos.x 0.000000000
+setp headheadkins.charm.cos.y 0.000000000
+setp headheadkins.charm.cos.z 0.000000000
+setp headheadkins.charm.sin.x 0.000000000
+setp headheadkins.charm.sin.y 0.000000000
+setp headheadkins.charm.sin.z 0.000000000
+setp headheadkins.charm.cos2.x 0.000000000
+setp headheadkins.charm.cos2.y 0.000000000
+setp headheadkins.charm.cos2.z 0.000000000
+setp headheadkins.charm.sin2.x 0.000000000
+setp headheadkins.charm.sin2.y 0.000000000
+setp headheadkins.charm.sin2.z 0.000000000
+
+setp headheadkins.bmid.base.x 0.000000000
+setp headheadkins.bmid.base.y 0.000000000
+setp headheadkins.bmid.base.z 0.000000000
+setp headheadkins.bmid.cosc.x 0.000000000
+setp headheadkins.bmid.cosc.y 0.000000000
+setp headheadkins.bmid.cosc.z 0.000000000
+setp headheadkins.bmid.sinc.x 0.000000000
+setp headheadkins.bmid.sinc.y 0.000000000
+setp headheadkins.bmid.sinc.z 0.000000000
+setp headheadkins.bmid.cos2c.x 0.000000000
+setp headheadkins.bmid.cos2c.y 0.000000000
+setp headheadkins.bmid.cos2c.z 0.000000000
+setp headheadkins.bmid.sin2c.x 0.000000000
+setp headheadkins.bmid.sin2c.y 0.000000000
+setp headheadkins.bmid.sin2c.z 0.000000000
+
+setp headheadkins.bcross.sinb-sinc.x -0.006371196
+setp headheadkins.bcross.sinb-sinc.y 0.325723886
+setp headheadkins.bcross.sinb-sinc.z 0.130042953
+setp headheadkins.bcross.omcb-sinc.x -0.074687973
+setp headheadkins.bcross.omcb-sinc.y 0.012622224
+setp headheadkins.bcross.omcb-sinc.z -0.001729459
+setp headheadkins.bcross.omcb-sin2c.x -0.017723675
+setp headheadkins.bcross.omcb-sin2c.y -0.255875638
+setp headheadkins.bcross.omcb-sin2c.z -0.055414262
+setp headheadkins.bcross.sinb-cosc.x -0.048238059
+setp headheadkins.bcross.sinb-cosc.y -0.063070849
+setp headheadkins.bcross.sinb-cosc.z -0.018239994
+setp headheadkins.bcross.omcb-cosc.x -0.030283175
+setp headheadkins.bcross.omcb-cosc.y 0.071683484
+setp headheadkins.bcross.omcb-cosc.z 0.000165632
+setp headheadkins.bcross.sinb-sin2c.x 0.000000000
+setp headheadkins.bcross.sinb-sin2c.y 0.000000000
+setp headheadkins.bcross.sinb-sin2c.z 0.000000000
+setp headheadkins.bcross.sinb-cos2c.x 0.000000000
+setp headheadkins.bcross.sinb-cos2c.y 0.000000000
+setp headheadkins.bcross.sinb-cos2c.z 0.000000000
+setp headheadkins.sim-bharm-enable 1
+
+setp headheadkins.tcpc-enable 0
+setp headheadkins.tcpc-origin.x 0.0
+setp headheadkins.tcpc-origin.y 0.0
+setp headheadkins.tcpc-origin.z 0.0
+
+# Start TCPC/TWP fail-safe: G43.4 enables TCPC after homing and G68.2 is
+# rejected until TCPC is active.
 loadusr -Wn headheadtwp python3 ./python/headhead_twp_state_safe.py
+
+# Use the actual kinematics tool offset, including the refined fitted
+# correction, for TCPC/TWP state calculations.
+setp headheadtwp.use_external_tool_offset 1
+net headhead-kins-tool-offset-x headheadkins.tool-offset.x => headheadtwp.external_tool_offset_x
+net headhead-kins-tool-offset-y headheadkins.tool-offset.y => headheadtwp.external_tool_offset_y
+net headhead-kins-tool-offset-z headheadkins.tool-offset.z => headheadtwp.external_tool_offset_z
 
 # Snapshot the current commanded joint pose for the TWP state component.
 net x-pos-cmd => headheadtwp.current_joint_x
@@ -128,6 +223,9 @@ setp headheadtwp.requested_normal_rotation 0.0
 # Feed the kinematics layer from the stored TWP state only after G68.2 enables
 # TWP motion. With TWP off, ordinary headheadkins TCPC math is still active.
 net headhead-tcpc-enabled headheadtwp.tcpc_enabled => headheadkins.tcpc-enable
+net headhead-tcpc-origin-x headheadtwp.tcpc_origin_x => headheadkins.tcpc-origin.x
+net headhead-tcpc-origin-y headheadtwp.tcpc_origin_y => headheadkins.tcpc-origin.y
+net headhead-tcpc-origin-z headheadtwp.tcpc_origin_z => headheadkins.tcpc-origin.z
 net headhead-twp-motion-enabled headheadtwp.motion_enabled => headheadkins.twp-mode
 net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
 net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c

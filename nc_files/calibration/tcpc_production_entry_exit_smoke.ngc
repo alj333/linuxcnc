@@ -1,0 +1,84 @@
+%
+(Production TCPC entry/exit smoke check)
+(Run only at safe no-cut clearance, homed, machine enabled, near B0 C0.)
+
+G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
+F300
+
+#<smoke_tool> = #<_current_tool>
+o080 if [#<smoke_tool> LT 1]
+  (abort, TCPC smoke requires a loaded tool so G43 Hn can be active before G43.4)
+o080 endif
+G43 H#<smoke_tool>
+
+#<start_b_check> = #<_hal[headheadtwp.current_joint_b]>
+#<start_c_check> = #<_hal[headheadtwp.current_joint_c]>
+o090 while [#<start_b_check> GT 180.0]
+  #<start_b_check> = [#<start_b_check> - 360.0]
+o090 endwhile
+o091 while [#<start_b_check> LT -180.0]
+  #<start_b_check> = [#<start_b_check> + 360.0]
+o091 endwhile
+o092 while [#<start_c_check> GT 180.0]
+  #<start_c_check> = [#<start_c_check> - 360.0]
+o092 endwhile
+o093 while [#<start_c_check> LT -180.0]
+  #<start_c_check> = [#<start_c_check> + 360.0]
+o093 endwhile
+
+o100 if [ABS[#<start_b_check>] GT 0.05]
+  (abort, TCPC smoke must start near B0)
+o100 endif
+o101 if [ABS[#<start_c_check>] GT 0.05]
+  (abort, TCPC smoke must start near C0)
+o101 endif
+o102 if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, TCPC smoke must start with TCPC off)
+o102 endif
+o103 if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, TCPC smoke must start with TWP motion off)
+o103 endif
+
+#<start_x> = #<_x>
+#<start_y> = #<_y>
+#<start_z> = #<_z>
+
+G43.4
+o110 if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  (abort, G43.4 did not enable TCPC)
+o110 endif
+o111 if [ABS[#<_x> - #<start_x>] GT 0.002]
+  (abort, G43.4 changed displayed X)
+o111 endif
+o112 if [ABS[#<_y> - #<start_y>] GT 0.002]
+  (abort, G43.4 changed displayed Y)
+o112 endif
+o113 if [ABS[#<_z> - #<start_z>] GT 0.002]
+  (abort, G43.4 changed displayed Z)
+o113 endif
+
+G0 B5.0 C5.0
+G0 B0.0 C0.0
+
+#<pre_exit_x> = #<_x>
+#<pre_exit_y> = #<_y>
+#<pre_exit_z> = #<_z>
+
+G49.1
+o120 if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, G49.1 did not disable TCPC)
+o120 endif
+o121 if [ABS[#<_x> - #<pre_exit_x>] GT 0.002]
+  (abort, G49.1 changed displayed X)
+o121 endif
+o122 if [ABS[#<_y> - #<pre_exit_y>] GT 0.002]
+  (abort, G49.1 changed displayed Y)
+o122 endif
+o123 if [ABS[#<_z> - #<pre_exit_z>] GT 0.002]
+  (abort, G49.1 changed displayed Z)
+o123 endif
+
+G49
+
+M30
+%

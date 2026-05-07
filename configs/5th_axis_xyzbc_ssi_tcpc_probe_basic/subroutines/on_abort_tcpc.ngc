@@ -1,0 +1,12 @@
+%
+o<on_abort_tcpc> sub
+
+G90
+G40
+
+o100 if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  G49
+o100 endif
+
+o<on_abort_tcpc> endsub
+%

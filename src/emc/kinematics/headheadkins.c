@@ -6,7 +6,9 @@
 *   - X/Y/Z joints locate the C-axis pivot center in world space
 *   - C rotates about +Z
 *   - B rotates about +Y in the C-rotated frame
-*   - world XYZ are the tool-reference point coordinates
+*   - world XYZ are the tool-reference point coordinates when the TCPC
+*     origin is zero, or a continuous TCPC program frame when TCPC is
+*     entered live from G-code
 *
 *   The geometry is intentionally exposed as HAL pins so nominal CAD
 *   values and later calibration values can be applied without rebuilding.
@@ -48,6 +50,10 @@ struct haldata {
     hal_float_t *cal_b_to_tool_y;
     hal_float_t *cal_b_to_tool_z;
 
+    hal_float_t *active_tool_offset_x;
+    hal_float_t *active_tool_offset_y;
+    hal_float_t *active_tool_offset_z;
+
     hal_float_t *b_zero_offset;
     hal_float_t *c_zero_offset;
 
@@ -78,6 +84,9 @@ struct haldata {
     hal_float_t *b_cross_machine[B_CROSS_TERMS][3];
 
     hal_bit_t *tcpc_enable;
+    hal_float_t *tcpc_origin_x;
+    hal_float_t *tcpc_origin_y;
+    hal_float_t *tcpc_origin_z;
     hal_bit_t *twp_mode;
     hal_float_t *twp_motion_origin_x;
     hal_float_t *twp_motion_origin_y;
@@ -288,9 +297,12 @@ static void combined_c_to_b(double out[3])
 
 static void combined_b_to_tool(double out[3])
 {
-    out[0] = pinv(haldata->nominal_b_to_tool_x) + pinv(haldata->cal_b_to_tool_x);
-    out[1] = pinv(haldata->nominal_b_to_tool_y) + pinv(haldata->cal_b_to_tool_y);
-    out[2] = pinv(haldata->nominal_b_to_tool_z) + pinv(haldata->cal_b_to_tool_z);
+    out[0] = pinv(haldata->nominal_b_to_tool_x) + pinv(haldata->cal_b_to_tool_x)
+        + pinv(haldata->active_tool_offset_x);
+    out[1] = pinv(haldata->nominal_b_to_tool_y) + pinv(haldata->cal_b_to_tool_y)
+        + pinv(haldata->active_tool_offset_y);
+    out[2] = pinv(haldata->nominal_b_to_tool_z) + pinv(haldata->cal_b_to_tool_z)
+        - pinv(haldata->active_tool_offset_z);
 }
 
 static void c_frame_to_world(const double in[3], double out[3])
@@ -533,6 +545,13 @@ static void tool_offset_world(double b_cmd, double c_cmd, double out[3])
     out[2] += harmonic[2];
 }
 
+static void tcpc_origin(double out[3])
+{
+    out[0] = pinv(haldata->tcpc_origin_x);
+    out[1] = pinv(haldata->tcpc_origin_y);
+    out[2] = pinv(haldata->tcpc_origin_z);
+}
+
 static void update_debug_pins(double b_cmd, double c_cmd)
 {
     double offset[3];
@@ -645,6 +664,7 @@ static int headheadKinematicsForward(const double *joints,
                                      KINEMATICS_INVERSE_FLAGS *iflags)
 {
     double offset[3];
+    double origin[3];
     double world_xyz[3];
     double local_xyz[3];
 
@@ -655,9 +675,10 @@ static int headheadKinematicsForward(const double *joints,
     update_debug_pins(joints[JB], joints[JC]);
 
     if (pinb(haldata->tcpc_enable) || pinb(haldata->twp_mode)) {
-        world_xyz[0] = joints[JX] + offset[0];
-        world_xyz[1] = joints[JY] + offset[1];
-        world_xyz[2] = joints[JZ] + offset[2];
+        tcpc_origin(origin);
+        world_xyz[0] = joints[JX] + offset[0] - origin[0];
+        world_xyz[1] = joints[JY] + offset[1] - origin[1];
+        world_xyz[2] = joints[JZ] + offset[2] - origin[2];
     } else {
         world_xyz[0] = joints[JX];
         world_xyz[1] = joints[JY];
@@ -690,6 +711,7 @@ static int headheadKinematicsInverse(const EmcPose *pos,
                                      KINEMATICS_FORWARD_FLAGS *fflags)
 {
     double offset[3];
+    double origin[3];
     EmcPose mapped;
     double tool_xyz[3];
 
@@ -714,10 +736,11 @@ static int headheadKinematicsInverse(const EmcPose *pos,
     update_debug_pins(mapped.b, mapped.c);
 
     if (pinb(haldata->tcpc_enable) || pinb(haldata->twp_mode)) {
+        tcpc_origin(origin);
         tool_offset_world(mapped.b, mapped.c, offset);
-        mapped.tran.x = mapped.tran.x - offset[0];
-        mapped.tran.y = mapped.tran.y - offset[1];
-        mapped.tran.z = mapped.tran.z - offset[2];
+        mapped.tran.x = mapped.tran.x - offset[0] + origin[0];
+        mapped.tran.y = mapped.tran.y - offset[1] + origin[1];
+        mapped.tran.z = mapped.tran.z - offset[2] + origin[2];
     }
 
     position_to_mapped_joints(headhead_max_joints, &mapped, joints);
@@ -859,6 +882,13 @@ static int init_geometry_pins(void)
     result = new_hal_float_pin(&haldata->cal_b_to_tool_z, HAL_IN, "cal-b-to-tool.z");
     if (result < 0) return result;
 
+    result = new_hal_float_pin(&haldata->active_tool_offset_x, HAL_IN, "active-tool-offset.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->active_tool_offset_y, HAL_IN, "active-tool-offset.y");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->active_tool_offset_z, HAL_IN, "active-tool-offset.z");
+    if (result < 0) return result;
+
     result = new_hal_float_pin(&haldata->b_zero_offset, HAL_IN, "b-zero-offset");
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->c_zero_offset, HAL_IN, "c-zero-offset");
@@ -905,6 +935,12 @@ static int init_geometry_pins(void)
 
     result = new_hal_bit_pin(&haldata->tcpc_enable, HAL_IN, "tcpc-enable");
     if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->tcpc_origin_x, HAL_IN, "tcpc-origin.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->tcpc_origin_y, HAL_IN, "tcpc-origin.y");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->tcpc_origin_z, HAL_IN, "tcpc-origin.z");
+    if (result < 0) return result;
     result = new_hal_bit_pin(&haldata->twp_mode, HAL_IN, "twp-mode");
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->twp_motion_origin_x, HAL_IN, "twp-motion-origin.x");
@@ -935,6 +971,10 @@ static int init_geometry_pins(void)
     *haldata->cal_b_to_tool_x = 0.0;
     *haldata->cal_b_to_tool_y = 0.0;
     *haldata->cal_b_to_tool_z = 0.0;
+
+    *haldata->active_tool_offset_x = 0.0;
+    *haldata->active_tool_offset_y = 0.0;
+    *haldata->active_tool_offset_z = 0.0;
 
     *haldata->b_zero_offset = 0.0;
     *haldata->c_zero_offset = 0.0;
@@ -989,6 +1029,9 @@ static int init_geometry_pins(void)
     }
 
     *haldata->tcpc_enable = 1;
+    *haldata->tcpc_origin_x = 0.0;
+    *haldata->tcpc_origin_y = 0.0;
+    *haldata->tcpc_origin_z = 0.0;
     *haldata->twp_mode = 0;
     *haldata->twp_motion_origin_x = 0.0;
     *haldata->twp_motion_origin_y = 0.0;

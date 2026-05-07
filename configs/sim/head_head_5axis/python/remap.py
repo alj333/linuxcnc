@@ -40,6 +40,45 @@ def _twp_origin():
     )
 
 
+def _current_tool_xyz():
+    return (
+        _hal("headheadtwp.current_tool_x"),
+        _hal("headheadtwp.current_tool_y"),
+        _hal("headheadtwp.current_tool_z"),
+    )
+
+
+def _tcpc_origin_applied_by_kins():
+    try:
+        state_origin = (
+            _hal("headheadtwp.tcpc_origin_x"),
+            _hal("headheadtwp.tcpc_origin_y"),
+            _hal("headheadtwp.tcpc_origin_z"),
+        )
+        kins_origin = (
+            _hal("headheadkins.tcpc-origin.x"),
+            _hal("headheadkins.tcpc-origin.y"),
+            _hal("headheadkins.tcpc-origin.z"),
+        )
+    except Exception:
+        return False
+    return all(abs(state - kins) <= 1e-6 for state, kins in zip(state_origin, kins_origin))
+
+
+def _current_twp_world_xyz():
+    if _hal("headheadtwp.tcpc_enabled") and _tcpc_origin_applied_by_kins():
+        return _current_tcp_xyz()
+    return _current_tool_xyz()
+
+
+def _current_tcp_xyz():
+    return (
+        _hal("headheadtwp.current_tcp_x"),
+        _hal("headheadtwp.current_tcp_y"),
+        _hal("headheadtwp.current_tcp_z"),
+    )
+
+
 def _local_to_world(local_xyz):
     plane_x, plane_y, plane_z = _plane_basis()
     return _local_to_world_from_origin(_twp_origin(), local_xyz, plane_x, plane_y, plane_z)
@@ -203,11 +242,7 @@ def enable_twp_mode(self, **words):
         _hal("axis.y.pos-cmd"),
         _hal("axis.z.pos-cmd"),
     )
-    world_xyz = (
-        _hal("headheadtwp.current_tool_x"),
-        _hal("headheadtwp.current_tool_y"),
-        _hal("headheadtwp.current_tool_z"),
-    )
+    world_xyz = _current_twp_world_xyz()
     hal.set_p("headheadtwp.requested_b_angle", "%.6f" % b_angle)
     hal.set_p("headheadtwp.requested_c_angle", "%.6f" % c_angle)
     hal.set_p("headheadtwp.requested_normal_rotation", "%.6f" % normal_rotation)
@@ -240,11 +275,7 @@ def disable_twp_mode(self, **words):
         yield INTERP_OK
         return
 
-    world_xyz = (
-        _hal("headheadtwp.current_tool_x"),
-        _hal("headheadtwp.current_tool_y"),
-        _hal("headheadtwp.current_tool_z"),
-    )
+    world_xyz = _current_twp_world_xyz()
 
     if _hal("headheadtwp.motion_enabled"):
         self.execute("G92.1")
