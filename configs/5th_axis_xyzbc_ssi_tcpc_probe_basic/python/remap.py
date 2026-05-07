@@ -14,6 +14,7 @@ from interpreter import INTERP_ERROR, INTERP_EXECUTE_FINISH, INTERP_OK
 
 ROTARY_ENTRY_TOL_DEG = 0.01
 TCPC_ENTRY_ZERO_TOL_DEG = 0.005
+REAL_MACHINE_TWP_ENABLED = False
 
 _SIM_REMAP = (
     Path("/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/python/remap.py")
@@ -169,5 +170,18 @@ def disable_tcpc_mode(self, **words):
     yield INTERP_OK
 
 
-enable_twp_mode = _MODULE.enable_twp_mode
+def enable_twp_mode(self, **words):
+    yield INTERP_EXECUTE_FINISH
+
+    if not REAL_MACHINE_TWP_ENABLED:
+        yield _set_error(
+            self,
+            "G68.2 rejected: real-machine TWP entry is disabled pending "
+            "entry-continuity validation",
+        )
+        return
+
+    yield from _MODULE.enable_twp_mode(self, **words)
+
+
 disable_twp_mode = _MODULE.disable_twp_mode

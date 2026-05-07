@@ -129,6 +129,9 @@ Production entry/exit behavior is now implemented in the real-machine remap:
   length with `G49` only after `G49.1`
 - active `G43 Hn` length is included in the head-head kinematics as local tool
   length, so the same B-to-spindle-nose geometry can handle different tools
+- `G68.2` TWP entry is temporarily disabled in the real-machine config pending
+  entry-continuity validation; TCPC entry/exit is validated, but the TWP motion
+  enable path is not yet production safe
 - the TCPC tool-length guard is enabled by
   `headheadtwp.tcpc_tool_length_guard`; the real fail-safe state wrapper sets
   this pin true so the interpreter blocks tool-length changes only for guarded
@@ -255,6 +258,21 @@ Fresh startup/homing tool-restore check, 2026-05-07 21:10 +07:
 - do not disable `remember_tool_in_spindle` for the production TCPC config;
   instead, TCPC programs and checks must verify the live active TLO before
   `G43.4` and keep all `G43`/`G49` changes outside active TCPC
+
+TWP entry fault, 2026-05-07 21:20 +07:
+
+- TCPC-only smoke checks passed, including the preserve-tool path that leaves
+  T3/G43 active after `G49.1`
+- `G68.2 B0 C0` while TCPC was off correctly raised
+  `TWP mode enable requested while TCPC mode is not enabled`
+- after `G43.4`, a subsequent `G68.2 B0 C0` caused XYZ following errors and
+  dropped X/Y homing, even though final HAL state had TCPC off, TWP off, B/C at
+  zero, and T3/G43 still active
+- the real-machine remap now rejects all `G68.2` TWP entry attempts with a
+  production lockout message until the TWP entry-continuity path is fixed and
+  validated offline
+- do not resume TWP tests on the machine from this session; close/restart and
+  re-home before any further machine motion
 
 ## Pause Status - 2026-04-27 10:50 +07
 
@@ -407,7 +425,8 @@ Important limitations:
 - live `G43.4/G49.1` switching is now guarded and regression-tested, but
   first real-machine validation should still be a no-cut commissioning run
 - do not use this config for unsupervised cutting until the entry/exit smoke
-  path and a short production-style no-cut TCPC/TWP path pass on the machine
+  path and short-probe sphere validation pass on the machine; TWP remains
+  locked out until a separate continuity fix is validated
 
 Launch:
 
@@ -425,8 +444,9 @@ First validation path:
    `G0 B0 C0`, `G43.4`, safe B/C move, return to `B0 C0`, `G49.1`.
 5. Confirm `G43.4` is rejected away from `B0 C0`, and `G49.1` is rejected if
    B/C are not back at the entry orientation.
-6. Confirm `G68.2` is rejected while TCPC is off, and that `G49.1` is rejected
-   while TWP is active until `G69` has run.
+6. Confirm `G68.2` is rejected with the production lockout message. Do not run
+   TWP motion checks on the real machine until the entry-continuity issue is
+   fixed offline.
 
 ## Runtime Update - 2026-04-27 20:11 +07
 

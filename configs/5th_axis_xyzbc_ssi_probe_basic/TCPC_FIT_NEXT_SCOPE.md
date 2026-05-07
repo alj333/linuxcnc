@@ -71,6 +71,10 @@ Live checks completed on 2026-05-07:
   Keep this behavior for crash prevention when a physical tool is still loaded;
   TCPC checks must use live `motion.tooloffset.*`/G43 state as the source of
   truth before `G43.4`.
+- TCPC-only smoke checks passed, but real-machine TWP entry is not production
+  safe yet: after `G43.4`, `G68.2 B0 C0` caused XYZ following errors and
+  dropped X/Y homing. The TCPC work config now rejects `G68.2` pending an
+  offline TWP entry-continuity fix.
 
 Before production release, still cover these items:
 
@@ -80,6 +84,9 @@ Before production release, still cover these items:
   effective tip position matches the pre-tool-length baseline.
 - Rerun the no-cut TCPC entry/exit smoke program from a fresh LinuxCNC session
   as the final release check.
+- Keep `G68.2`/TWP disabled on the real machine until the continuity problem is
+  reproduced and fixed in sim/offline checks, then validated with a dedicated
+  no-motion/no-cut machine test.
 - Run one short-probe sphere validation pass with active `G43 H3`; compare
   residuals against the last accepted refined-fit data. This is the regression
   proving that the spindle-nose split plus T3 length did not shift the fit.
@@ -97,9 +104,9 @@ Before production release, still cover these items:
   `G43 H3` and the long-probe `G43 Hn`. This is still the key test for whether
   remaining errors are true rotary geometry versus tool-vector/tool-length
   model errors.
-- Before using TCPC for unattended production, validate TWP entry/exit with a
-  real post sample: `G43 Hn -> G0 B0 C0 -> G43.4 -> optional G68.2/G69 ->
-  return B/C to B0 C0 -> G49.1 -> G49`.
+- Before enabling TWP for production, validate TWP entry/exit with a real post
+  sample after the continuity fix: `G43 Hn -> G0 B0 C0 -> G43.4 -> optional
+  G68.2/G69 -> return B/C to B0 C0 -> G49.1 -> G49`.
 
 ## Current Shutdown Status - 2026-05-03
 
