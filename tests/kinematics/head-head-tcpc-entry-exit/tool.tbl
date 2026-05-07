@@ -1,1 +1,1 @@
-; empty tool table for head-head kinematics TWP regression
+T1 P1 Z+25.000000 D+0.000000 ; test tool

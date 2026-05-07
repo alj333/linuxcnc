@@ -23,6 +23,10 @@ Current machine assumptions:
   rotary angle instead of redefining the current position as B0/C0
 - `nc_files/calibration/rotary_ssi_zero_verify.ngc` is available as a
   no-motion post-home B/C SSI zero check
+- `M6` and `M61` are rejected if any spindle is active via
+  `TOOL_CHANGE_REJECT_SPINDLE_ON = 1`; this preserves the old machine behavior
+  where an active spindle blocks tool/current-tool changes instead of being
+  auto-stopped by LinuxCNC
 - the touch probe path is live through `motion.probe-input`
 - manual tool release still uses the spindle-off interlock on input `16`
 

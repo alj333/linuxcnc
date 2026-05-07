@@ -788,6 +788,7 @@ struct setup
   int tool_change_at_g30;
   int tool_change_quill_up;
   int tool_change_with_spindle_on;
+  int tool_change_reject_spindle_on;
   int a_axis_wrapped;
   int b_axis_wrapped;
   int c_axis_wrapped;

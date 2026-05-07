@@ -20,6 +20,9 @@ Current status:
 - `G49.1` exits TCPC only when TWP is fully cancelled with `G69` and B/C are
   back at the TCPC entry orientation; otherwise it aborts with an operator
   error
+- `M6` and `M61` are rejected while any spindle is active through
+  `TOOL_CHANGE_REJECT_SPINDLE_ON = 1`; tool/current-tool changes require an
+  explicit `M5` first, matching the old machine safety behavior
 - `headheadtwp.tcpc_enabled` gates `headheadkins.tcpc-enable`, and
   `headheadtwp.tcpc_origin_*` feeds `headheadkins.tcpc-origin.*`
 - the refined B-harmonic/B-cross fitted correction is now persistent in this
@@ -154,9 +157,9 @@ Production-release items still open:
 - validate the spindle-nose split with tool 3 active: `G43 H3` before `G43.4`
   should reproduce the previous short-probe TCPC fit
 - run the no-cut smoke program and one active-`G43 H3` sphere validation pass
-- decide whether to add the same guarded-TCPC rejection to `M6`/`M61`; current
-  production guidance is that tool changes/current-tool changes must happen
-  outside TCPC
+- current production guidance remains that tool changes/current-tool changes
+  happen outside TCPC; `M6`/`M61` now share the spindle-active lockout and TWP
+  already blocks tool/current-tool changes
 - repeat short/long probe validation when the long probe arrives
 
 Headless regression added:

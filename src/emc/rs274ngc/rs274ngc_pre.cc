@@ -839,6 +839,7 @@ int Interp::init()
   _setup.tool_change_at_g30 = 0;
   _setup.tool_change_quill_up = 0;
   _setup.tool_change_with_spindle_on = 0;
+  _setup.tool_change_reject_spindle_on = 0;
   _setup.a_axis_wrapped = 0;
   _setup.b_axis_wrapped = 0;
   _setup.c_axis_wrapped = 0;
@@ -869,6 +870,7 @@ int Interp::init()
           inifile.Find(&_setup.tool_change_at_g30, "TOOL_CHANGE_AT_G30", "EMCIO");
           inifile.Find(&_setup.tool_change_quill_up, "TOOL_CHANGE_QUILL_UP", "EMCIO");
           inifile.Find(&_setup.tool_change_with_spindle_on, "TOOL_CHANGE_WITH_SPINDLE_ON", "EMCIO");
+          inifile.Find(&_setup.tool_change_reject_spindle_on, "TOOL_CHANGE_REJECT_SPINDLE_ON", "EMCIO");
           inifile.Find(&_setup.a_axis_wrapped, "WRAPPED_ROTARY", "AXIS_A");
           inifile.Find(&_setup.b_axis_wrapped, "WRAPPED_ROTARY", "AXIS_B");
           inifile.Find(&_setup.c_axis_wrapped, "WRAPPED_ROTARY", "AXIS_C");

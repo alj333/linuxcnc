@@ -163,6 +163,7 @@ setup::setup() :
     tool_change_at_g30(0),
     tool_change_quill_up(0),
     tool_change_with_spindle_on(0),
+    tool_change_reject_spindle_on(0),
     a_axis_wrapped(0),
     b_axis_wrapped(0),
     c_axis_wrapped(0),

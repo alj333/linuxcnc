@@ -70,10 +70,13 @@ Before production release, cover these items:
 - Confirm abort recovery: while TCPC is active, abort must not clear tool
   length. Recovery remains manual-safe: make the machine safe, return B/C to
   entry orientation, run `G49.1`, then `G49` if required.
+- Confirm `M6` and `M61` rejection with the spindle active. The SSI Probe Basic
+  configs now set `TOOL_CHANGE_REJECT_SPINDLE_ON = 1`, so tool/current-tool
+  changes should abort until the program or operator has issued `M5`.
 - Review tool-change paths and post output. Production programs should not
   issue `M6`, `M61`, `G43`, `G43.1`, `G43.2`, or `G49` inside active TCPC/TWP.
-  If operator workflow can trigger tool changes while TCPC is active, add an
-  interpreter guard for `M6`/`M61` under the same TCPC guard pin.
+  `M6`/`M61` now share spindle-active lockouts and TWP lockouts, but production
+  post output should still keep them outside TCPC.
 - When the long probe arrives, run short/long back-to-back validation using
   `G43 H3` and the long-probe `G43 Hn`. This is still the key test for whether
   remaining errors are true rotary geometry versus tool-vector/tool-length

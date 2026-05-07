@@ -3420,8 +3420,16 @@ int Interp::convert_m(block_pointer block,       //!< pointer to a block of RS27
 	      toolno = round_to_int(block->q_number);
 	      // now also accept M61 Q0 - unload tool
 	      CHKS((toolno < 0), (_("Need non-negative Q-word to specify tool number with M61")));
+	      CHKS((settings->cutter_comp_side),
+		   (_("Cannot change current tool number with cutter radius compensation on")));
 	      CHKS((headhead_twp_is_active()),
 		   (_("Cannot change current tool number while TWP is active")));
+	      if (settings->tool_change_reject_spindle_on) {
+		  for (int s = 0; s < settings->num_spindles; s++) {
+		      CHKS((settings->spindle_turning[s] != CANON_STOPPED),
+			   (_("Cannot change current tool number while spindle is on")));
+		  }
+	      }
 
 	      int idx;
 
@@ -5569,6 +5577,12 @@ int Interp::convert_tool_change(setup_pointer settings)  //!< pointer to machine
        (_("Cannot change tools with cutter radius compensation on")));
   CHKS((headhead_twp_is_active()),
        (_("Cannot change tools while TWP is active")));
+  if (settings->tool_change_reject_spindle_on) {
+      for (int s = 0; s < settings->num_spindles; s++) {
+          CHKS((settings->spindle_turning[s] != CANON_STOPPED),
+               (_("Cannot change tools while spindle is on")));
+      }
+  }
 
   START_CHANGE(); // indicate start of change operation
   if (!settings->tool_change_with_spindle_on) {
