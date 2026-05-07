@@ -44,32 +44,44 @@ or different `G43 Hn`. The guard is gated by
 that pin, while older simulator configs without the guard pin keep their
 historical behavior.
 
-The TCPC work config now has its own abort subroutine,
-`on_abort_tcpc.ngc`. It runs the normal modal cleanup but skips `G49` while
-TCPC is active, because clearing tool length at that point would change the
-TCPC kinematics. Recovery order after a TCPC abort is to make the machine safe,
-return B/C to the saved TCPC entry orientation, run `G49.1`, then use `G49` if
-tool length must be cleared.
+The TCPC work config intentionally leaves `ON_ABORT_COMMAND` unset. Automatic
+abort cleanup can hide or disturb active TCPC/tool-length state, and subroutine
+lookup proved unreliable during the guard-smoke tests. `G43.4` is now locked to
+explicit `B0 C0` entry, so recovery order after a TCPC abort is to make the
+machine safe, return B/C to `B0 C0`, run `G49.1`, then use `G49` if tool length
+must be cleared.
 
 ## TCP Production Readiness Checkpoint - 2026-05-07
 
 The current TCPC work config is close enough for controlled production
 validation, but it is not released as the default production configuration yet.
-Before production release, cover these items:
+Live checks completed on 2026-05-07:
+
+- `M6` and `M61 Qn` reject correctly while the spindle is active.
+- `G43.4` rejects unless B/C are at explicit `B0 C0`.
+- ordinary `G49`/`G43.1` changes reject while TCPC is active.
+- `G49.1` rejects away from the TCPC entry orientation, leaves TCPC active,
+  and manual recovery with `G0 B0 C0`, `G49.1`, then `G49` clears cleanly.
+- unsetting `ON_ABORT_COMMAND` eliminated the earlier unreliable
+  `Oon_abort` lookup error during the guard smoke test.
+- after recovery, T3 may remain the current tool, but active
+  `motion.tooloffset.*` must be zero/G49 unless the program explicitly applies
+  `G43 Hn`.
+
+Before production release, still cover these items:
 
 - Restart LinuxCNC so the rebuilt `headheadkins`, interpreter, and Probe Basic
   TCPC config are actually loaded.
 - With tool 3 loaded, run `G43 H3` before `G43.4` and confirm the short-probe
   effective tip position matches the pre-tool-length baseline.
-- Run the no-cut TCPC entry/exit smoke program and confirm `G49`/`G43.1` are
-  rejected while TCPC is active, `G49.1` exits only at the entry B/C
-  orientation, and `G49` works after `G49.1`.
+- Rerun the no-cut TCPC entry/exit smoke program from a fresh LinuxCNC session
+  as the final release check.
 - Run one short-probe sphere validation pass with active `G43 H3`; compare
   residuals against the last accepted refined-fit data. This is the regression
   proving that the spindle-nose split plus T3 length did not shift the fit.
 - Confirm abort recovery: while TCPC is active, abort must not clear tool
   length. Recovery remains manual-safe: make the machine safe, return B/C to
-  entry orientation, run `G49.1`, then `G49` if required.
+  `B0 C0`, run `G49.1`, then `G49` if required.
 - Confirm `M6` and `M61` rejection with the spindle active. The SSI Probe Basic
   configs now set `TOOL_CHANGE_REJECT_SPINDLE_ON = 1`, so tool/current-tool
   changes should abort until the program or operator has issued `M5`.
@@ -82,8 +94,8 @@ Before production release, cover these items:
   remaining errors are true rotary geometry versus tool-vector/tool-length
   model errors.
 - Before using TCPC for unattended production, validate TWP entry/exit with a
-  real post sample: `G43 Hn -> G43.4 -> optional G68.2/G69 -> return B/C ->
-  G49.1 -> G49`.
+  real post sample: `G43 Hn -> G0 B0 C0 -> G43.4 -> optional G68.2/G69 ->
+  return B/C to B0 C0 -> G49.1 -> G49`.
 
 ## Current Shutdown Status - 2026-05-03
 

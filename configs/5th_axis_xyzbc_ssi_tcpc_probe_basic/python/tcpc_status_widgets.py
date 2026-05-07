@@ -122,6 +122,9 @@ class TcpcStatusReader:
             "tool_offset_x": _read_pin("headheadkins.tool-offset.x"),
             "tool_offset_y": _read_pin("headheadkins.tool-offset.y"),
             "tool_offset_z": _read_pin("headheadkins.tool-offset.z"),
+            "active_tlo_x": _read_pin("motion.tooloffset.x"),
+            "active_tlo_y": _read_pin("motion.tooloffset.y"),
+            "active_tlo_z": _read_pin("motion.tooloffset.z"),
             "tcpc_origin_x": _read_pin("headheadtwp.tcpc_origin_x"),
             "tcpc_origin_y": _read_pin("headheadtwp.tcpc_origin_y"),
             "tcpc_origin_z": _read_pin("headheadtwp.tcpc_origin_z"),
@@ -305,6 +308,9 @@ class TcpcStatusTab(QWidget):
             ("Tool offset X", "tool_offset_x"),
             ("Tool offset Y", "tool_offset_y"),
             ("Tool offset Z", "tool_offset_z"),
+            ("Active TLO X", "active_tlo_x"),
+            ("Active TLO Y", "active_tlo_y"),
+            ("Active TLO Z", "active_tlo_z"),
             ("TCPC origin X", "tcpc_origin_x"),
             ("TCPC origin Y", "tcpc_origin_y"),
             ("TCPC origin Z", "tcpc_origin_z"),
@@ -358,7 +364,7 @@ class TcpcStatusTab(QWidget):
                 rotary_grid.addWidget(value, row, col)
                 self.rotary_fields[f"{axis}_{key}"] = (value, formatter)
 
-        note = QLabel("G43 Hn before G43.4. Use G69, return B/C, then G49.1 before G49.")
+        note = QLabel("TCPC requires B0 C0 entry/exit. Use G43 Hn before G43.4; G49.1 before G49.")
         note.setWordWrap(True)
         note.setStyleSheet("color: #fbbf24; font: 9pt 'DejaVu Sans';")
         layout.addWidget(note)
@@ -381,6 +387,9 @@ class TcpcStatusTab(QWidget):
             "tool_offset_x",
             "tool_offset_y",
             "tool_offset_z",
+            "active_tlo_x",
+            "active_tlo_y",
+            "active_tlo_z",
             "tcpc_origin_x",
             "tcpc_origin_y",
             "tcpc_origin_z",

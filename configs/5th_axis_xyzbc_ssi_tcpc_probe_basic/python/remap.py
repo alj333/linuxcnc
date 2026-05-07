@@ -13,6 +13,7 @@ from interpreter import INTERP_ERROR, INTERP_EXECUTE_FINISH, INTERP_OK
 
 
 ROTARY_ENTRY_TOL_DEG = 0.01
+TCPC_ENTRY_ZERO_TOL_DEG = 0.005
 
 _SIM_REMAP = (
     Path("/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/python/remap.py")
@@ -79,6 +80,26 @@ def _at_tcpc_entry_orientation():
     )
 
 
+def _at_tcpc_zero_orientation():
+    current_b = float(_hal("headheadtwp.current_joint_b"))
+    current_c = float(_hal("headheadtwp.current_joint_c"))
+    return (
+        abs(current_b) <= TCPC_ENTRY_ZERO_TOL_DEG
+        and abs(current_c) <= TCPC_ENTRY_ZERO_TOL_DEG
+    )
+
+
+def _zero_orientation_message():
+    return (
+        "G43.4 requires B0.0000 C0.0000 before entering TCPC "
+        "(current B%.4f C%.4f)"
+        % (
+            float(_hal("headheadtwp.current_joint_b")),
+            float(_hal("headheadtwp.current_joint_c")),
+        )
+    )
+
+
 def _entry_orientation_message():
     return (
         "G49.1 requires B/C back at the TCPC entry orientation "
@@ -102,6 +123,9 @@ def enable_tcpc_mode(self, **words):
         return
     if _twp_defined_or_active():
         yield _set_error(self, "G43.4 rejected while TWP is active or defined; run G69 first")
+        return
+    if not _at_tcpc_zero_orientation():
+        yield _set_error(self, _zero_orientation_message())
         return
     if bool(_hal("headheadtwp.tcpc_enabled")):
         yield INTERP_OK

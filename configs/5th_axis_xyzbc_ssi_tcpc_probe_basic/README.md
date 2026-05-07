@@ -13,13 +13,14 @@ Current status:
   tool table from the trivkins Probe Basic config
 - uses its own LinuxCNC parameter file so TCPC/TWP WCS changes do not write
   back to the normal Probe Basic parameter file
-- starts fail-safe with TCPC disabled; production G-code must enter TCPC with
-  `G43.4` after the machine is enabled and all XYZBC joints are homed
+- starts fail-safe with TCPC disabled; production G-code must move to explicit
+  `B0 C0` and then enter TCPC with `G43.4` after the machine is enabled and all
+  XYZBC joints are homed
 - `G43.4` sets a live TCPC entry origin in `headheadkins` so entry does not
   cause a kinematics position jump
 - `G49.1` exits TCPC only when TWP is fully cancelled with `G69` and B/C are
-  back at the TCPC entry orientation; otherwise it aborts with an operator
-  error
+  back at the `B0 C0` TCPC entry orientation; otherwise it aborts with an
+  operator error
 - `M6` and `M61` are rejected while any spindle is active through
   `TOOL_CHANGE_REJECT_SPINDLE_ON = 1`; tool/current-tool changes require an
   explicit `M5` first, matching the old machine safety behavior
@@ -110,10 +111,12 @@ the persistent fitted-correction enable for this TCPC work config.
 Production entry/exit behavior is now implemented in the real-machine remap:
 
 - `G43.4` checks that the machine is enabled, all five joints are homed, TWP is
-  not active/defined, and no nonzero `G52/G92` offset is active.
-- `G43.4` is idempotent while TCPC is already enabled.
-- on first `G43.4`, `headheadtwp` stores the current B/C as the TCPC entry
-  orientation and stores the current tool-offset vector as `tcpc_origin`.
+  not active/defined, no nonzero `G52/G92` offset is active, and B/C are at
+  `B0.0000 C0.0000` within `0.005 deg`.
+- `G43.4` is idempotent while TCPC is already enabled only if B/C are still at
+  `B0 C0`; repeated `G43.4` away from the zero entry pose is rejected.
+- on first `G43.4`, `headheadtwp` stores the zero B/C TCPC entry orientation
+  and stores the current tool-offset vector as `tcpc_origin`.
 - `headheadkins` subtracts `tcpc-origin` while TCPC/TWP are active, so the
   current program position and physical joints remain continuous when TCPC is
   entered live.
@@ -130,9 +133,10 @@ Production entry/exit behavior is now implemented in the real-machine remap:
   `headheadtwp.tcpc_tool_length_guard`; the real fail-safe state wrapper sets
   this pin true so the interpreter blocks tool-length changes only for guarded
   TCPC configs
-- the TCPC config uses `on_abort_tcpc.ngc`; abort recovery leaves `G49` alone
-  while TCPC is still active, then the operator can return B/C to the TCPC entry
-  orientation, run `G49.1`, and only then clear tool length with `G49`
+- the TCPC config intentionally leaves `ON_ABORT_COMMAND` unset; abort recovery
+  is manual so automatic cleanup cannot hide or disturb active TCPC/tool-length
+  state. Return B/C to `B0 C0`, run `G49.1`, and only then clear tool length
+  with `G49` if required.
 
 Recommended production program envelope:
 
@@ -141,10 +145,11 @@ G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
 (machine enabled and homed before this program starts)
 Tn M6
 G43 Hn
+G0 B0 C0
 G43.4
 (normal TCPC or TWP work)
 G69     (only needed if TWP was used)
-G0 B0 C0 (or the B/C orientation where G43.4 was entered)
+G0 B0 C0
 G49.1
 G49
 M30
@@ -184,6 +189,19 @@ Machine no-cut smoke program:
   `G43 H#<_current_tool>` before `G43.4`
 - the program checks HAL state and displayed XYZ continuity around `G43.4` and
   `G49.1`
+- `#5403` is the selected/current tool table Z length, not proof that active
+  G43 compensation is still applied; active compensation is verified after the
+  program through `motion.tooloffset.z`
+- the TCPC status tab displays `Active TLO X/Y/Z` from the live
+  `motion.tooloffset.*` HAL pins because the UI's modal `G49/G43` state can
+  disagree with active motion compensation after an abort or queued cleanup
+- the program moves to explicit `B0 C0` before `G43.4` and returns to explicit
+  `B0 C0` before `G49.1`; this avoids inheriting small SSI homing reference
+  offsets as the TCPC entry orientation
+- `nc_files/calibration/tcpc_production_entry_exit_preserve_tool_smoke.ngc`
+  is the companion check that exits TCPC with `G49.1` but intentionally does
+  not run final `G49`; after it completes, `motion.tooloffset.z` must still
+  show the active tool length
 
 Real-machine result, 2026-05-07 08:24 +07:
 
@@ -195,7 +213,7 @@ Real-machine result, 2026-05-07 08:24 +07:
 - `nc_files/calibration/tcpc_production_entry_exit_smoke.ngc` ran and completed
   successfully on the real machine
 - this validates the basic production path:
-  `G43.4 -> small B/C TCPC move -> return to entry B/C -> G49.1`
+  `G0 B0 C0 -> G43.4 -> small B/C TCPC move -> return B0 C0 -> G49.1`
 
 Real-machine G49.1 guard result, 2026-05-07 08:26 +07:
 
@@ -206,11 +224,24 @@ Real-machine G49.1 guard result, 2026-05-07 08:26 +07:
 - live state after the intentional error was TCPC still enabled, TWP off, and
   B/C still away from the entry orientation; recover with MDI `G0 B0 C0`,
   then `G49.1`
-- the test also exposed two abort-handler issues: the TCPC config's relative
-  `SUBROUTINE_PATH` did not find `on_abort.ngc`, and the abort command syntax
-  was parsed unreliably; the TCPC INI now uses absolute subroutine paths to the
-  shared Probe Basic `subroutines`/`remap_subs` folders and the tested
-  `O <on_abort> call` form
+- the test also exposed that automatic abort subroutine lookup was unreliable
+  in this TCPC config. `ON_ABORT_COMMAND` is now intentionally unset; TCPC abort
+  recovery is manual and state must be checked through TCPC status plus
+  `motion.tooloffset.*`.
+
+Follow-up recovery/status check, 2026-05-07 21:02 +07:
+
+- after the intentional `G49.1` guard error, operator recovery with
+  `G0 B0 C0`, `G49.1`, then `G49` worked as expected
+- HAL confirmed `headheadtwp.tcpc_enabled = FALSE`,
+  `motion.tooloffset.z = 0`, and B/C current joints at `0/0`
+- the latest LinuxCNC logs contained only the intended `G49.1` guard error; no
+  `Oon_abort`/abort-subroutine lookup error reappeared after unsetting
+  `ON_ABORT_COMMAND`
+- LinuxCNC status after homing/recovery showed `tool_in_spindle = 3` with
+  `tool_offset = 0` and modal `G49`; restoring/showing T3 is acceptable, but
+  production TCPC must treat active `motion.tooloffset.*`/G43 state as the
+  source of truth before `G43.4`
 
 ## Pause Status - 2026-04-27 10:50 +07
 
@@ -375,10 +406,12 @@ First validation path:
 
 1. Launch and confirm the machine starts with `TCPC OFF` and without enabling TWP.
 2. Home all axes.
-3. In MDI at a safe B/C orientation, run `G43.4` and confirm `TCPC ON`.
+3. In MDI at safe clearance, run `G0 B0 C0`, then `G43.4`, and confirm
+   `TCPC ON`.
 4. Run a slow no-cut TCPC entry/exit smoke path:
-   `G43.4`, safe B/C move, return to entry B/C, `G49.1`.
-5. Confirm `G49.1` is rejected if B/C are not back at the entry orientation.
+   `G0 B0 C0`, `G43.4`, safe B/C move, return to `B0 C0`, `G49.1`.
+5. Confirm `G43.4` is rejected away from `B0 C0`, and `G49.1` is rejected if
+   B/C are not back at the entry orientation.
 6. Confirm `G68.2` is rejected while TCPC is off, and that `G49.1` is rejected
    while TWP is active until `G69` has run.
 

@@ -3,8 +3,9 @@
 """Run the shared head-head TWP state component fail-safe for production TCPC.
 
 The real-machine config starts with TCPC disabled. G43.4 sets a live TCPC
-entry origin, and G49.1 is allowed only when the production remap checks prove
-the current B/C orientation is safe to leave TCPC. It also enables the
+entry origin only from explicit B0/C0, and G49.1 is allowed only when the
+production remap checks prove the current B/C orientation is safe to leave
+TCPC. It also enables the
 interpreter guard that rejects ordinary G43/G49 tool-length changes while TCPC
 is active.
 """
