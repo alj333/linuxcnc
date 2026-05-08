@@ -86,6 +86,12 @@ Live checks completed on 2026-05-07:
   `motion.tooloffset.z = 128.6067`. The smoke programs now include preview
   guards so the 3D backplot does not evaluate live tool/TCPC checks while the
   file is only being loaded.
+- The first attempted small-pose sphere validation on 2026-05-08 was invalid:
+  the physical probe was not loaded, so the first `G38.2` ended with no
+  contact. No new rows were written to the small-pose result CSV. Recovery
+  left the controller idle at `B0 C0`, TCPC off, TWP off, and T3/G43 active.
+  The small-pose validation now has a one-time start `M0` confirmation before
+  any probe motion.
 
 Before production release, still cover these items:
 

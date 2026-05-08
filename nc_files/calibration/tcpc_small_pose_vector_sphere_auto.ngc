@@ -65,6 +65,9 @@ o<probe_cal_offset_default> endif
 #704 = 0.0            (set to 1.0 to pause before each probing pose)
 #705 = 200.0          (rotary index feed)
 
+(MSG, Confirm the physical T3 probe is loaded, powered, and tested before probing)
+M0
+
 #540 = [#<_abs_x> - #<_x>]
 #541 = [#<_abs_y> - #<_y>]
 #542 = [#<_abs_z> - #<_z>]
