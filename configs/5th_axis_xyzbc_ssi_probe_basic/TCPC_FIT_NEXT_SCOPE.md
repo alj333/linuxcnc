@@ -111,18 +111,19 @@ Live checks completed on 2026-05-07:
   saturation. `P=100` was worse at about `0.15 deg`, so it is rejected.
   The TCPC work INI now carries the `P=75/MAX_OUTPUT=12` B/C candidate; restart
   the TCPC config before treating it as persistent-test validated.
+- Fresh restart verification later on 2026-05-08 confirmed the persisted
+  `P=75/MAX_OUTPUT=12` values were loaded from the TCPC INI. The fresh rotary
+  small-motion run returned idle/in-position at the starting B/C pose with peak
+  following errors B `0.0417 deg` and C `0.0485 deg`, zero PID saturation
+  samples, and zero B/C SSI invalid samples.
 
 Before production release, still cover these items:
 
 - Restart LinuxCNC so the rebuilt `headheadkins`, interpreter, and Probe Basic
   TCPC config are actually loaded.
-- After restart, confirm B/C HAL values are the TCPC work-config candidate:
-  `pid.b.Pgain = 75`, `pid.c.Pgain = 75`,
-  `pid.b.maxoutput = 12`, and `pid.c.maxoutput = 12`.
-- Rerun `nc_files/calibration/tcpc_servo_tune_rotary_small_motion.ngc` from a
-  fresh TCPC session and analyze the log with
-  `scripts/analyze_tcpc_servo_log.py`; the expected clean target is below
-  about `0.05 deg` B/C following error with zero PID saturation.
+- Treat the persisted B/C servo tune as the current TCPC work-config candidate.
+  The fresh-run target of below about `0.05 deg` B/C following error with zero
+  PID saturation has been met once from a restarted session.
 - With tool 3 loaded, run `G43 H3` before `G43.4` and confirm the short-probe
   effective tip position matches the pre-tool-length baseline.
 - Rerun the no-cut TCPC entry/exit smoke program from a fresh LinuxCNC session

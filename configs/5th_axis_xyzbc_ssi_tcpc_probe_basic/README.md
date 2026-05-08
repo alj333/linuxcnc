@@ -286,10 +286,11 @@ Current persistent TCPC work-config rotary candidate:
 
 Next servo/motion checks:
 
-- restart this TCPC config once convenient so the INI candidate is loaded from
-  disk, not just live HAL `setp` values
-- rerun the rotary small-motion check from a fresh LinuxCNC session and confirm
-  the `P=75/MAX_OUTPUT=12` values through HAL before motion
+- fresh restart verification completed with
+  `/tmp/tcpc_servo_logs/rotary-p75-max12-fresh.csv`; the INI-loaded
+  `P=75/MAX_OUTPUT=12` values were confirmed through HAL before motion
+- fresh-run peak following errors were B `0.0417 deg` and C `0.0485 deg`,
+  with zero PID saturation samples and zero B/C SSI invalid samples
 - keep G68.2/TWP disabled on the real machine; do not use TWP as a servo test
 - after motion checks are stable, rerun the active `G43 H3` short-probe TCPC
   sphere validation as the final confirmation before production-style use
