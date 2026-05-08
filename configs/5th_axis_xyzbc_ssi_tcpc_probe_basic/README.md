@@ -244,11 +244,28 @@ Follow-up recovery/status check, 2026-05-07 21:02 +07:
 Servo tuning work is being done only in this TCPC work config. The shared
 SSI/3-axis Probe Basic config remains unchanged for normal 3-axis work.
 
+Important measurement limit: X/Y/Z are open-loop at the LinuxCNC level in this
+configuration. The logger records LinuxCNC command versus Mesa stepgen
+position feedback for X/Y/Z, not true motor encoder position. Those logs are
+valid for checking trajectory generation, stepgen limits, following-error
+math, and commanded step rate/acceleration headroom, but the servo amplifiers
+still need operator observation or separate fault/status logging. B/C feedback
+is the direct SSI rotary output feedback.
+
+Future servo upgrade direction: replace stepgen-level X/Y/Z drive control and
+diagnostics with direct communication to the servo amplifiers. The useful
+production signals are actual drive position/velocity, drive following error,
+torque/current/load, temperature, warning/fault bits, and fault history. That is
+the correct path for final servo health monitoring; the current Mesa stepgen
+logs are only a commissioning aid.
+
 Added no-probe/no-TCPC logging helpers:
 
 - `scripts/tcpc_servo_logger.py`
 - `scripts/analyze_tcpc_servo_log.py`
 - `nc_files/calibration/tcpc_servo_tune_linear_small_motion.ngc`
+- `nc_files/calibration/tcpc_servo_tune_linear_ramp_motion.ngc`
+- `nc_files/calibration/tcpc_servo_tune_linear_limit_motion.ngc`
 - `nc_files/calibration/tcpc_servo_tune_rotary_small_motion.ngc`
 
 Baseline linear relative move check, log
@@ -284,6 +301,27 @@ Current persistent TCPC work-config rotary candidate:
 - `[JOINT_3]` B: `P = 75.0`, `MAX_OUTPUT = 12.0`
 - `[JOINT_4]` C: `P = 75.0`, `MAX_OUTPUT = 12.0`
 
+Linear-axis motion check against the old Feb 2026 5-axis config:
+
+- old main config reference:
+  `/home/cnc5/Old System/Backup Feb 2026/linuxcnc/configs/5th_axis/5th_axis.ini`
+- old main linear limits were X `250 mm/s`, `500 mm/s^2`;
+  Y `250 mm/s`, `250 mm/s^2`; Z `250 mm/s`, `500 mm/s^2`
+- current TCPC work config intentionally remains lower for commissioning:
+  X/Y/Z `150 mm/s`, `300 mm/s^2`
+- the first current-limit ramp exposed a Y stepgen headroom error:
+  `[JOINT_1] MAX_ACCELERATION = 300` but `STEPGEN_MAXACCEL = 300`
+- live change to `hm2_7i95.0.stepgen.01.maxaccel = 600` fixed the issue:
+  Y LinuxCNC/Mesa stepgen following error dropped from `4.616 mm` to
+  `0.000174 mm`
+- the TCPC work INI now persists `[JOINT_1] STEPGEN_MAXACCEL = 600`;
+  the shared SSI/3-axis config was not changed
+- longer linear-limit check at the current `150 mm/s` limit, log
+  `/tmp/tcpc_servo_logs/linear-limit-current-150-yfix.csv`, completed cleanly:
+  X stepgen following error `0.000956 mm`, Y `0.000172 mm`,
+  Z `0.000178 mm`, with no PID saturation and all axes returning to the start
+  position
+
 Next servo/motion checks:
 
 - fresh restart verification completed with
@@ -291,6 +329,9 @@ Next servo/motion checks:
   `P=75/MAX_OUTPUT=12` values were confirmed through HAL before motion
 - fresh-run peak following errors were B `0.0417 deg` and C `0.0485 deg`,
   with zero PID saturation samples and zero B/C SSI invalid samples
+- keep the current X/Y/Z `150 mm/s`, `300 mm/s^2` limits as the safe
+  commissioning candidate unless a production path proves it needs more; the
+  immediate linear defect was Y stepgen headroom, not the commanded axis limits
 - keep G68.2/TWP disabled on the real machine; do not use TWP as a servo test
 - after motion checks are stable, rerun the active `G43 H3` short-probe TCPC
   sphere validation as the final confirmation before production-style use

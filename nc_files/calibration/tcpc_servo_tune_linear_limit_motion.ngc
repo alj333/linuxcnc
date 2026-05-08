@@ -1,0 +1,44 @@
+%
+(TCPC work-config servo tuning: linear current-limit path)
+(No probing. No TCPC/TWP entry. Operator must confirm safe linear clearance.)
+
+G21 G17 G40 G54 G64 P0.001 G80 G90 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_SERVO_TUNE_LINEAR_LIMIT preview only)
+  M2
+o<preview_guard> endif
+
+o<tcpc_off_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, TCPC servo tune linear limit requires TCPC off)
+o<tcpc_off_check> endif
+o<twp_off_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, TCPC servo tune linear limit requires TWP off)
+o<twp_off_check> endif
+
+(Current TCPC config limits X/Y/Z to 150 mm/s, 300 mm/s^2.)
+(F9000 reaches the current 150 mm/s linear limit; F12000 should be clamped.)
+(MSG, Confirm safe clearance for +/-120 mm X/Y and +/-50 mm Z relative moves)
+M0
+
+G91
+F9000
+G1 X120
+G1 X-120
+G1 Y120
+G1 Y-120
+G1 Z50
+G1 Z-50
+
+F12000
+G1 X120
+G1 X-120
+G1 Y120
+G1 Y-120
+G1 Z50
+G1 Z-50
+
+G90
+(DEBUG, TCPC_SERVO_TUNE_LINEAR_LIMIT complete)
+M30
+%

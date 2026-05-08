@@ -116,6 +116,24 @@ Live checks completed on 2026-05-07:
   small-motion run returned idle/in-position at the starting B/C pose with peak
   following errors B `0.0417 deg` and C `0.0485 deg`, zero PID saturation
   samples, and zero B/C SSI invalid samples.
+- Linear motion-only checks on 2026-05-08 compared the TCPC work config against
+  the old Feb 2026 5-axis config. The old main config used faster linear limits
+  around X/Z `250 mm/s`, `500 mm/s^2` and Y `250 mm/s`, `250 mm/s^2`, while
+  the current TCPC work config remains X/Y/Z `150 mm/s`, `300 mm/s^2`.
+  X/Y/Z are open-loop at the LinuxCNC level, so these logs compare LinuxCNC
+  command against Mesa stepgen position feedback; they do not prove actual
+  motor encoder following or servo amplifier margin.
+  Future servo/diagnostic work should use direct communication with the servo
+  amplifiers instead of stepgen-only feedback, so LinuxCNC can log true drive
+  position/velocity, drive following error, torque/current/load, temperature,
+  warning/fault bits, and fault history.
+  A current-limit ramp exposed that TCPC `[JOINT_1]` had no stepgen acceleration
+  headroom (`MAX_ACCELERATION = 300`, `STEPGEN_MAXACCEL = 300`), causing about
+  `4.6 mm` transient Y lag. Live `hm2_7i95.0.stepgen.01.maxaccel = 600`
+  corrected the issue, and the TCPC work INI now persists
+  `[JOINT_1] STEPGEN_MAXACCEL = 600`. A longer current-limit run reached
+  `150 mm/s` cleanly with peak Mesa-stepgen following errors X `0.000956 mm`,
+  Y `0.000172 mm`, and Z `0.000178 mm`, with no PID saturation.
 
 Before production release, still cover these items:
 
@@ -124,6 +142,9 @@ Before production release, still cover these items:
 - Treat the persisted B/C servo tune as the current TCPC work-config candidate.
   The fresh-run target of below about `0.05 deg` B/C following error with zero
   PID saturation has been met once from a restarted session.
+- Treat the persisted Y stepgen acceleration fix as part of the current TCPC
+  work-config motion candidate; restart before expecting it from disk instead
+  of the live HAL `setp`.
 - With tool 3 loaded, run `G43 H3` before `G43.4` and confirm the short-probe
   effective tip position matches the pre-tool-length baseline.
 - Rerun the no-cut TCPC entry/exit smoke program from a fresh LinuxCNC session

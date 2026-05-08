@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize max command/feedback and PID errors from a TCPC servo log."""
+"""Summarize max command/feedback and PID errors from a TCPC motion log."""
 
 import argparse
 import csv

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Log TCPC work-config servo command/feedback pins to CSV."""
+"""Log TCPC work-config motion command/feedback pins to CSV.
+
+X/Y/Z feedback in the current machine HAL is Mesa stepgen position feedback, not
+motor encoder feedback. B/C feedback is from the SSI rotary output encoders.
+"""
 
 import argparse
 import csv
