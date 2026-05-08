@@ -289,6 +289,17 @@ Offline TWP continuity reproducer, 2026-05-08:
   transient state and only then prepare a dedicated no-cut retest; the
   production `G68.2` lockout remains in force
 
+Startup fault, 2026-05-08:
+
+- the first real-machine TCPC config launch after the offline tests opened
+  Probe Basic but LinuxCNC tore down the Mesa hostmot2 driver during startup;
+  Probe Basic then reported `linuxcnc.error: Error buffer invalid`
+- `/tmp/linuxcnc.print.*` showed `hm2_eth` could not execute `iptables`
+  while setting up its Ethernet packet filter rules
+- installing the Debian `iptables` package restored `/usr/sbin/iptables`; the
+  next launch created `linuxcncsvr`, `milltask`, `io`, `halui`, realtime, and
+  Probe Basic normally
+
 ## Pause Status - 2026-04-27 10:50 +07
 
 TCPC work was paused so the machine can be prepared for later 3-axis work.
