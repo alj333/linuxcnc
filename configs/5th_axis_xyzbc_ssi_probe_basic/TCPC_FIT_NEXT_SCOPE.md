@@ -98,6 +98,9 @@ Live checks completed on 2026-05-07:
   Live run completed with no position change and left T3/G43 active. A separate
   no-motion MDI guard sequence confirmed `G43 H3`, `G49`, and `G68.2 B0 C0`
   are rejected while TCPC is active, with TCPC staying active until `G49.1`.
+  A no-motion idempotency sequence also passed: `G68.2 B0 C0` rejected while
+  TCPC was off, `G49.1` was harmless while off, repeated `G43.4` at `B0 C0`
+  was harmless, and repeated `G49.1` exited/held off with no position change.
 
 Before production release, still cover these items:
 

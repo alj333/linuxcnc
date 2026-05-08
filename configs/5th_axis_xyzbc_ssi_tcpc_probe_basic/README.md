@@ -325,6 +325,10 @@ No-probe TCPC checks, 2026-05-08:
   `G49` both rejected with the tool-length guard message, and `G68.2 B0 C0`
   rejected with the production TWP lockout message; `G49.1` then exited
   cleanly with no position change
+- no-motion idempotency sequence passed: `G68.2 B0 C0` rejected while TCPC was
+  off, `G49.1` did not disturb the already-off state, repeated `G43.4` at
+  `B0 C0` kept TCPC active without position change, and repeated `G49.1`
+  exited/held off cleanly
 - probing validation is deferred until the physical probe is installed; keep
   TWP/`G68.2` motion disabled on the real machine
 
