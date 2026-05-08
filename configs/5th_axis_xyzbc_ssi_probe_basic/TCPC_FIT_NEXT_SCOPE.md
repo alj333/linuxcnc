@@ -118,9 +118,10 @@ Before production release, still cover these items:
   `headheadtwp.tcpc_origin_*`, and `motion.tooloffset.*` around the remap
   phases.
 - Run one short-probe sphere validation pass with active `G43 H3`; compare
-  residuals against the last accepted refined-fit data. This is the next live
-  check and proves that the spindle-nose split plus T3 length did not shift
-  the fit.
+  residuals against the last accepted refined-fit data. This final TCPC probe
+  check is deferred until after servo motion and machine behavior work is
+  complete, so rotary/linear following behavior is no longer a moving variable
+  in the TCPC validation.
 - Confirm abort recovery: while TCPC is active, abort must not clear tool
   length. Recovery remains manual-safe: make the machine safe, return B/C to
   `B0 C0`, run `G49.1`, then `G49` if required.

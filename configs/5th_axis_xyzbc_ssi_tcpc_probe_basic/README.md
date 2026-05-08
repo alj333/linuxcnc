@@ -329,8 +329,9 @@ No-probe TCPC checks, 2026-05-08:
   off, `G49.1` did not disturb the already-off state, repeated `G43.4` at
   `B0 C0` kept TCPC active without position change, and repeated `G49.1`
   exited/held off cleanly
-- probing validation is deferred until the physical probe is installed; keep
-  TWP/`G68.2` motion disabled on the real machine
+- probing validation is deferred until after servo motion and machine behavior
+  work is complete and the physical probe is installed; keep TWP/`G68.2`
+  motion disabled on the real machine
 
 ## Pause Status - 2026-04-27 10:50 +07
 
