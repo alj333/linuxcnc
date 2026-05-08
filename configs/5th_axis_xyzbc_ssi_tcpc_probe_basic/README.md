@@ -348,6 +348,15 @@ Next servo/motion checks:
 - add flood coolant auto-on with spindle start because this output supplies air
   to the ceramic spindle bearings; production spindle operation must not depend
   on the operator remembering to enable it manually
+- no-probe TCPC entry/exit smoke was rerun after the linear motion updates,
+  log `/tmp/tcpc_servo_logs/tcpc-entry-exit-smoke-after-yfix.csv`; the program
+  completed with TCPC enabled during the move, TWP off throughout, probe input
+  false throughout, final TCPC off, final active tool length cleared to zero,
+  and B/C returned to `0/0`
+- smoke log peak motion errors were X Mesa-stepgen `0.000375 mm`,
+  Y Mesa-stepgen `0.000010 mm`, Z Mesa-stepgen `0.000005 mm`, B SSI
+  `0.0344 deg`, and C SSI `0.0483 deg`, with no PID saturation and no SSI
+  invalid samples
 - the latest LinuxCNC logs contained only the intended `G49.1` guard error; no
   `Oon_abort`/abort-subroutine lookup error reappeared after unsetting
   `ON_ABORT_COMMAND`

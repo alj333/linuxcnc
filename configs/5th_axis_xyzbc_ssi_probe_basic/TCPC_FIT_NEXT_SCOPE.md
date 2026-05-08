@@ -155,6 +155,11 @@ Before production release, still cover these items:
 - Add flood coolant auto-on with spindle start because this output supplies air
   to the ceramic spindle bearings; production spindle operation must not depend
   on the operator remembering to enable it manually.
+- Rerun of `tcpc_production_entry_exit_smoke.ngc` after the linear motion
+  updates passed on 2026-05-08. The no-probe smoke enabled TCPC for the small
+  B/C move, kept TWP off, kept probe input false, returned to `B0 C0`, cleared
+  TCPC with `G49.1`, and cleared active tool length with final `G49`. Log:
+  `/tmp/tcpc_servo_logs/tcpc-entry-exit-smoke-after-yfix.csv`.
 - With tool 3 loaded, run `G43 H3` before `G43.4` and confirm the short-probe
   effective tip position matches the pre-tool-length baseline.
 - Rerun the no-cut TCPC entry/exit smoke program from a fresh LinuxCNC session
