@@ -80,6 +80,12 @@ Live checks completed on 2026-05-07:
   `G68.2`, and back-to-back `G43.4`/`G68.2` did not produce a joint command
   discontinuity in sim. The remaining TWP fault is likely a real-machine
   transient/instrumentation problem, not the static active-tool-length math.
+- Real TCPC preserve-tool smoke run passed on 2026-05-08 with tool 3 restored
+  by Probe Basic startup and active `G43 H3`. Final state was all axes homed,
+  `B0 C0`, TCPC off, TWP off, T3 still loaded, and
+  `motion.tooloffset.z = 128.6067`. The smoke programs now include preview
+  guards so the 3D backplot does not evaluate live tool/TCPC checks while the
+  file is only being loaded.
 
 Before production release, still cover these items:
 
@@ -88,7 +94,7 @@ Before production release, still cover these items:
 - With tool 3 loaded, run `G43 H3` before `G43.4` and confirm the short-probe
   effective tip position matches the pre-tool-length baseline.
 - Rerun the no-cut TCPC entry/exit smoke program from a fresh LinuxCNC session
-  as the final release check.
+  as the final release check after any further guard or startup-state changes.
 - Keep `G68.2`/TWP disabled on the real machine until the continuity problem is
   reproduced and fixed in sim/offline checks, then validated with a dedicated
   no-motion/no-cut machine test.
@@ -97,8 +103,9 @@ Before production release, still cover these items:
   `headheadtwp.tcpc_origin_*`, and `motion.tooloffset.*` around the remap
   phases.
 - Run one short-probe sphere validation pass with active `G43 H3`; compare
-  residuals against the last accepted refined-fit data. This is the regression
-  proving that the spindle-nose split plus T3 length did not shift the fit.
+  residuals against the last accepted refined-fit data. This is the next live
+  check and proves that the spindle-nose split plus T3 length did not shift
+  the fit.
 - Confirm abort recovery: while TCPC is active, abort must not clear tool
   length. Recovery remains manual-safe: make the machine safe, return B/C to
   `B0 C0`, run `G49.1`, then `G49` if required.

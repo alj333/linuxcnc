@@ -300,6 +300,18 @@ Startup fault, 2026-05-08:
   next launch created `linuxcncsvr`, `milltask`, `io`, `halui`, realtime, and
   Probe Basic normally
 
+TCPC preserve-tool smoke, 2026-05-08:
+
+- `tcpc_production_entry_exit_preserve_tool_smoke.ngc` passed on the real
+  machine after startup tool restore loaded T3 and applied `G43 H3`
+- final controller state was all axes homed, in position, `B0 C0`, TCPC off,
+  TWP off, T3 still loaded, and `motion.tooloffset.z = 128.6067`
+- the production smoke programs now include preview guards so Probe Basic's
+  3D backplot does not run the live `_current_tool`/TCPC assertions while
+  loading the files
+- next live check is the short-probe sphere validation with active `G43 H3`
+  and TCPC enabled with `G43.4`; TWP/`G68.2` remains disabled
+
 ## Pause Status - 2026-04-27 10:50 +07
 
 TCPC work was paused so the machine can be prepared for later 3-axis work.

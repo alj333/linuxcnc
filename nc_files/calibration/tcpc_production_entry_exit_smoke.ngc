@@ -5,6 +5,11 @@
 G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
 F300
 
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_ENTRY_EXIT_SMOKE preview only)
+  M2
+o<preview_guard> endif
+
 #<smoke_tool> = #<_current_tool>
 o080 if [#<smoke_tool> LT 1]
   (abort, TCPC smoke requires a loaded tool so G43 Hn can be active before G43.4)
