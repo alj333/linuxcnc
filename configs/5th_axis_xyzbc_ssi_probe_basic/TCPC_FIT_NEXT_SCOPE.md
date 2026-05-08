@@ -92,6 +92,12 @@ Live checks completed on 2026-05-07:
   left the controller idle at `B0 C0`, TCPC off, TWP off, and T3/G43 active.
   The small-pose validation now has a one-time start `M0` confirmation before
   any probe motion.
+- No-probe TCPC tests on 2026-05-08 passed while the machine was reserved for
+  mold work. Added `tcpc_production_no_motion_state_smoke.ngc`, which contains
+  no `G0`/`G1`/`G38` moves and only checks `G43.4`/`G49.1` state continuity.
+  Live run completed with no position change and left T3/G43 active. A separate
+  no-motion MDI guard sequence confirmed `G43 H3`, `G49`, and `G68.2 B0 C0`
+  are rejected while TCPC is active, with TCPC staying active until `G49.1`.
 
 Before production release, still cover these items:
 

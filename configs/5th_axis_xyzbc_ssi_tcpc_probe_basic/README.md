@@ -312,6 +312,22 @@ TCPC preserve-tool smoke, 2026-05-08:
 - next live check is the short-probe sphere validation with active `G43 H3`
   and TCPC enabled with `G43.4`; TWP/`G68.2` remains disabled
 
+No-probe TCPC checks, 2026-05-08:
+
+- added and ran `tcpc_production_no_motion_state_smoke.ngc`; it contains no
+  `G0`, `G1`, `G38`, or pause moves and only verifies active tool length,
+  `G43.4` entry, displayed XYZ continuity, `G49.1` exit, and preserved G43
+  tool length
+- live result: start and end pose stayed
+  `X468.776624 Y323.677576 Z-149.420448 B0 C0`; T3/G43 remained active with
+  `motion.tooloffset.z = 128.606729`, TCPC off, and TWP off
+- no-motion MDI guard sequence passed: while TCPC was active, `G43 H3` and
+  `G49` both rejected with the tool-length guard message, and `G68.2 B0 C0`
+  rejected with the production TWP lockout message; `G49.1` then exited
+  cleanly with no position change
+- probing validation is deferred until the physical probe is installed; keep
+  TWP/`G68.2` motion disabled on the real machine
+
 ## Pause Status - 2026-04-27 10:50 +07
 
 TCPC work was paused so the machine can be prepared for later 3-axis work.

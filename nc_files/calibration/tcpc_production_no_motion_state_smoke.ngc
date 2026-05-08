@@ -1,0 +1,95 @@
+%
+(Production TCPC no-motion state smoke check)
+(No probing. No axis moves. Requires homed machine, active loaded tool, B0 C0.)
+(Expected final state: TCPC off, TWP off, active tool length still applied.)
+
+G17 G21 G40 G54 G64 P0.001 G80 G90 G94
+F300
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_NO_MOTION_STATE_SMOKE preview only)
+  M2
+o<preview_guard> endif
+
+#<smoke_tool> = #<_current_tool>
+o080 if [#<smoke_tool> LT 1]
+  (abort, TCPC no-motion smoke requires a loaded tool)
+o080 endif
+G43 H#<smoke_tool>
+#<selected_tool_length_z> = #5403
+o081 if [ABS[#<selected_tool_length_z>] LT 0.001]
+  (abort, TCPC no-motion smoke expected active nonzero tool length)
+o081 endif
+
+#<start_b_check> = #<_hal[headheadtwp.current_joint_b]>
+#<start_c_check> = #<_hal[headheadtwp.current_joint_c]>
+o090 while [#<start_b_check> GT 180.0]
+  #<start_b_check> = [#<start_b_check> - 360.0]
+o090 endwhile
+o091 while [#<start_b_check> LT -180.0]
+  #<start_b_check> = [#<start_b_check> + 360.0]
+o091 endwhile
+o092 while [#<start_c_check> GT 180.0]
+  #<start_c_check> = [#<start_c_check> - 360.0]
+o092 endwhile
+o093 while [#<start_c_check> LT -180.0]
+  #<start_c_check> = [#<start_c_check> + 360.0]
+o093 endwhile
+
+o100 if [ABS[#<start_b_check>] GT 0.05]
+  (abort, TCPC no-motion smoke must start near B0)
+o100 endif
+o101 if [ABS[#<start_c_check>] GT 0.05]
+  (abort, TCPC no-motion smoke must start near C0)
+o101 endif
+o102 if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, TCPC no-motion smoke must start with TCPC off)
+o102 endif
+o103 if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, TCPC no-motion smoke must start with TWP motion off)
+o103 endif
+
+#<start_x> = #<_x>
+#<start_y> = #<_y>
+#<start_z> = #<_z>
+
+G43.4
+o110 if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  (abort, G43.4 did not enable TCPC)
+o110 endif
+o111 if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, G43.4 unexpectedly enabled TWP motion)
+o111 endif
+o112 if [ABS[#<_x> - #<start_x>] GT 0.002]
+  (abort, G43.4 changed displayed X)
+o112 endif
+o113 if [ABS[#<_y> - #<start_y>] GT 0.002]
+  (abort, G43.4 changed displayed Y)
+o113 endif
+o114 if [ABS[#<_z> - #<start_z>] GT 0.002]
+  (abort, G43.4 changed displayed Z)
+o114 endif
+
+G49.1
+o120 if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, G49.1 did not disable TCPC)
+o120 endif
+o121 if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, G49.1 left TWP motion enabled)
+o121 endif
+o122 if [ABS[#<_x> - #<start_x>] GT 0.002]
+  (abort, G49.1 changed displayed X)
+o122 endif
+o123 if [ABS[#<_y> - #<start_y>] GT 0.002]
+  (abort, G49.1 changed displayed Y)
+o123 endif
+o124 if [ABS[#<_z> - #<start_z>] GT 0.002]
+  (abort, G49.1 changed displayed Z)
+o124 endif
+o125 if [ABS[#<_hal[motion.tooloffset.z]>] LT 0.001]
+  (abort, G49.1 unexpectedly cleared active G43 tool length)
+o125 endif
+
+(DEBUG, TCPC_NO_MOTION_STATE_SMOKE complete)
+M30
+%
