@@ -274,6 +274,21 @@ TWP entry fault, 2026-05-07 21:20 +07:
 - do not resume TWP tests on the machine from this session; close/restart and
   re-home before any further machine motion
 
+Offline TWP continuity reproducer, 2026-05-08:
+
+- added `tests/kinematics/head-head-twp-active-tool-continuity/` to exercise
+  the original sim `G68.2` implementation with real-machine-style geometry,
+  active `G43` tool length, and `headheadtwp.use_external_tool_offset = 1`
+- the reproducer verifies three cases with joint-command continuity:
+  active `G43 H1` then `G43.4`, a failed pre-TCPC `G68.2 B0 C0` followed by
+  `G43.4`/`G68.2`, and a back-to-back `G43.4` + `G68.2 B0 C0` burst
+- all offline cases were continuous within `0.005 mm`, so the real following
+  error is not reproduced by active tool length alone or by the simple queued
+  MDI sequence
+- next TWP work should add real-machine instrumentation around entry
+  transient state and only then prepare a dedicated no-cut retest; the
+  production `G68.2` lockout remains in force
+
 ## Pause Status - 2026-04-27 10:50 +07
 
 TCPC work was paused so the machine can be prepared for later 3-axis work.

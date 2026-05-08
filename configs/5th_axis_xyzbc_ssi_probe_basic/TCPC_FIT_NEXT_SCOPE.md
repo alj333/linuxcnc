@@ -75,6 +75,11 @@ Live checks completed on 2026-05-07:
   safe yet: after `G43.4`, `G68.2 B0 C0` caused XYZ following errors and
   dropped X/Y homing. The TCPC work config now rejects `G68.2` pending an
   offline TWP entry-continuity fix.
+- Offline active-tool reproducer added on 2026-05-08: real-style geometry,
+  active T3-length `G43`, external tool offset wiring, failed pre-TCPC
+  `G68.2`, and back-to-back `G43.4`/`G68.2` did not produce a joint command
+  discontinuity in sim. The remaining TWP fault is likely a real-machine
+  transient/instrumentation problem, not the static active-tool-length math.
 
 Before production release, still cover these items:
 
@@ -87,6 +92,10 @@ Before production release, still cover these items:
 - Keep `G68.2`/TWP disabled on the real machine until the continuity problem is
   reproduced and fixed in sim/offline checks, then validated with a dedicated
   no-motion/no-cut machine test.
+- Add entry instrumentation before any TWP retest: log pre/post
+  `axis.*.pos-cmd`, `joint.*.motor-pos-cmd`, `headheadkins.twp-motion-origin.*`,
+  `headheadtwp.tcpc_origin_*`, and `motion.tooloffset.*` around the remap
+  phases.
 - Run one short-probe sphere validation pass with active `G43 H3`; compare
   residuals against the last accepted refined-fit data. This is the regression
   proving that the spindle-nose split plus T3 length did not shift the fit.
