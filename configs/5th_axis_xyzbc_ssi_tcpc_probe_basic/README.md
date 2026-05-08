@@ -238,6 +238,61 @@ Follow-up recovery/status check, 2026-05-07 21:02 +07:
   `G0 B0 C0`, `G49.1`, then `G49` worked as expected
 - HAL confirmed `headheadtwp.tcpc_enabled = FALSE`,
   `motion.tooloffset.z = 0`, and B/C current joints at `0/0`
+
+## Servo Motion Checks - 2026-05-08 +07
+
+Servo tuning work is being done only in this TCPC work config. The shared
+SSI/3-axis Probe Basic config remains unchanged for normal 3-axis work.
+
+Added no-probe/no-TCPC logging helpers:
+
+- `scripts/tcpc_servo_logger.py`
+- `scripts/analyze_tcpc_servo_log.py`
+- `nc_files/calibration/tcpc_servo_tune_linear_small_motion.ngc`
+- `nc_files/calibration/tcpc_servo_tune_rotary_small_motion.ngc`
+
+Baseline linear relative move check, log
+`/tmp/tcpc_servo_logs/linear-small-1.csv`:
+
+- X/Y/Z returned to the starting displayed position with LinuxCNC idle/in-pos
+- max following error: X `0.000937 mm`, Y `0.010662 mm`, Z `0.000157 mm`
+- max command/feedback lag during motion was about X `0.0307 mm`,
+  Y `0.0405 mm`, Z `0.0300 mm`
+- no B/C SSI invalid samples
+
+Baseline rotary relative move check, log
+`/tmp/tcpc_servo_logs/rotary-small-1.csv`, using the old B/C
+`P=50`, `MAX_OUTPUT=8`:
+
+- B peak following error `0.1325 deg`
+- C peak following error `0.1813 deg`
+- C PID output reached the old `8.0` limit during the fast C move
+- no B/C SSI invalid samples
+
+Live B/C tuning comparison:
+
+- `P=75`, `MAX_OUTPUT=12` reduced the clean rotary peak following errors to
+  B `0.0424 deg` and C `0.0480 deg`; no PID saturation and no SSI invalids
+- at the active T3 offset `128.6067 mm`, this is roughly `0.095 mm` B and
+  `0.108 mm` C equivalent tip error at the fastest tested rotary motion
+- the slower `2 deg/s` portion was roughly `0.09 mm` equivalent tip error
+- `P=100`, `MAX_OUTPUT=12` was worse, increasing rotary error to about
+  `0.15 deg`; do not use that setting as the next candidate
+
+Current persistent TCPC work-config rotary candidate:
+
+- `[JOINT_3]` B: `P = 75.0`, `MAX_OUTPUT = 12.0`
+- `[JOINT_4]` C: `P = 75.0`, `MAX_OUTPUT = 12.0`
+
+Next servo/motion checks:
+
+- restart this TCPC config once convenient so the INI candidate is loaded from
+  disk, not just live HAL `setp` values
+- rerun the rotary small-motion check from a fresh LinuxCNC session and confirm
+  the `P=75/MAX_OUTPUT=12` values through HAL before motion
+- keep G68.2/TWP disabled on the real machine; do not use TWP as a servo test
+- after motion checks are stable, rerun the active `G43 H3` short-probe TCPC
+  sphere validation as the final confirmation before production-style use
 - the latest LinuxCNC logs contained only the intended `G49.1` guard error; no
   `Oon_abort`/abort-subroutine lookup error reappeared after unsetting
   `ON_ABORT_COMMAND`

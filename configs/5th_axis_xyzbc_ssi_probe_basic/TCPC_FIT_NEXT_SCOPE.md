@@ -101,11 +101,28 @@ Live checks completed on 2026-05-07:
   A no-motion idempotency sequence also passed: `G68.2 B0 C0` rejected while
   TCPC was off, `G49.1` was harmless while off, repeated `G43.4` at `B0 C0`
   was harmless, and repeated `G49.1` exited/held off with no position change.
+- Servo work started in the TCPC work config only on 2026-05-08. Baseline
+  linear relative motion was acceptable for the current commissioning stage
+  (worst Y following error `0.0107 mm`). Baseline rotary motion with B/C
+  `P=50`, `MAX_OUTPUT=8` showed too much dynamic lag, especially C
+  (`0.181 deg`) because the output limit was reached. Live tuning found
+  `P=75`, `MAX_OUTPUT=12` as the current rotary candidate, reducing clean peak
+  errors to B `0.042 deg` and C `0.048 deg` with no SSI invalids or PID
+  saturation. `P=100` was worse at about `0.15 deg`, so it is rejected.
+  The TCPC work INI now carries the `P=75/MAX_OUTPUT=12` B/C candidate; restart
+  the TCPC config before treating it as persistent-test validated.
 
 Before production release, still cover these items:
 
 - Restart LinuxCNC so the rebuilt `headheadkins`, interpreter, and Probe Basic
   TCPC config are actually loaded.
+- After restart, confirm B/C HAL values are the TCPC work-config candidate:
+  `pid.b.Pgain = 75`, `pid.c.Pgain = 75`,
+  `pid.b.maxoutput = 12`, and `pid.c.maxoutput = 12`.
+- Rerun `nc_files/calibration/tcpc_servo_tune_rotary_small_motion.ngc` from a
+  fresh TCPC session and analyze the log with
+  `scripts/analyze_tcpc_servo_log.py`; the expected clean target is below
+  about `0.05 deg` B/C following error with zero PID saturation.
 - With tool 3 loaded, run `G43 H3` before `G43.4` and confirm the short-probe
   effective tip position matches the pre-tool-length baseline.
 - Rerun the no-cut TCPC entry/exit smoke program from a fresh LinuxCNC session
