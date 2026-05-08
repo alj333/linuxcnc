@@ -316,6 +316,9 @@ Linear-axis motion check against the old Feb 2026 5-axis config:
   `0.000174 mm`
 - the TCPC work INI now persists `[JOINT_1] STEPGEN_MAXACCEL = 600`;
   the shared SSI/3-axis config was not changed
+- fresh restart verification confirmed the TCPC INI loads X/Y/Z stepgen
+  acceleration headroom as `600/600/600`; this is no longer only a live HAL
+  `setp` value
 - longer linear-limit check at the current `150 mm/s` limit, log
   `/tmp/tcpc_servo_logs/linear-limit-current-150-yfix.csv`, completed cleanly:
   X stepgen following error `0.000956 mm`, Y `0.000172 mm`,
@@ -335,6 +338,16 @@ Next servo/motion checks:
 - keep G68.2/TWP disabled on the real machine; do not use TWP as a servo test
 - after motion checks are stable, rerun the active `G43 H3` short-probe TCPC
   sphere validation as the final confirmation before production-style use
+- run full real-world TCPC G-code motion checks with no tool installed before
+  cutting production work; this should exercise normal post output and real
+  B/C/XYZ blended motion without probing or spindle load
+- fix/commission the Probe Basic tool graphic so the displayed tool follows B
+  and C correctly in the TCPC config
+- set up and commission the tool height setter before production tool changes
+  rely on measured lengths
+- add flood coolant auto-on with spindle start because this output supplies air
+  to the ceramic spindle bearings; production spindle operation must not depend
+  on the operator remembering to enable it manually
 - the latest LinuxCNC logs contained only the intended `G49.1` guard error; no
   `Oon_abort`/abort-subroutine lookup error reappeared after unsetting
   `ON_ABORT_COMMAND`

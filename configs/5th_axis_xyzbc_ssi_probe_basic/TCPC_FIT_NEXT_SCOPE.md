@@ -143,8 +143,18 @@ Before production release, still cover these items:
   The fresh-run target of below about `0.05 deg` B/C following error with zero
   PID saturation has been met once from a restarted session.
 - Treat the persisted Y stepgen acceleration fix as part of the current TCPC
-  work-config motion candidate; restart before expecting it from disk instead
-  of the live HAL `setp`.
+  work-config motion candidate. Fresh restart verification confirmed X/Y/Z
+  stepgen max acceleration loads from disk as `600/600/600`.
+- Run full real-world TCPC G-code motion checks with no tool installed before
+  cutting production work; use normal post output and exercise blended
+  B/C/XYZ motion without probing or spindle load.
+- Fix/commission the Probe Basic tool graphic so the displayed tool follows B
+  and C correctly in the TCPC config.
+- Set up and commission the tool height setter before production tool changes
+  rely on measured lengths.
+- Add flood coolant auto-on with spindle start because this output supplies air
+  to the ceramic spindle bearings; production spindle operation must not depend
+  on the operator remembering to enable it manually.
 - With tool 3 loaded, run `G43 H3` before `G43.4` and confirm the short-probe
   effective tip position matches the pre-tool-length baseline.
 - Rerun the no-cut TCPC entry/exit smoke program from a fresh LinuxCNC session
