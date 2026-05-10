@@ -468,9 +468,28 @@ Spindle air/flood interlock, 2026-05-10:
   spindle relay/PWM enable and the synthetic at-speed signal assert
 - after spindle-off, the forced air request remains active for five seconds
   unless `M8` is still holding the output on manually
-- this change is present in the config files only until the TCPC config is
-  restarted; next live validation should confirm `M8`, `M9`, `M3`, and `M5`
-  behavior with the spindle clear and supervised
+- initial restart caught a HAL load-order conflict with pendant pause wiring
+  already using `or2.1`; the TCPC air interlock now uses its own named
+  `logic` OR component instead
+- restart validation confirmed the named `logic` OR loads cleanly; next live
+  validation should confirm `M8`, `M9`, `M3`, and `M5` behavior with the
+  spindle clear and supervised
+
+Probe Basic backplot restoration, 2026-05-10:
+
+- loaded G-code text was visible but the VTK loaded-program path was missing
+  after the head-head TCPC tool display changes
+- QtPyVCP `VTKCanon` had an instance attribute named `tool_offset`, which
+  shadowed the canonical `tool_offset()` callback used by the interpreter when
+  startup `G49` runs; the attribute was renamed so `G43`/`G49` preview callbacks
+  remain callable
+- the LinuxCNC HAL-based TWP/TCPC tool-length guards now return false inside
+  the UI preview interpreter (`_task == 0`) and remain active in milltask; this
+  prevents preview-only `G49` startup parsing from consulting live HAL guard
+  state while preserving production lockouts for executed G-code
+- final visual check after restart showed the loaded program path rendered in
+  Probe Basic again, and `qtpyvcp.log` no longer reported `CANON ERROR` during
+  file load
 
 ## Pause Status - 2026-04-27 10:50 +07
 

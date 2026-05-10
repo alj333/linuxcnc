@@ -44,12 +44,17 @@
 
 using namespace interp_param_global;
 
+extern int _task; // zero in gcodemodule preview, one in milltask
+
 static bool hal_bit_pin_is_true(const char *name)
 {
     hal_type_t type;
     hal_data_u *data = NULL;
     bool connected = false;
 
+    if (!_task) {
+        return false;
+    }
     if (hal_get_pin_value_by_name(name, &type, &data, &connected) != 0) {
         return false;
     }

@@ -18,6 +18,7 @@
 loadrt rotaryunwrap names=c_ssi_unwrap
 loadrt oneshot names=tcpc_probe_gate_ignore,tcpc_probe_fault_pause
 loadrt timedelay names=tcpc_spindle_air_hold,tcpc_spindle_air_precharge
+loadrt logic names=tcpc_spindle_air_or personality=0x202
 
 # Temporary supervised TCPC calibration workaround for unreliable wireless probe
 # pulses. The base HAL still builds the raw probe/toolsetter mux as "probe-mux";
@@ -43,9 +44,9 @@ setp tcpc_spindle_air_precharge.on-delay 1.0
 setp tcpc_spindle_air_precharge.off-delay 0.0
 net spindle-enable => tcpc_spindle_air_hold.in
 net tcpc-spindle-air-hold <= tcpc_spindle_air_hold.out
-net coolant-flood => or2.1.in0
-net tcpc-spindle-air-hold => or2.1.in1
-net tcpc-spindle-air <= or2.1.out => hm2_7i95.0.ssr.00.out-03
+net coolant-flood => tcpc_spindle_air_or.in-00
+net tcpc-spindle-air-hold => tcpc_spindle_air_or.in-01
+net tcpc-spindle-air <= tcpc_spindle_air_or.or => hm2_7i95.0.ssr.00.out-03
 net spindle-enable => tcpc_spindle_air_precharge.in
 net tcpc-spindle-enable-delayed <= tcpc_spindle_air_precharge.out
 net tcpc-spindle-enable-delayed => hm2_7i95.0.ssr.00.out-00
@@ -53,6 +54,7 @@ net tcpc-spindle-enable-delayed => hm2_7i95.0.pwmgen.00.enable
 net tcpc-spindle-enable-delayed => spindle.0.at-speed
 addf tcpc_spindle_air_hold servo-thread
 addf tcpc_spindle_air_precharge servo-thread
+addf tcpc_spindle_air_or servo-thread
 
 # Pause the running program on abnormal wireless probe activity without
 # feeding that noise into motion.probe-input. A short ignore window after M65
