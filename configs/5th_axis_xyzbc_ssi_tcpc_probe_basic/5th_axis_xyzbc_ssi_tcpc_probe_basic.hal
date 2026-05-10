@@ -17,6 +17,7 @@
 # scale and zero offset after the base HAL loads.
 loadrt rotaryunwrap names=c_ssi_unwrap
 loadrt oneshot names=tcpc_probe_gate_ignore,tcpc_probe_fault_pause
+loadrt timedelay names=tcpc_spindle_air_hold,tcpc_spindle_air_precharge
 
 # Temporary supervised TCPC calibration workaround for unreliable wireless probe
 # pulses. The base HAL still builds the raw probe/toolsetter mux as "probe-mux";
@@ -28,6 +29,30 @@ unlinkp hm2_7i95.0.ssr.00.out-02
 net probe-mux => and2.1.in0
 net tcpc-probe-gate-enable <= motion.digital-out-00 => and2.1.in1
 net tcpc-probe-gated <= and2.1.out => motion.probe-input hm2_7i95.0.ssr.00.out-02
+
+# SSR out-03 supplies bearing air for the ceramic spindle. In this TCPC work
+# config, a spindle request forces the air output on, holds it briefly after
+# spindle-off, and delays the physical spindle relay/PWM enable for precharge.
+unlinkp hm2_7i95.0.ssr.00.out-03
+unlinkp hm2_7i95.0.ssr.00.out-00
+unlinkp hm2_7i95.0.pwmgen.00.enable
+unlinkp spindle.0.at-speed
+setp tcpc_spindle_air_hold.on-delay 0.0
+setp tcpc_spindle_air_hold.off-delay 5.0
+setp tcpc_spindle_air_precharge.on-delay 1.0
+setp tcpc_spindle_air_precharge.off-delay 0.0
+net spindle-enable => tcpc_spindle_air_hold.in
+net tcpc-spindle-air-hold <= tcpc_spindle_air_hold.out
+net coolant-flood => or2.1.in0
+net tcpc-spindle-air-hold => or2.1.in1
+net tcpc-spindle-air <= or2.1.out => hm2_7i95.0.ssr.00.out-03
+net spindle-enable => tcpc_spindle_air_precharge.in
+net tcpc-spindle-enable-delayed <= tcpc_spindle_air_precharge.out
+net tcpc-spindle-enable-delayed => hm2_7i95.0.ssr.00.out-00
+net tcpc-spindle-enable-delayed => hm2_7i95.0.pwmgen.00.enable
+net tcpc-spindle-enable-delayed => spindle.0.at-speed
+addf tcpc_spindle_air_hold servo-thread
+addf tcpc_spindle_air_precharge servo-thread
 
 # Pause the running program on abnormal wireless probe activity without
 # feeding that noise into motion.probe-input. A short ignore window after M65

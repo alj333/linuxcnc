@@ -345,9 +345,10 @@ Next servo/motion checks:
   and C correctly in the TCPC config
 - set up and commission the tool height setter before production tool changes
   rely on measured lengths
-- add flood coolant auto-on with spindle start because this output supplies air
-  to the ceramic spindle bearings; production spindle operation must not depend
-  on the operator remembering to enable it manually
+- flood/air auto-on is now wired in the TCPC HAL overlay: a spindle request
+  forces the air output on and holds it for five seconds after spindle-off;
+  the physical spindle relay/PWM enable and `spindle.0.at-speed` assert after
+  a one-second air precharge delay
 - no-probe TCPC entry/exit smoke was rerun after the linear motion updates,
   log `/tmp/tcpc_servo_logs/tcpc-entry-exit-smoke-after-yfix.csv`; the program
   completed with TCPC enabled during the move, TWP off throughout, probe input
@@ -451,6 +452,25 @@ No-probe TCPC checks, 2026-05-08:
 - probing validation is deferred until after servo motion and machine behavior
   work is complete and the physical probe is installed; keep TWP/`G68.2`
   motion disabled on the real machine
+
+Spindle air/flood interlock, 2026-05-10:
+
+- implemented only in the TCPC Probe Basic overlay; the shared SSI/3-axis HAL
+  still keeps the original direct `M8` flood wiring
+- the TCPC overlay now unlinks the base spindle relay, PWM enable,
+  `spindle.0.at-speed`, and flood SSR pins, then re-drives them through the
+  local interlock
+- `M8` still turns flood/air on manually, but `M3`/spindle-on also forces the
+  same output on so bearing air does not depend on an operator remembering
+  coolant
+- the physical spindle enable path is delayed by one second after the raw
+  spindle-on request; this gives the air output a precharge window before the
+  spindle relay/PWM enable and the synthetic at-speed signal assert
+- after spindle-off, the forced air request remains active for five seconds
+  unless `M8` is still holding the output on manually
+- this change is present in the config files only until the TCPC config is
+  restarted; next live validation should confirm `M8`, `M9`, `M3`, and `M5`
+  behavior with the spindle clear and supervised
 
 ## Pause Status - 2026-04-27 10:50 +07
 
