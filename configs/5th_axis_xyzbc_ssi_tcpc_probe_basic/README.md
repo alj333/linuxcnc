@@ -1585,3 +1585,56 @@ QtPyVCP Probe Basic display fixes are in `/home/cnc5/dev/qtpyvcp`:
 This is display-only work in QtPyVCP; it does not affect the LinuxCNC motion
 path. The machine-side H3 TCPC behavior was already confirmed through live HAL
 and visible motion before the final display correction.
+
+## TCPC Tool Height Setter Prep - 2026-05-10 +07
+
+The shared SSI Probe Basic toolsetter macros were not safe to use directly in
+the TCPC work config because the TCPC overlay gates `motion.probe-input` with
+`motion.digital-out-00`. Without opening that gate around the toolsetter
+`G38` move, the wired toolsetter input would be blocked.
+
+Added TCPC-local subroutine overrides in
+`configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/subroutines/`:
+
+- `probe_spindle_nose.ngc`
+- `tool_touch_off.ngc`
+
+These shadow the shared Probe Basic subroutines only in the TCPC config because
+the TCPC config's `[RS274NGC] SUBROUTINE_PATH` searches its local subroutine
+directory first. The shared SSI/3-axis config is unchanged.
+
+Behavior added for the TCPC-local toolsetter macros:
+
+- reject the toolsetter routines if TCPC is enabled
+- reject if TWP motion is active
+- reject unless B and C are within `0.05 deg` of zero
+- force the probe gate closed before setup and after probing with `M65 P0`
+- check the raw toolsetter/wireless-probe inputs are clear before each probe
+  stroke
+- open the probe gate only during the actual probing stroke with `M64 P0`
+- use `G38.3` plus explicit `#5070` checks so a no-contact event can close the
+  probe gate before aborting
+
+Offline interpreter preview check:
+
+```text
+/tmp/tcpc_toolsetter_subroutine_preview.ngc
+```
+
+completed without parser errors and confirmed the preview guard exits both
+subroutines without trying to access live HAL pins. Full execution still needs
+real-machine validation because the guarded probing path intentionally depends
+on live HAL input pins.
+
+Next toolsetter commissioning steps:
+
+- start the TCPC Probe Basic config with B0/C0 and TCPC/TWP off
+- verify `hm2_7i95.0.inmux.00.input-08` changes state when the toolsetter is
+  pressed, and verify the wireless probe input is idle
+- set the tool touch position with the Probe Basic `SET TOOL TOUCH OFF
+  POSITION` workflow or `G30.1` at a safe machine-coordinate location
+- run `PROBE SPINDLE NOSE ZERO` slowly to establish `#3010`
+- run `TOUCH OFF CURRENT TOOL` on a known tool and confirm the updated tool
+  table length is repeatable
+- repeat with one short and one longer tool when available, then verify active
+  `G43 Hn` TCPC motion still behaves as expected

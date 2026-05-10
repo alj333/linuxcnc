@@ -1,0 +1,140 @@
+o<tool_touch_off> sub
+
+#<fast_probe_fr> = #1
+#<slow_probe_fr> = #2
+#<z_max_travel> = #3
+#<xy_max_travel> = #4
+#<retract_distance> = #6
+#<spindle_zero_height> = #5
+#<tool_diameter_probe_mode> = #8
+#<tool_diameter_offset_mode> = #9
+#<tool_diameter> = #10
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_TOOL_TOUCH_OFF preview only)
+  o<tool_touch_off> return
+o<preview_guard> endif
+
+o<tcpc_off_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, Tool touch off requires TCPC off; exit TCPC with G49.1 first)
+o<tcpc_off_check> endif
+
+o<twp_off_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, Tool touch off requires TWP off; run G69 first)
+o<twp_off_check> endif
+
+o<b_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_b]>] GT 0.05]
+  (abort, Tool touch off requires B0.000 C0.000)
+o<b_zero_check> endif
+
+o<c_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_c]>] GT 0.05]
+  (abort, Tool touch off requires B0.000 C0.000)
+o<c_zero_check> endif
+
+G92.1
+M65 P0
+
+#<workspace_z> = #5220
+
+#<tool_touch_x_coords> = #5181
+#<tool_touch_y_coords> = #5182
+#<tool_touch_z_coords> = #5183
+
+#<tool_radius_offset> = [#<tool_diameter> / 2]
+#<offset_probing_position> = [#<tool_touch_x_coords> - #<tool_radius_offset>]
+
+G59.3
+
+o<100> if [#<tool_diameter_offset_mode> EQ 1]
+  #<tool_touch_x_coords> = #<offset_probing_position>
+o<100> endif
+
+G49
+
+G90
+G53 G0 Z0
+G53 G0 X#<tool_touch_x_coords> Y#<tool_touch_y_coords>
+G53 G0 Z#<tool_touch_z_coords>
+
+G91
+F #<fast_probe_fr>
+o<fast_probe_clear_check> if [[#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5] OR [#<_hal[hm2_7i95.0.inmux.00.input-09]> GT 0.5]]
+  (abort, Tool touch off probe input is already active before fast probe)
+o<fast_probe_clear_check> endif
+M64 P0
+G4 P0.05
+G38.3 Z-[#<z_max_travel>]
+M65 P0
+
+o<110> if [#5070 NE 1]
+  (abort, Tool touch off fast probe did not contact the toolsetter)
+o<110> endif
+
+#<z_fast_probe> = #5063
+G0 Z[#<retract_distance>]
+
+o<120> if [#<slow_probe_fr> GT 0]
+  G91
+  F[#<slow_probe_fr>]
+  o<slow_probe_clear_check> if [[#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5] OR [#<_hal[hm2_7i95.0.inmux.00.input-09]> GT 0.5]]
+    (abort, Tool touch off probe input is already active before slow probe)
+  o<slow_probe_clear_check> endif
+  M64 P0
+  G4 P0.05
+  G38.3 Z-[#<retract_distance> * 2]
+  M65 P0
+
+  o<121> if [#5070 NE 1]
+    (abort, Tool touch off slow probe did not contact the toolsetter)
+  o<121> endif
+
+  #<z_slow_probe> = #5063
+  G90
+  G0 Z[#<z_slow_probe> + #<retract_distance>]
+o<120> endif
+
+o<130> if [#5070 EQ 1]
+  #<z_slow_probe> = #5063
+o<130> else
+  (abort, Tool touch off probe event failed)
+o<130> endif
+
+o<140> if [#<tool_diameter_probe_mode> EQ 1]
+  (MSG, Tool Diameter Probing is Not Defined in Subroutine)
+o<140> endif
+
+G49
+M65 P0
+
+G90
+G53 G0 Z0
+
+#<new_tool_length_offset> = [ABS[#<spindle_zero_height> + #5063]]
+
+G10 L1 P #5400 Z [#<new_tool_length_offset>]
+
+o<160> if [#<workspace_z> EQ 1]
+  G54
+o<160> else if [#<workspace_z> EQ 2]
+  G55
+o<160> else if [#<workspace_z> EQ 3]
+  G56
+o<160> else if [#<workspace_z> EQ 4]
+  G57
+o<160> else if [#<workspace_z> EQ 5]
+  G58
+o<160> else if [#<workspace_z> EQ 6]
+  G59
+o<160> else if [#<workspace_z> EQ 7]
+  G59.1
+o<160> else if [#<workspace_z> EQ 8]
+  G59.2
+o<160> else if [#<workspace_z> EQ 9]
+  G59.3
+o<160> endif
+
+T #5400 G43 H #5400
+
+o<tool_touch_off> endsub
+
+M2

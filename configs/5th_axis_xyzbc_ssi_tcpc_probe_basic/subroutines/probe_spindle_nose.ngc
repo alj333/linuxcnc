@@ -1,0 +1,100 @@
+(author: Chris P, TCPC-local gated variant)
+(version: 0.2)
+
+o<probe_spindle_nose> sub
+
+  #<probe_fast_fr> = #3004
+  #<probe_slow_fr> = #3005
+  #<probe_traverse_fr> = #3006
+  #<max_z_distance> = #3007
+  #<retract_distance> = #3009
+
+  o<preview_guard> if [#<_task> EQ 0]
+    (DEBUG, TCPC_PROBE_SPINDLE_NOSE preview only)
+    o<probe_spindle_nose> return
+  o<preview_guard> endif
+
+  o<tcpc_off_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+    (abort, Probe spindle nose requires TCPC off; exit TCPC with G49.1 first)
+  o<tcpc_off_check> endif
+
+  o<twp_off_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+    (abort, Probe spindle nose requires TWP off; run G69 first)
+  o<twp_off_check> endif
+
+  o<b_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_b]>] GT 0.05]
+    (abort, Probe spindle nose requires B0.000 C0.000)
+  o<b_zero_check> endif
+
+  o<c_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_c]>] GT 0.05]
+    (abort, Probe spindle nose requires B0.000 C0.000)
+  o<c_zero_check> endif
+
+  G92.1
+  M50 P0
+  M65 P0
+  G49
+
+  #<offset_z> = #5422
+
+  G91
+  F[#<probe_fast_fr>]
+  o<fast_probe_clear_check> if [[#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5] OR [#<_hal[hm2_7i95.0.inmux.00.input-09]> GT 0.5]]
+    M50 P1
+    (abort, Spindle nose probe input is already active before fast probe)
+  o<fast_probe_clear_check> endif
+  M64 P0
+  G4 P0.05
+  G38.3 Z-[#<max_z_distance>]
+  M65 P0
+
+  o<110> if [#5070 NE 1]
+    M50 P1
+    (abort, Spindle nose fast probe did not contact the toolsetter)
+  o<110> endif
+
+  #<z_minus_probed> = #5063
+
+  G90
+  G1 F[#<probe_traverse_fr>] Z[#<z_minus_probed> + #<retract_distance>]
+
+  o<120> if [#<probe_slow_fr> GT 0]
+    G91
+    F[#<probe_slow_fr>]
+    o<slow_probe_clear_check> if [[#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5] OR [#<_hal[hm2_7i95.0.inmux.00.input-09]> GT 0.5]]
+      M50 P1
+      (abort, Spindle nose probe input is already active before slow probe)
+    o<slow_probe_clear_check> endif
+    M64 P0
+    G4 P0.05
+    G38.3 Z-[#<retract_distance> * 2]
+    M65 P0
+
+    o<121> if [#5070 NE 1]
+      M50 P1
+      (abort, Spindle nose slow probe did not contact the toolsetter)
+    o<121> endif
+
+    #<z_minus_probed> = #5063
+    G90
+    G1 F[#<probe_traverse_fr>] Z[#<z_minus_probed> + #<retract_distance>]
+  o<120> endif
+
+  #<z_minus_probed_position> = #<z_minus_probed>
+  #1009 = #<z_minus_probed_position>
+  #3010 = [ABS[#<z_minus_probed_position> - #<offset_z>]]
+  #<max_z_travel_default> = [#3010 * 1.001]
+  #3007 = #<max_z_travel_default>
+
+  (DEBUG, EVAL[vcp.getWidget{"z_minus_probed_position"}.setValue{#1009}])
+  (DEBUG, EVAL[vcp.getWidget{"spindle_zero_height_3010"}.setValue{#3010}])
+  (DEBUG, EVAL[vcp.getWidget{"z_max_travel_3007"}.setValue{#3007}])
+
+  G53 G0 Z0.0
+
+  M65 P0
+  M50 P1
+
+o<probe_spindle_nose> endsub
+
+M2
