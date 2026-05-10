@@ -1501,3 +1501,45 @@ and rotary limits are compatible with TCPC-driven linear compensation for
 small production-style 5-axis moves. Future speed increases should still be
 made incrementally while watching for linear-axis following errors and rotary
 servo amp faults.
+
+## TCPC Active Tool-Length and Probe Basic Tip Display - 2026-05-10 +07
+
+Validated active `G43 H3` TCPC behavior with no physical tool installed.
+
+Added checks:
+
+- `nc_files/calibration/tcpc_h3_b0_b90_z_log_check.ngc`
+- `nc_files/calibration/tcpc_h3_b45_c45_tip_hold_check.ngc`
+- `nc_files/calibration/tcpc_h3_tool_length_visibility_check.ngc`
+- `nc_files/calibration/tcpc_servo_tune_tcpc_xyzbc_h3_motion.ngc`
+
+Findings:
+
+- `G43 H3` loads `motion.tooloffset.z = 128.606729` and feeds
+  `headheadkins.active-tool-offset.z`
+- machine motion confirms TCPC includes the active tool length, not only the
+  spindle-nose B-to-tool vector
+- the simple B0/B90 test showed the expected large Z compensation with H3
+  active; spindle-nose-only compensation would have been about `180 mm`, while
+  H3-active compensation is about `309 mm`
+- the B45/C45 tip-hold check looked correct on the machine and in Probe Basic:
+  the TCP stayed fixed while the top of the displayed tool moved through the
+  rotary arc
+- final state after the B45/C45 check: B0/C0, TCPC off, TWP off, active tool
+  offsets zero
+
+QtPyVCP Probe Basic display fixes are in `/home/cnc5/dev/qtpyvcp`:
+
+- `vtk_backplot/linuxcnc_datasource.py` now returns the current tool-offset
+  value tuple from `getToolOffset()`
+- `vtk_backplot/vtk_canon.py` skips ordinary 3-axis tool-offset path shifting
+  for the head-head XYZBC kinematics
+- `vtk_backplot/vtk_backplot.py` keeps breadcrumbs at the reported TCP and
+  uses the head-head TCPC tool display path
+- `vtk_backplot/tool_actor.py` adds a head-head TCPC tool-bit actor that draws
+  a tube from the TCP tip to the calculated tool-holder end, so the displayed
+  tip remains anchored while B/C rotate
+
+This is display-only work in QtPyVCP; it does not affect the LinuxCNC motion
+path. The machine-side H3 TCPC behavior was already confirmed through live HAL
+and visible motion before the final display correction.

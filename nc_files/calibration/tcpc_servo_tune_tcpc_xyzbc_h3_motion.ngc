@@ -1,0 +1,101 @@
+%
+(TCPC servo tune: combined XYZBC motion with selected T3/H3 tool length)
+(No probing. No physical tool installed. Selects T3 and applies G43 H3.)
+
+G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_SERVO_TUNE_TCPC_XYZBC_H3_MOTION preview only)
+  M2
+o<preview_guard> endif
+
+o<tlo_x_start_check> if [ABS[#<_hal[motion.tooloffset.x]>] GT 0.001]
+  (abort, TCPC H3 tune requires zero active X tool offset at start)
+o<tlo_x_start_check> endif
+o<tlo_y_start_check> if [ABS[#<_hal[motion.tooloffset.y]>] GT 0.001]
+  (abort, TCPC H3 tune requires zero active Y tool offset at start)
+o<tlo_y_start_check> endif
+o<tlo_z_start_check> if [ABS[#<_hal[motion.tooloffset.z]>] GT 0.001]
+  (abort, TCPC H3 tune requires zero active Z tool offset at start)
+o<tlo_z_start_check> endif
+o<tcpc_off_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, TCPC H3 tune must start with TCPC off)
+o<tcpc_off_check> endif
+o<twp_off_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, TCPC H3 tune must start with TWP motion off)
+o<twp_off_check> endif
+o<b_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_b]>] GT 0.05]
+  (abort, TCPC H3 tune must start near B0)
+o<b_zero_check> endif
+o<c_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_c]>] GT 0.05]
+  (abort, TCPC H3 tune must start near C0)
+o<c_zero_check> endif
+
+(MSG, Confirm no physical tool installed. Virtual H3 length will be applied. Clearance: X/Y +/-45mm, Z +/-10mm, B +/-30deg, C +/-90deg.)
+M0
+
+M61 Q3
+M66 E0 L0 (force sync after selected-tool change)
+o<tool_3_check> if [ABS[#<_current_tool> - 3] GT 0.5]
+  (abort, M61 Q3 did not set current tool 3)
+o<tool_3_check> endif
+G0 B0.0 C0.0
+
+G43 H3
+M66 E0 L0 (force sync after applying H3 tool length)
+o<h3_z_check> if [ABS[#<_hal[motion.tooloffset.z]> - 128.606729] GT 0.002]
+  (abort, G43 H3 did not apply expected H3 Z tool length)
+o<h3_z_check> endif
+
+#<start_x> = #<_x>
+#<start_y> = #<_y>
+#<start_z> = #<_z>
+
+G43.4
+o<tcpc_on_check> if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  (abort, G43.4 did not enable TCPC)
+o<tcpc_on_check> endif
+
+(Stage 1: moderate virtual-H3 combined XYZBC motion.)
+F3000
+G1 X[#<start_x> + 30.0] Y[#<start_y> + 20.0] Z[#<start_z> + 6.0]  B30.0  C90.0
+G1 X[#<start_x> - 30.0] Y[#<start_y> - 20.0] Z[#<start_z> - 6.0]  B-30.0 C-90.0
+G1 X[#<start_x>]        Y[#<start_y>]        Z[#<start_z>]        B0.0   C0.0
+M0 (Stage 1 complete: H3 F3000)
+
+(Stage 2: faster virtual-H3 combined XYZBC motion.)
+F6000
+G1 X[#<start_x> + 40.0] Y[#<start_y> + 30.0] Z[#<start_z> + 8.0]  B30.0  C90.0
+G1 X[#<start_x> - 40.0] Y[#<start_y> - 30.0] Z[#<start_z> - 8.0]  B-30.0 C-90.0
+G1 X[#<start_x> + 40.0] Y[#<start_y> - 30.0] Z[#<start_z> + 8.0]  B30.0  C-90.0
+G1 X[#<start_x> - 40.0] Y[#<start_y> + 30.0] Z[#<start_z> - 8.0]  B-30.0 C90.0
+G1 X[#<start_x>]        Y[#<start_y>]        Z[#<start_z>]        B0.0   C0.0
+M0 (Stage 2 complete: H3 F6000)
+
+(Stage 3: virtual-H3 command at current 150 mm/s linear limit.)
+F9000
+G1 X[#<start_x> + 45.0] Y[#<start_y> + 30.0] Z[#<start_z> + 10.0] B30.0  C90.0
+G1 X[#<start_x> - 45.0] Y[#<start_y> - 30.0] Z[#<start_z> - 10.0] B-30.0 C-90.0
+G1 X[#<start_x> + 45.0] Y[#<start_y> - 30.0] Z[#<start_z> + 10.0] B30.0  C-90.0
+G1 X[#<start_x> - 45.0] Y[#<start_y> + 30.0] Z[#<start_z> - 10.0] B-30.0 C90.0
+G1 X[#<start_x>]        Y[#<start_y>]        Z[#<start_z>]        B0.0   C0.0
+M0 (Back at TCPC entry orientation after H3 F9000)
+
+G49.1
+o<tcpc_off_end_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, G49.1 did not disable TCPC)
+o<tcpc_off_end_check> endif
+o<twp_off_end_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, G49.1 left TWP motion enabled)
+o<twp_off_end_check> endif
+
+G49
+M66 E0 L0 (force sync after clearing tool length)
+o<tlo_z_end_check> if [ABS[#<_hal[motion.tooloffset.z]>] GT 0.001]
+  (abort, G49 did not clear virtual H3 tool length)
+o<tlo_z_end_check> endif
+M61 Q0
+
+(DEBUG, TCPC_SERVO_TUNE_TCPC_XYZBC_H3_MOTION complete)
+M30
+%
