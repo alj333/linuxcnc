@@ -1473,3 +1473,31 @@ The QtPyVCP backplot change is in the separate local checkout
 `/home/cnc5/dev/qtpyvcp`, file
 `src/qtpyvcp/widgets/display_widgets/vtk_backplot/vtk_backplot.py`; it is not
 part of this LinuxCNC repository.
+
+## TCPC Combined XYZBC Motion Check - 2026-05-10 +07
+
+Added:
+
+- `nc_files/calibration/tcpc_servo_tune_tcpc_xyzbc_motion.ngc`
+
+Purpose:
+
+- no tool installed, tool `0`, active tool offsets zero
+- enter TCPC at B0/C0 with `G43.4`
+- move combined X/Y/Z and B/C paths while TCPC is active
+- stage feeds at `F1200`, `F3000`, and `F6000`
+- return to B0/C0 and exit TCPC with `G49.1`
+
+Real-machine result:
+
+- all three staged combined XYZBC sections ran correctly
+- no visible servo issue was reported by the operator
+- no XYZ following errors occurred during B/C TCPC motion
+- final state: idle, in position, B/C command zero, TCPC off, TWP off,
+  active tool offsets zero, no fresh LinuxCNC errors
+
+This is the first positive check that the current conservative XYZ acceleration
+and rotary limits are compatible with TCPC-driven linear compensation for
+small production-style 5-axis moves. Future speed increases should still be
+made incrementally while watching for linear-axis following errors and rotary
+servo amp faults.

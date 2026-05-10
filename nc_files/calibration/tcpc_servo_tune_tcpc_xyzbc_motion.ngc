@@ -1,0 +1,84 @@
+%
+(TCPC servo tune: combined XYZBC motion)
+(No probing. No tool installed. Exercises XYZ acceleration during TCPC B/C motion.)
+
+G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_SERVO_TUNE_TCPC_XYZBC_MOTION preview only)
+  M2
+o<preview_guard> endif
+
+o<tool_zero_check> if [#<_current_tool> GT 0.5]
+  (abort, TCPC XYZBC tune requires tool 0 and no tool installed)
+o<tool_zero_check> endif
+o<tlo_x_check> if [ABS[#<_hal[motion.tooloffset.x]>] GT 0.001]
+  (abort, TCPC XYZBC tune requires zero active X tool offset)
+o<tlo_x_check> endif
+o<tlo_y_check> if [ABS[#<_hal[motion.tooloffset.y]>] GT 0.001]
+  (abort, TCPC XYZBC tune requires zero active Y tool offset)
+o<tlo_y_check> endif
+o<tlo_z_check> if [ABS[#<_hal[motion.tooloffset.z]>] GT 0.001]
+  (abort, TCPC XYZBC tune requires zero active Z tool offset)
+o<tlo_z_check> endif
+o<tcpc_off_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, TCPC XYZBC tune must start with TCPC off)
+o<tcpc_off_check> endif
+o<twp_off_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, TCPC XYZBC tune must start with TWP motion off)
+o<twp_off_check> endif
+o<b_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_b]>] GT 0.05]
+  (abort, TCPC XYZBC tune must start near B0)
+o<b_zero_check> endif
+o<c_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_c]>] GT 0.05]
+  (abort, TCPC XYZBC tune must start near C0)
+o<c_zero_check> endif
+
+(MSG, Confirm no tool installed and clearance for X/Y +/-30mm, Z +/-8mm, B +/-30deg, C +/-90deg)
+M0
+
+G0 B0.0 C0.0
+
+#<start_x> = #<_x>
+#<start_y> = #<_y>
+#<start_z> = #<_z>
+
+G43.4
+o<tcpc_on_check> if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  (abort, G43.4 did not enable TCPC)
+o<tcpc_on_check> endif
+
+(Stage 1: conservative combined XYZBC motion.)
+F1200
+G1 X[#<start_x> + 20.0] Y[#<start_y>]        Z[#<start_z>]        B15.0  C30.0
+G1 X[#<start_x> + 20.0] Y[#<start_y> + 20.0] Z[#<start_z> + 5.0]  B-15.0 C60.0
+G1 X[#<start_x>]        Y[#<start_y>]        Z[#<start_z>]        B0.0   C0.0
+M0 (Stage 1 complete: F1200)
+
+(Stage 2: moderate combined XYZBC motion.)
+F3000
+G1 X[#<start_x> - 25.0] Y[#<start_y>]        Z[#<start_z> - 5.0]  B30.0  C-90.0
+G1 X[#<start_x> + 25.0] Y[#<start_y> - 25.0] Z[#<start_z> + 5.0]  B-30.0 C90.0
+G1 X[#<start_x>]        Y[#<start_y>]        Z[#<start_z>]        B0.0   C0.0
+M0 (Stage 2 complete: F3000)
+
+(Stage 3: faster combined XYZBC motion within current TCPC config limits.)
+F6000
+G1 X[#<start_x> + 30.0] Y[#<start_y> + 20.0] Z[#<start_z>]        B30.0  C90.0
+G1 X[#<start_x> - 30.0] Y[#<start_y> - 20.0] Z[#<start_z>]        B-30.0 C-90.0
+G1 X[#<start_x> + 30.0] Y[#<start_y> - 20.0] Z[#<start_z> + 8.0]  B30.0  C-90.0
+G1 X[#<start_x> - 30.0] Y[#<start_y> + 20.0] Z[#<start_z> - 8.0]  B-30.0 C90.0
+G1 X[#<start_x>]        Y[#<start_y>]        Z[#<start_z>]        B0.0   C0.0
+M0 (Back at TCPC entry orientation after F6000 stage)
+
+G49.1
+o<tcpc_off_end_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, G49.1 did not disable TCPC)
+o<tcpc_off_end_check> endif
+o<twp_off_end_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, G49.1 left TWP motion enabled)
+o<twp_off_end_check> endif
+
+(DEBUG, TCPC_SERVO_TUNE_TCPC_XYZBC_MOTION complete)
+M30
+%
