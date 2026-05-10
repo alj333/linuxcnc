@@ -1,0 +1,91 @@
+%
+(TCPC no-tool wide display and motion check)
+(No probing. No tool installed. Larger B/C angles and faster rotary moves.)
+
+G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
+F300
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_NO_TOOL_DISPLAY_MOTION_WIDE_CHECK preview only)
+  M2
+o<preview_guard> endif
+
+o<tool_zero_check> if [#<_current_tool> GT 0.5]
+  (abort, TCPC wide no-tool check requires tool 0 and no tool installed)
+o<tool_zero_check> endif
+o<tlo_x_check> if [ABS[#<_hal[motion.tooloffset.x]>] GT 0.001]
+  (abort, TCPC wide no-tool check requires zero active X tool offset)
+o<tlo_x_check> endif
+o<tlo_y_check> if [ABS[#<_hal[motion.tooloffset.y]>] GT 0.001]
+  (abort, TCPC wide no-tool check requires zero active Y tool offset)
+o<tlo_y_check> endif
+o<tlo_z_check> if [ABS[#<_hal[motion.tooloffset.z]>] GT 0.001]
+  (abort, TCPC wide no-tool check requires zero active Z tool offset)
+o<tlo_z_check> endif
+o<tcpc_off_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, TCPC wide no-tool check must start with TCPC off)
+o<tcpc_off_check> endif
+o<twp_off_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, TCPC wide no-tool check must start with TWP motion off)
+o<twp_off_check> endif
+o<b_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_b]>] GT 0.05]
+  (abort, TCPC wide no-tool check must start near B0)
+o<b_zero_check> endif
+o<c_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_c]>] GT 0.05]
+  (abort, TCPC wide no-tool check must start near C0)
+o<c_zero_check> endif
+
+(MSG, Confirm no tool installed and safe clearance for B +/-30 deg and C +/-90 deg)
+M0
+
+G0 B0.0 C0.0
+
+#<start_x> = #<_x>
+#<start_y> = #<_y>
+#<start_z> = #<_z>
+
+G43.4
+o<tcpc_on_check> if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  (abort, G43.4 did not enable TCPC)
+o<tcpc_on_check> endif
+o<entry_x_check> if [ABS[#<_x> - #<start_x>] GT 0.002]
+  (abort, G43.4 changed displayed X)
+o<entry_x_check> endif
+o<entry_y_check> if [ABS[#<_y> - #<start_y>] GT 0.002]
+  (abort, G43.4 changed displayed Y)
+o<entry_y_check> endif
+o<entry_z_check> if [ABS[#<_z> - #<start_z>] GT 0.002]
+  (abort, G43.4 changed displayed Z)
+o<entry_z_check> endif
+
+(F360 is 75 percent of the current 8 deg/s rotary velocity limit.)
+F360
+G1 B30.0 C0.0
+M0 (Observe TCPC plot/tool at B30 C0)
+G1 B30.0 C90.0
+M0 (Observe TCPC plot/tool at B30 C90)
+G1 B-30.0 C90.0
+M0 (Observe TCPC plot/tool at B-30 C90)
+G1 B-30.0 C-90.0
+M0 (Observe TCPC plot/tool at B-30 C-90)
+
+(F480 reaches the current 8 deg/s rotary velocity limit.)
+F480
+G1 B30.0 C90.0
+G1 B-30.0 C-90.0
+G1 B30.0 C-90.0
+G1 B-30.0 C90.0
+G1 B0.0 C0.0
+M0 (Back at TCPC entry orientation after faster rotary moves)
+
+G49.1
+o<tcpc_off_end_check> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, G49.1 did not disable TCPC)
+o<tcpc_off_end_check> endif
+o<twp_off_end_check> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, G49.1 left TWP motion enabled)
+o<twp_off_end_check> endif
+
+(DEBUG, TCPC_NO_TOOL_DISPLAY_MOTION_WIDE_CHECK complete)
+M30
+%

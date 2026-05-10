@@ -65,7 +65,9 @@ addf tcpc_probe_fault_pause servo-thread
 
 setp c_ssi_unwrap.wrap-period 360.0
 setp hm2_7i95.0.ssi.00.abs.scale 2912.711111111111
-setp b_ssi_zero.in1 182.9152
+# TCPC flips the B SSI sign. Keep the calibrated B0 equivalent near 0 deg,
+# not +360 deg, so HOME_ABSOLUTE_ENCODER homing remains inside B soft limits.
+setp b_ssi_zero.in1 -177.0848
 
 setp headheadkins.nominal-c-to-b.x 0.010934
 setp headheadkins.nominal-c-to-b.y 0.0

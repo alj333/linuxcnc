@@ -1423,3 +1423,53 @@ Balanced final short-probe validation result:
 - do not continue short-probe-only TCPC refinement now
 - keep future TCPC refinement for the short/long probe comparison after the
   long stylus arrives
+
+## Probe Basic TCPC Display and B Homing Check - 2026-05-10 +07
+
+During Probe Basic TCPC display validation, homing-all initially failed with:
+
+```text
+Exceeded POSITIVE soft limit (100.00000) on joint 3
+```
+
+The physical B axis was at B0, but the TCPC overlay's flipped B SSI mapping
+reported the equivalent position as `+360.0004 deg`. LinuxCNC does not normalize
+that value for joint soft-limit checks, so B was outside the configured
+`-100..+100 deg` limit before X/Y/Z homing.
+
+The TCPC overlay now keeps the same calibrated B0 equivalent near zero:
+
+```hal
+setp hm2_7i95.0.ssi.00.abs.scale 2912.711111111111
+setp b_ssi_zero.in1 -177.0848
+```
+
+Restart validation after the correction:
+
+- B joint actual after startup: `0.000390 deg`
+- C joint actual after startup: `0.001007 deg`
+- homing-all completed normally
+- no startup or homing errors remained
+
+Two no-tool Probe Basic display/motion checks were added:
+
+- `nc_files/calibration/tcpc_no_tool_display_motion_check.ngc`
+- `nc_files/calibration/tcpc_no_tool_display_motion_wide_check.ngc`
+
+Real-machine no-tool result:
+
+- tool `0`, active tool offsets zero
+- TCPC entered with `G43.4` at B0/C0 and exited with `G49.1`
+- Probe Basic plot/tool followed B/C motion correctly after the QtPyVCP
+  backplot patch
+- small check passed through B `+/-5` and C `+/-15`
+- wide check passed through B `+/-30` and C `+/-90`
+- final faster segment at `F480` reached the current configured `8 deg/s`
+  rotary velocity limit without visible issue
+- final state after the wide check: idle, B/C command effectively zero,
+  TCPC off, TWP off, active tool offsets zero, no fresh LinuxCNC errors
+
+The QtPyVCP backplot change is in the separate local checkout
+`/home/cnc5/dev/qtpyvcp`, file
+`src/qtpyvcp/widgets/display_widgets/vtk_backplot/vtk_backplot.py`; it is not
+part of this LinuxCNC repository.
