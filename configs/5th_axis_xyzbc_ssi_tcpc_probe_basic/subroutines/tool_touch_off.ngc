@@ -1,14 +1,20 @@
 o<tool_touch_off> sub
 
-#<fast_probe_fr> = #1
-#<slow_probe_fr> = #2
-#<z_max_travel> = #3
-#<xy_max_travel> = #4
-#<retract_distance> = #6
-#<spindle_zero_height> = #5
-#<tool_diameter_probe_mode> = #8
-#<tool_diameter_offset_mode> = #9
+#<fast_probe_fr_3004> = #1
+#<slow_probe_fr_3005> = #2
+#<z_max_travel_3007> = #3
+#<xy_max_travel_3008> = #4
+#<retract_distance_3009> = #6
+#<spindle_zero_height_3010> = #5
+#<tool_diameter_probe_mode_3011> = #8
+#<tool_diameter_offset_mode_3012> = #9
 #<tool_diameter> = #10
+
+#<slow_probe_fr> = #<slow_probe_fr_3005>
+#<retract_distance> = #<retract_distance_3009>
+#<spindle_zero_height> = #<spindle_zero_height_3010>
+#<tool_diameter_probe_mode> = #<tool_diameter_probe_mode_3011>
+#<tool_diameter_offset_mode> = #<tool_diameter_offset_mode_3012>
 
 o<preview_guard> if [#<_task> EQ 0]
   (DEBUG, TCPC_TOOL_TOUCH_OFF preview only)
@@ -31,109 +37,170 @@ o<c_zero_check> if [ABS[#<_hal[headheadtwp.current_joint_c]>] GT 0.05]
   (abort, Tool touch off requires B0.000 C0.000)
 o<c_zero_check> endif
 
+o<tool_length_active_check> if [#<_tool_offset> LT 0.5]
+  (abort, Tool touch off requires active G43 tool length compensation)
+o<tool_length_active_check> endif
+
+o<current_tool_check> if [#<_hal[iocontrol.0.tool-number]> LT 1]
+  (abort, Tool touch off requires a current tool number)
+o<current_tool_check> endif
+
+o<tool_length_min_check> if [ABS[#<_hal[motion.tooloffset.z]>] LT 50.0]
+  (abort, Tool touch off requires active Z tool length of at least 50.00 mm)
+o<tool_length_min_check> endif
+
+o<slow_feed_check> if [#<slow_probe_fr> LE 0]
+  (abort, Tool touch off requires a positive slow probe feed)
+o<slow_feed_check> endif
+
+o<clearance_check> if [#<retract_distance> LT 6.0]
+  (abort, Tool touch off retract/approach clearance must be at least 6 mm)
+o<clearance_check> endif
+
+(MSG, Tool touch off check)
+(MSG, Verify active tool length is within +/-5 mm from holder face to tool tip)
+M0 (Press cycle start/resume after checking tool length)
+
 G92.1
 M65 P0
 
 #<workspace_z> = #5220
-
+#<current_tool> = #<_hal[iocontrol.0.tool-number]>
+#<current_tool_length> = #<_hal[motion.tooloffset.z]>
+#<traverse_fr> = #3006
 #<tool_touch_x_coords> = #5181
 #<tool_touch_y_coords> = #5182
-#<tool_touch_z_coords> = #5183
+#<approach_clearance> = #<retract_distance>
+#<fast_approach_clearance> = 200.0
+#<fast_position_fr> = 3000.0
+#<near_approach_fr> = 1000.0
+#<probe_travel> = [#<approach_clearance> * 2.0]
+#<release_wait_step> = 0.25
+#<release_wait_loops> = 80
+
+o<traverse_default> if [#<traverse_fr> LE 0]
+  #<traverse_fr> = 1000.0
+o<traverse_default> endif
+
+o<fast_approach_check> if [#<fast_approach_clearance> LE #<approach_clearance>]
+  (abort, Tool touch off fast approach clearance must be above the probe approach clearance)
+o<fast_approach_check> endif
 
 #<tool_radius_offset> = [#<tool_diameter> / 2]
 #<offset_probing_position> = [#<tool_touch_x_coords> - #<tool_radius_offset>]
 
-G59.3
-
-o<100> if [#<tool_diameter_offset_mode> EQ 1]
+o<diameter_offset_check> if [#<tool_diameter_offset_mode> EQ 1]
   #<tool_touch_x_coords> = #<offset_probing_position>
-o<100> endif
+o<diameter_offset_check> endif
 
-G49
+#<setter_trip_z> = [0.0 - #<spindle_zero_height> - #5323]
 
 G90
-G53 G0 Z0
-G53 G0 X#<tool_touch_x_coords> Y#<tool_touch_y_coords>
-G53 G0 Z#<tool_touch_z_coords>
+G53 G1 F[#<fast_position_fr>] Z0
+G53 G1 F[#<fast_position_fr>] X#<tool_touch_x_coords>
+G59
+G90
+G1 F[#<fast_position_fr>] Z#<fast_approach_clearance>
+G1 F[#<near_approach_fr>] Z#<approach_clearance>
+M66 E0 L0
+
+#<probe_clear_wait> = 0
+#<toolsetter_active> = [#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5]
+o<first_probe_release_wait> while [[#<toolsetter_active> GT 0.5] AND [#<probe_clear_wait> LT #<release_wait_loops>]]
+  G4 P[#<release_wait_step>]
+  #<probe_clear_wait> = [#<probe_clear_wait> + 1]
+  #<toolsetter_active> = [#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5]
+o<first_probe_release_wait> endwhile
+
+o<first_probe_clear_check> if [#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5]
+  M65 P0
+  (abort, Tool touch off toolsetter input is already active before first probe)
+o<first_probe_clear_check> endif
 
 G91
-F #<fast_probe_fr>
-o<fast_probe_clear_check> if [[#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5] OR [#<_hal[hm2_7i95.0.inmux.00.input-09]> GT 0.5]]
-  (abort, Tool touch off probe input is already active before fast probe)
-o<fast_probe_clear_check> endif
+F[#<slow_probe_fr>]
 M64 P0
 G4 P0.05
-G38.3 Z-[#<z_max_travel>]
+G38.3 Z-[#<probe_travel>]
 M65 P0
 
-o<110> if [#5070 NE 1]
-  (abort, Tool touch off fast probe did not contact the toolsetter)
-o<110> endif
-
-#<z_fast_probe> = #5063
-G0 Z[#<retract_distance>]
-
-o<120> if [#<slow_probe_fr> GT 0]
-  G91
-  F[#<slow_probe_fr>]
-  o<slow_probe_clear_check> if [[#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5] OR [#<_hal[hm2_7i95.0.inmux.00.input-09]> GT 0.5]]
-    (abort, Tool touch off probe input is already active before slow probe)
-  o<slow_probe_clear_check> endif
-  M64 P0
-  G4 P0.05
-  G38.3 Z-[#<retract_distance> * 2]
+o<first_probe_contact_check> if [#5070 NE 1]
   M65 P0
+  (abort, Tool touch off first probe did not contact the toolsetter)
+o<first_probe_contact_check> endif
 
-  o<121> if [#5070 NE 1]
-    (abort, Tool touch off slow probe did not contact the toolsetter)
-  o<121> endif
+#<z_first_probe> = #5063
+G4 P0.05
+G91
+G1 F[#<fast_position_fr>] Z#<approach_clearance>
+M66 E0 L0
 
-  #<z_slow_probe> = #5063
-  G90
-  G0 Z[#<z_slow_probe> + #<retract_distance>]
-o<120> endif
+#<probe_clear_wait> = 0
+#<toolsetter_active> = [#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5]
+o<second_probe_release_wait> while [[#<toolsetter_active> GT 0.5] AND [#<probe_clear_wait> LT #<release_wait_loops>]]
+  G4 P[#<release_wait_step>]
+  #<probe_clear_wait> = [#<probe_clear_wait> + 1]
+  #<toolsetter_active> = [#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5]
+o<second_probe_release_wait> endwhile
 
-o<130> if [#5070 EQ 1]
-  #<z_slow_probe> = #5063
-o<130> else
-  (abort, Tool touch off probe event failed)
-o<130> endif
+o<second_probe_clear_check> if [#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5]
+  M65 P0
+  (abort, Tool touch off toolsetter input is already active before second probe)
+o<second_probe_clear_check> endif
 
-o<140> if [#<tool_diameter_probe_mode> EQ 1]
-  (MSG, Tool Diameter Probing is Not Defined in Subroutine)
-o<140> endif
-
-G49
+G91
+F[#<slow_probe_fr>]
+M64 P0
+G4 P0.05
+G38.3 Z-[#<probe_travel>]
 M65 P0
+
+o<second_probe_contact_check> if [#5070 NE 1]
+  M65 P0
+  (abort, Tool touch off second probe did not contact the toolsetter)
+o<second_probe_contact_check> endif
+
+#<z_second_probe> = #5063
+G4 P0.05
+G91
+G1 F[#<fast_position_fr>] Z#<approach_clearance>
+M66 E0 L0
+G4 P0.50
+
+o<tool_diameter_probe_check> if [#<tool_diameter_probe_mode> EQ 1]
+  (MSG, Tool Diameter Probing is Not Defined in Subroutine)
+o<tool_diameter_probe_check> endif
+
+M65 P0
+
+#<new_tool_length_offset> = [#<current_tool_length> + #<z_second_probe> - #<setter_trip_z>]
+
+G10 L1 P #<current_tool> Z [#<new_tool_length_offset>]
 
 G90
-G53 G0 Z0
+G53 G1 F[#<fast_position_fr>] Z0
 
-#<new_tool_length_offset> = [ABS[#<spindle_zero_height> + #5063]]
-
-G10 L1 P #5400 Z [#<new_tool_length_offset>]
-
-o<160> if [#<workspace_z> EQ 1]
+o<restore_workspace> if [#<workspace_z> EQ 1]
   G54
-o<160> else if [#<workspace_z> EQ 2]
+o<restore_workspace> else if [#<workspace_z> EQ 2]
   G55
-o<160> else if [#<workspace_z> EQ 3]
+o<restore_workspace> else if [#<workspace_z> EQ 3]
   G56
-o<160> else if [#<workspace_z> EQ 4]
+o<restore_workspace> else if [#<workspace_z> EQ 4]
   G57
-o<160> else if [#<workspace_z> EQ 5]
+o<restore_workspace> else if [#<workspace_z> EQ 5]
   G58
-o<160> else if [#<workspace_z> EQ 6]
+o<restore_workspace> else if [#<workspace_z> EQ 6]
   G59
-o<160> else if [#<workspace_z> EQ 7]
+o<restore_workspace> else if [#<workspace_z> EQ 7]
   G59.1
-o<160> else if [#<workspace_z> EQ 8]
+o<restore_workspace> else if [#<workspace_z> EQ 8]
   G59.2
-o<160> else if [#<workspace_z> EQ 9]
+o<restore_workspace> else if [#<workspace_z> EQ 9]
   G59.3
-o<160> endif
+o<restore_workspace> endif
 
-T #5400 G43 H #5400
+T #<current_tool> G43 H #<current_tool>
 
 o<tool_touch_off> endsub
 

@@ -1598,6 +1598,7 @@ Added TCPC-local subroutine overrides in
 
 - `probe_spindle_nose.ngc`
 - `tool_touch_off.ngc`
+- `tool_setter_param_update.ngc`
 
 These shadow the shared Probe Basic subroutines only in the TCPC config because
 the TCPC config's `[RS274NGC] SUBROUTINE_PATH` searches its local subroutine
@@ -1609,11 +1610,29 @@ Behavior added for the TCPC-local toolsetter macros:
 - reject if TWP motion is active
 - reject unless B and C are within `0.05 deg` of zero
 - force the probe gate closed before setup and after probing with `M65 P0`
-- check the raw toolsetter/wireless-probe inputs are clear before each probe
-  stroke
+- check the raw toolsetter input is clear before each probe stroke
 - open the probe gate only during the actual probing stroke with `M64 P0`
 - use `G38.3` plus explicit `#5070` checks so a no-contact event can close the
   probe gate before aborting
+- make the tool touch-off button compatible with the Probe Basic widget names
+  such as `fast_probe_fr_3004`, `z_max_travel_3007`, and
+  `spindle_zero_height_3010`
+- add a TCPC-local `tool_setter_param_update.ngc` so the Probe Basic
+  `UPDATE TOOL SETTER PARAMETERS` button can write the numbered toolsetter
+  parameter values
+- require active `G43` tool length compensation before tool touch-off and show
+  a blocking `M0` warning for the operator to verify the active tool length is
+  within `+/-5 mm` from holder face to tool tip before resuming
+- require the active Z tool length to be at least `50.00 mm`, because no valid
+  tool on this machine is shorter than that and stale zero offsets are unsafe
+- leave Y at the current machine position during tool touch-off; the presetter
+  only needs X and Z
+- use `M66 E0 L0` sync points before HAL input checks so queued retract moves
+  complete before the macro evaluates whether the setter has released
+- approach the setter with the current tuned profile: `G53 Z0` and setter X at
+  `F3000`, down to 200 mm above the setter at `F3000`, then down to 10 mm
+  above the setter at `F1000`
+- retract after each touch and return to `G53 Z0` at `F3000`
 
 Offline interpreter preview check:
 
@@ -1629,12 +1648,39 @@ on live HAL input pins.
 Next toolsetter commissioning steps:
 
 - start the TCPC Probe Basic config with B0/C0 and TCPC/TWP off
-- verify `hm2_7i95.0.inmux.00.input-08` changes state when the toolsetter is
-  pressed, and verify the wireless probe input is idle
+- verified on the machine that the tool presetter changes
+  `hm2_7i95.0.inmux.00.input-08` / `toolset-in`
+- verify the wireless/touch probe input
+  `hm2_7i95.0.inmux.00.input-09` / `t_probe-in` is idle before toolsetter
+  probing; the base HAL ORs both `input-08` and `input-09` into `probe-mux`
 - set the tool touch position with the Probe Basic `SET TOOL TOUCH OFF
   POSITION` workflow or `G30.1` at a safe machine-coordinate location
-- run `PROBE SPINDLE NOSE ZERO` slowly to establish `#3010`
-- run `TOUCH OFF CURRENT TOOL` on a known tool and confirm the updated tool
-  table length is repeatable
+- verify the trimmed `#3010` value below by rerunning `TOUCH OFF CURRENT TOOL`
+  on T24 and confirming it returns close to `Z+138.739000`
 - repeat with one short and one longer tool when available, then verify active
   `G43 Hn` TCPC motion still behaves as expected
+
+Live commissioning note:
+
+- The presetter was first calibrated from known tool `T24/H24`
+  (`Z+138.739000`). The machine was referenced with `G59 Z0` at the top of the
+  presetter, but the actual switch trip occurred at `Z-634.624733` in the
+  toolsetter probing frame. The correct `#3010` spindle-zero value for the
+  setter trip point is therefore `773.363733`.
+- The first automatic touch-off stopped after the fast stroke because the
+  earlier routine was still using the stock long fast-probe approach from
+  machine Z0/G49. The TCPC-local `tool_touch_off.ngc` has been reworked to
+  match the DMG-style process used here: require the active tool length to be
+  manually set within `+/-5 mm`, keep `G43` active, position to the calibrated
+  setter clearance, run a slow touch, retract, run a second slow touch, then
+  correct the current tool length from the measured trip-point error.
+- The first clean two-touch toolsetter run completed with Y held fixed and
+  updated T24 from `Z+138.739000` to `Z+138.835417`. The repeatable offset was
+  therefore `+0.096417 mm` from the target reference.
+- The live toolsetter calibration was trimmed by that amount for the next
+  verification pass: `#3010`/`spindle_zero_height_3010` changed from
+  `773.3637` to `773.2673`. T24 was reset to `Z+138.739000` before shutdown.
+- Next session should rerun `TOUCH OFF CURRENT TOOL` on T24 after confirming
+  the UI warning-screen call is passing `spindle_zero_height_3010 = 773.2673`.
+  If the result is close to `138.739000`, continue with repeatability checks;
+  if not, trim `#3010` by the remaining measured difference.
