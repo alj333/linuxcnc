@@ -1527,6 +1527,9 @@ Findings:
   rotary arc
 - final state after the B45/C45 check: B0/C0, TCPC off, TWP off, active tool
   offsets zero
+- final post-push smoke check: B0/B90 and B45/C45 H3 display checks both
+  looked correct in Probe Basic; each finished with B0/C0, TCPC off, TWP off,
+  active tool offsets zero, and no LinuxCNC errors
 
 QtPyVCP Probe Basic display fixes are in `/home/cnc5/dev/qtpyvcp`:
 
