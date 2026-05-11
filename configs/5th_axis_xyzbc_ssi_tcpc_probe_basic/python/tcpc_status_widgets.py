@@ -5,17 +5,24 @@ try:
 except Exception:  # pragma: no cover - only used when imported outside LinuxCNC
     hal = None
 
+try:
+    import linuxcnc
+except Exception:  # pragma: no cover - only used when imported outside LinuxCNC
+    linuxcnc = None
+
 from qtpy.QtCore import QTimer, Qt
 from qtpy.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
+from qtpyvcp.plugins import getPlugin
 
 
 POLL_MS = 250
@@ -258,6 +265,7 @@ class TcpcStatusTab(QWidget):
         self.reader = TcpcStatusReader()
         self.setObjectName("TCPC_STATUS")
         self.setProperty("sidebar", False)
+        self._tool_touch_dialog = None
 
         self.strip = TcpcStatusStrip(compact=True)
         self.fields = {}
@@ -373,6 +381,65 @@ class TcpcStatusTab(QWidget):
         self.timer.timeout.connect(self.update_status)
         self.timer.start(POLL_MS)
         self.update_status()
+
+    def show_tool_touch_prompt(self, stage, tool_number, tool_length):
+        stage = int(stage)
+        tool_number = int(tool_number)
+        tool_length = float(tool_length)
+
+        if self._tool_touch_dialog is not None:
+            self._tool_touch_dialog.close()
+
+        if stage == 1:
+            title = "Confirm Tool"
+            text = f"Confirm T{tool_number} is installed."
+            icon = QMessageBox.Warning
+        else:
+            title = "Check Tool Length"
+            text = f"Verify T{tool_number} length is within +/-5 mm."
+            icon = QMessageBox.Information
+
+        table_z = self._tool_table_z(tool_number)
+        info = f"Active G43 length Z {tool_length:.3f}"
+        if table_z is None:
+            info += f"\nTool table T{tool_number} Z unavailable"
+        else:
+            delta = tool_length - table_z
+            info += f"\nTool table T{tool_number} Z {table_z:.3f}"
+            info += f"\nActive minus table {delta:+.3f}"
+            if abs(delta) > 0.005:
+                info += "\nWARNING: active G43 length does not match this tool"
+
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle(title)
+        dialog.setIcon(icon)
+        dialog.setText(text)
+        dialog.setInformativeText(info)
+        dialog.setStandardButtons(QMessageBox.NoButton)
+        continue_button = dialog.addButton("Continue", QMessageBox.AcceptRole)
+        dialog.setDefaultButton(continue_button)
+        dialog.setWindowModality(Qt.ApplicationModal)
+        dialog.setWindowFlag(Qt.WindowStaysOnTopHint, True)
+        continue_button.clicked.connect(lambda: self._resume_from_tool_touch_prompt(dialog))
+        self._tool_touch_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+
+    def _tool_table_z(self, tool_number):
+        try:
+            tool_data = getPlugin("tooltable").getToolTable().get(int(tool_number), {})
+            return float(tool_data["Z"])
+        except Exception:
+            return None
+
+    def _resume_from_tool_touch_prompt(self, dialog):
+        dialog.accept()
+        if self._tool_touch_dialog is dialog:
+            self._tool_touch_dialog = None
+        if linuxcnc is None:
+            return
+        linuxcnc.command().auto(linuxcnc.AUTO_RESUME)
 
     def update_status(self):
         state = self.reader.snapshot()

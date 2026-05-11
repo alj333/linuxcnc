@@ -1684,3 +1684,41 @@ Live commissioning note:
   the UI warning-screen call is passing `spindle_zero_height_3010 = 773.2673`.
   If the result is close to `138.739000`, continue with repeatability checks;
   if not, trim `#3010` by the remaining measured difference.
+
+## TCPC Tool Height Setter Commissioning - 2026-05-11 +07
+
+The TCPC-local toolsetter workflow was improved and live-tested on T24.
+
+Changes made:
+
+- replaced the earlier `(MSG)`/debug notification operator checks with a
+  Probe Basic/QtPyVCP modal popup on the TCPC status tab
+- the popup shows the current tool number, active `G43` Z length, tool-table
+  Z length for that tool, and active-minus-table difference
+- the popup has a centered `Continue` button which resumes the paused `M0`
+  program, matching the operator behavior of the manual tool-change dialog
+- the first toolsetter touch now probes at `F100`
+- the inter-touch retract is now `Z+5.0`
+- the second toolsetter touch now probes at `F20`
+- the final retract remains `F3000`
+
+Live result:
+
+- T24/H24 touch-off completed cleanly through the full macro
+- active tool offset after the run was `Z+138.7459667`
+- shared tool table T24 was updated to `Z+138.745967`
+- this is about `+0.007 mm` from the earlier known reference value
+  `Z+138.739000`, so the setter is close enough for current use but should get
+  a repeatability sample before trimming the sensor calibration again
+- the toolsetter still uses the `G59` setter reference: X/Y come from
+  `#5181/#5182`, the macro switches to `G59` for the probe frame, and it
+  restores the previous workspace at the end
+
+Deferred toolsetter tasks:
+
+- add a dedicated toolsetter sensor calibration routine which uses a known
+  reference tool to fine-tune the sensor calibration value instead of folding
+  that adjustment into every normal tool touch-off
+- add automatic large-tool X offset handling: read the active tool diameter,
+  and when the diameter is greater than `10 mm`, shift X by the tool radius so
+  the side of the end mill is centered over the toolsetter sensor

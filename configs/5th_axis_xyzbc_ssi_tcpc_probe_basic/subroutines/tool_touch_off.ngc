@@ -10,7 +10,9 @@ o<tool_touch_off> sub
 #<tool_diameter_offset_mode_3012> = #9
 #<tool_diameter> = #10
 
-#<slow_probe_fr> = #<slow_probe_fr_3005>
+#<first_probe_fr> = 100.0
+#<second_probe_fr> = 20.0
+#<touch_retract_distance> = 5.0
 #<retract_distance> = #<retract_distance_3009>
 #<spindle_zero_height> = #<spindle_zero_height_3010>
 #<tool_diameter_probe_mode> = #<tool_diameter_probe_mode_3011>
@@ -49,24 +51,30 @@ o<tool_length_min_check> if [ABS[#<_hal[motion.tooloffset.z]>] LT 50.0]
   (abort, Tool touch off requires active Z tool length of at least 50.00 mm)
 o<tool_length_min_check> endif
 
-o<slow_feed_check> if [#<slow_probe_fr> LE 0]
-  (abort, Tool touch off requires a positive slow probe feed)
-o<slow_feed_check> endif
+o<first_probe_feed_check> if [#<first_probe_fr> LE 0]
+  (abort, Tool touch off requires a positive first probe feed)
+o<first_probe_feed_check> endif
+
+o<second_probe_feed_check> if [#<second_probe_fr> LE 0]
+  (abort, Tool touch off requires a positive second probe feed)
+o<second_probe_feed_check> endif
 
 o<clearance_check> if [#<retract_distance> LT 6.0]
   (abort, Tool touch off retract/approach clearance must be at least 6 mm)
 o<clearance_check> endif
 
-(MSG, Tool touch off check)
-(MSG, Verify active tool length is within +/-5 mm from holder face to tool tip)
-M0 (Press cycle start/resume after checking tool length)
+#<current_tool> = #<_hal[iocontrol.0.tool-number]>
+#<current_tool_length> = #<_hal[motion.tooloffset.z]>
+
+(DEBUG, EVAL[vcp.getWidget{"TCPC_STATUS"}.show_tool_touch_prompt{1, #<current_tool>, #<current_tool_length>}])
+M0 (Confirm installed tool)
+(DEBUG, EVAL[vcp.getWidget{"TCPC_STATUS"}.show_tool_touch_prompt{2, #<current_tool>, #<current_tool_length>}])
+M0 (Check active tool length)
 
 G92.1
 M65 P0
 
 #<workspace_z> = #5220
-#<current_tool> = #<_hal[iocontrol.0.tool-number]>
-#<current_tool_length> = #<_hal[motion.tooloffset.z]>
 #<traverse_fr> = #3006
 #<tool_touch_x_coords> = #5181
 #<tool_touch_y_coords> = #5182
@@ -118,7 +126,7 @@ o<first_probe_clear_check> if [#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5]
 o<first_probe_clear_check> endif
 
 G91
-F[#<slow_probe_fr>]
+F[#<first_probe_fr>]
 M64 P0
 G4 P0.05
 G38.3 Z-[#<probe_travel>]
@@ -132,7 +140,7 @@ o<first_probe_contact_check> endif
 #<z_first_probe> = #5063
 G4 P0.05
 G91
-G1 F[#<fast_position_fr>] Z#<approach_clearance>
+G1 F[#<fast_position_fr>] Z#<touch_retract_distance>
 M66 E0 L0
 
 #<probe_clear_wait> = 0
@@ -149,7 +157,7 @@ o<second_probe_clear_check> if [#<_hal[hm2_7i95.0.inmux.00.input-08]> GT 0.5]
 o<second_probe_clear_check> endif
 
 G91
-F[#<slow_probe_fr>]
+F[#<second_probe_fr>]
 M64 P0
 G4 P0.05
 G38.3 Z-[#<probe_travel>]
