@@ -33,12 +33,15 @@ o<Probe_back_top_side> sub
   #<workspace_y> = #[5202 + [20 * #5220]]
 
   (Probe Tool Safety Check)
-  o100 if [#5400 NE #<probe_tool_number>]
+  o100 if [#<_hal[iocontrol.0.tool-number]> NE #<probe_tool_number>]
       (abort, Specified probe tool %d#<probe_tool_number> not in spindle, aborting)
   o100 endif
 
   (Probe Diameter)
-  #<probe_diameter> = #5410
+  #<probe_diameter> = #<_hal[halui.tool.diameter]>
+  o<probe_diameter_check> if [#<probe_diameter> LE 0]
+      (abort, Probe tool diameter is zero in tool table, aborting)
+  o<probe_diameter_check> endif
 
   (Probing depth from the z probed clearance height, used for z moves)
   #<z_probe_stack> = [#<z_clearance> + #<probe_diameter> + #<extra_probe_depth>]

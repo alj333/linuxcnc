@@ -3093,3 +3093,43 @@ Important caveat:
 - this changes the commissioning baseline: future probe data should be treated
   as refined-candidate-on data unless the pin is deliberately set false and
   logged
+
+## Probe Basic Stock Probing Compatibility - 2026-05-11
+
+The TCPC Probe Basic config is now the main machine config. The stock Probe
+Basic probing routines were repaired for this config after two live failures:
+
+- stock `G38` routines stopped on first touch and did not retract because the
+  TCPC probe-gate safety layer only opened on the explicit calibration
+  `M64 P0` gate
+- Probe Basic's remembered tool restore made LinuxCNC status/HAL show Tool 3
+  loaded with `motion.tooloffset.z = 128.606729`, but interpreter volatile
+  tool parameters remained stale:
+  - `#5400 = 0.000000`
+  - `#5410 = 0.000000`
+  - `#<_current_tool> = 0.000000`
+  - `#<_hal[iocontrol.0.tool-number]> = 3.000000`
+  - `#<_hal[halui.tool.diameter]> = 6.000000`
+
+Applied compatibility fixes:
+
+- TCPC HAL now opens the probe gate automatically when
+  `motion.motion-type == 5`, while retaining the explicit `M64/M65 P0`
+  calibration gate
+- the abnormal-pulse ignore window after gate close is now `1.0 s`
+- Probe Basic startup parameter sync includes
+  `5th_axis_xyzbc_ssi_tcpc_probe_basic`, so persisted UI values are pushed to
+  `#3014..#3036` after startup
+- shared stock probing macros validate the requested probe tool against
+  `#<_hal[iocontrol.0.tool-number]>` instead of stale `#5400`
+- shared stock probing macros read the table-backed probe diameter from
+  `#<_hal[halui.tool.diameter]>` instead of stale `#5410`
+- probing macros abort if the live tool diameter is zero, preventing a silent
+  X/Y WCS update at the raw touch point
+
+Follow-up:
+
+- investigate the underlying non-random toolchanger/interpreter state mismatch
+  that leaves `#5400/#5410/#<_current_tool>` at zero after `M61 Q3 G43`
+- until that is solved, keep live probing routines on HAL/status-backed tool
+  number and tool diameter sources

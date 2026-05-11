@@ -32,7 +32,7 @@ o<probe_z_minus_wco> sub
   #<workspace_z> = #[5203 + [20 * #5220]]
 
   (Probe Tool Safety Check)
-  o<110> if [#5400 NE #<probe_tool_number>]
+  o<110> if [#<_hal[iocontrol.0.tool-number]> NE #<probe_tool_number>]
   (MSG, Specified probe tool #<probe_tool_number> not in spindle, aborting)
    o<probe_z_minus_wco> return
   o<110> endif

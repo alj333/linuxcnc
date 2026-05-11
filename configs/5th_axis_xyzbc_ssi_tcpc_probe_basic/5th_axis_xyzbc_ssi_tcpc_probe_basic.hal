@@ -18,18 +18,32 @@
 loadrt rotaryunwrap names=c_ssi_unwrap
 loadrt oneshot names=tcpc_probe_gate_ignore,tcpc_probe_fault_pause
 loadrt timedelay names=tcpc_spindle_air_hold,tcpc_spindle_air_precharge
-loadrt logic names=tcpc_spindle_air_or personality=0x202
+loadrt conv_s32_float names=tcpc_motion_type_float
+loadrt wcomp names=tcpc_probe_motion_window
+loadrt logic names=tcpc_spindle_air_or,tcpc_probe_gate_or personality=0x202,0x202
 
 # Temporary supervised TCPC calibration workaround for unreliable wireless probe
 # pulses. The base HAL still builds the raw probe/toolsetter mux as "probe-mux";
 # this overlay gates that signal with motion.digital-out-00. TCPC calibration
 # G-code must use M64 P0 only during the actual G38 probe move and M65 P0
-# immediately after, so false trips during transport/retract do not abort motion.
+# immediately after. Stock Probe Basic routines do not manage that gate, so this
+# overlay also opens the gate automatically while motion.motion-type reports a
+# probing move. The explicit digital gate remains available for calibration
+# routines and preview-safe setup/cleanup.
 unlinkp motion.probe-input
 unlinkp hm2_7i95.0.ssr.00.out-02
 net probe-mux => and2.1.in0
-net tcpc-probe-gate-enable <= motion.digital-out-00 => and2.1.in1
+setp tcpc_probe_motion_window.min 4.5
+setp tcpc_probe_motion_window.max 5.5
+net tcpc-motion-type <= motion.motion-type => tcpc_motion_type_float.in
+net tcpc-motion-type-float <= tcpc_motion_type_float.out => tcpc_probe_motion_window.in
+net tcpc-probe-motion-active <= tcpc_probe_motion_window.out => tcpc_probe_gate_or.in-00
+net tcpc-probe-manual-gate-enable <= motion.digital-out-00 => tcpc_probe_gate_or.in-01
+net tcpc-probe-gate-enable <= tcpc_probe_gate_or.or => and2.1.in1
 net tcpc-probe-gated <= and2.1.out => motion.probe-input hm2_7i95.0.ssr.00.out-02
+addf tcpc_motion_type_float servo-thread
+addf tcpc_probe_motion_window servo-thread
+addf tcpc_probe_gate_or servo-thread
 
 # SSR out-03 supplies bearing air for the ceramic spindle. In this TCPC work
 # config, a spindle request forces the air output on, holds it briefly after
@@ -57,9 +71,9 @@ addf tcpc_spindle_air_precharge servo-thread
 addf tcpc_spindle_air_or servo-thread
 
 # Pause the running program on abnormal wireless probe activity without
-# feeding that noise into motion.probe-input. A short ignore window after M65
-# lets the valid G38 contact release before monitoring gate-closed pulses.
-setp tcpc_probe_gate_ignore.width 0.25
+# feeding that noise into motion.probe-input. An ignore window after the probe
+# gate closes lets valid contact release during the stock Probe Basic retract.
+setp tcpc_probe_gate_ignore.width 1.0
 setp tcpc_probe_gate_ignore.rising false
 setp tcpc_probe_gate_ignore.falling true
 setp tcpc_probe_gate_ignore.retriggerable true

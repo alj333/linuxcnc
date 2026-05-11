@@ -33,13 +33,16 @@ o<probe_y_minus_wco> sub
   #<workspace_y> = #[5202 + [20 * #5220]]
 
   (Probe Tool Safety Check)
-  o<110> if [#5400 NE #<probe_tool_number>]
+  o<110> if [#<_hal[iocontrol.0.tool-number]> NE #<probe_tool_number>]
   (MSG, Specified probe tool #<probe_tool_number> not in spindle, aborting)
    o<probe_y_minus_wco> return
   o<110> endif
 
   (Probe Diameter)
-  #<probe_diameter> = #5410
+  #<probe_diameter> = #<_hal[halui.tool.diameter]>
+  o<probe_diameter_check> if [#<probe_diameter> LE 0]
+      (abort, Probe tool diameter is zero in tool table, aborting)
+  o<probe_diameter_check> endif
 
   (Probe Radius)
   #<probe_radius> = [#<probe_diameter> / 2]

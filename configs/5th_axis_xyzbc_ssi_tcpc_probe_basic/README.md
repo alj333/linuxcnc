@@ -1836,3 +1836,60 @@ Known deferred issue:
   motion with active tool length checked correctly, but the display alignment
   issue has not been fully closed, so do not use the backplot alone as the
   authority for TCPC tooltip behavior.
+
+## Probe Basic Probing Gate Compatibility - 2026-05-11 +07
+
+The original Probe Basic probing routines in the shared subroutine folder were
+stopping on the first touch in the TCPC config and not retracting. This was a
+side effect of the TCPC probe-gate safety layer: the old routines call `G38`
+directly and do not explicitly open `motion.digital-out-00`, so the raw probe
+touch was seen by the abnormal-pulse monitor while the gated LinuxCNC
+`motion.probe-input` stayed closed.
+
+The TCPC HAL overlay now treats the TCPC config as the main machine config and
+opens the probe gate automatically whenever LinuxCNC reports active probing
+motion:
+
+- `motion.motion-type == 5` is converted through `tcpc_motion_type_float`
+- `tcpc_probe_motion_window` detects the probing-motion window
+- `tcpc_probe_gate_or` opens the gate when either a stock `G38` move is active
+  or the explicit `M64 P0` calibration gate is active
+- the explicit `M64/M65 P0` gate remains supported for calibration routines
+- `tcpc_probe_gate_ignore.width` was increased from `0.25 s` to `1.0 s` so
+  stock Probe Basic routines have time to retract off the contact point before
+  the abnormal-pulse monitor resumes
+
+Probe Basic stores the probing UI values in settings widgets and mirrors them
+into numbered interpreter parameters with `touch_probe_param_update.ngc`. The
+TCPC Probe Basic machine name is included in the startup sync path so persisted
+UI values are pushed into `#3014..#3036` after startup, not only after the
+operator edits a probing field. Normal UI edits still trigger the same update
+button when the edit is committed.
+
+Expected behavior after restart:
+
+- original Probe Basic probing routines should again touch, record the point,
+  retract, and continue their fast/slow sequence
+- probe false-pulse monitoring remains active outside actual probing moves and
+  the immediate post-touch release/retract window
+- shared Probe Basic probing macros now validate the loaded probe with the
+  live HAL `#<_hal[iocontrol.0.tool-number]>` value instead of `#5400`; this
+  keeps the wrong-tool guard active while avoiding stale interpreter tool state
+  where both `#5400` and `#<_current_tool>` reported `0` while status/HAL
+  showed tool 3 loaded
+- shared Probe Basic probing macros now read probe diameter from the live
+  table-backed HAL value `#<_hal[halui.tool.diameter]>` instead of volatile
+  `#5410`; live debugging showed `#5410 = 0.000000` while
+  `halui.tool.diameter = 6.000000` for T3, which made X/Y WCS probing set the
+  work offset at the raw touch point instead of applying the probe radius
+- probe macros now abort if the live tool diameter is zero so a missing or
+  incomplete tool-table diameter cannot silently corrupt a work offset
+
+Follow-up:
+
+- investigate why the interpreter volatile current-tool parameters
+  `#5400/#5410/#<_current_tool>` remain zero after the Probe Basic remembered
+  tool restore (`M61 Q3 G43`) even though LinuxCNC status, `iocontrol`, HAL
+  tool offset, and `halui.tool.diameter` are correct
+- keep probing routines on the HAL/status tool source unless the interpreter
+  current-tool model is made reliable again for this non-random toolchanger
