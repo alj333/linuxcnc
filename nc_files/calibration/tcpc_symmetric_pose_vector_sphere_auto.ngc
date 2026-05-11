@@ -23,6 +23,13 @@ o<preview_guard> if [#<_task> EQ 0]
   M2
 o<preview_guard> endif
 
+(TCPC test config gates motion.probe-input with motion.digital-out-00.)
+(Keep the gate disabled except during the actual G38 probe move.)
+(motion.digital-out-01 inhibits the abnormal-pulse pause monitor during)
+(the valid touch and immediate retract/clear move.)
+M65 P0
+M65 P1
+
 #500 = #3014
 o<probe_tool_default> if [#500 LE 0]
   #500 = #5400
@@ -89,7 +96,12 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [#532 * #508]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
 
   o<top_fail> if [#5070 EQ 0]
     G90
@@ -116,6 +128,7 @@ o<tcpc_vector_sphere_pass> sub
   G90
   F#507
   G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  M65 P1
 
   (Probe from -U side toward +U.)
   #<um_start_x> = [#<top_center_x> - [#533 * #514]]
@@ -133,7 +146,12 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [#535 * #511]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
   o<um_fail> if [#5070 EQ 0]
     F#507
     G1 X[-#122] Y[-#123] Z[-#124]
@@ -152,6 +170,7 @@ o<tcpc_vector_sphere_pass> sub
   G1 X#125 Y#126 Z#127
   G90
   G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+  M65 P1
 
   (Probe from +U side toward -U.)
   #<up_start_x> = [#<top_center_x> + [#533 * #514]]
@@ -169,7 +188,12 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [-#535 * #511]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
   o<up_fail> if [#5070 EQ 0]
     F#507
     G1 X[-#122] Y[-#123] Z[-#124]
@@ -188,6 +212,7 @@ o<tcpc_vector_sphere_pass> sub
   G1 X#125 Y#126 Z#127
   G90
   G1 X#<up_clear_x> Y#<up_clear_y> Z#<up_clear_z>
+  M65 P1
 
   (Probe from -V side toward +V.)
   #<vm_start_x> = [#<top_center_x> - [#536 * #514]]
@@ -205,7 +230,12 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [#538 * #511]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
   o<vm_fail> if [#5070 EQ 0]
     F#507
     G1 X[-#122] Y[-#123] Z[-#124]
@@ -224,6 +254,7 @@ o<tcpc_vector_sphere_pass> sub
   G1 X#125 Y#126 Z#127
   G90
   G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+  M65 P1
 
   (Probe from +V side toward -V.)
   #<vp_start_x> = [#<top_center_x> + [#536 * #514]]
@@ -241,7 +272,12 @@ o<tcpc_vector_sphere_pass> sub
   #124 = [-#538 * #511]
   G91
   F#506
-  G38.2 X#122 Y#123 Z#124
+  M64 P1
+  M65 P0
+  M64 P0
+  G4 P0.05
+  G38.3 X#122 Y#123 Z#124
+  M65 P0
   o<vp_fail> if [#5070 EQ 0]
     F#507
     G1 X[-#122] Y[-#123] Z[-#124]
@@ -260,6 +296,7 @@ o<tcpc_vector_sphere_pass> sub
   G1 X#125 Y#126 Z#127
   G90
   G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+  M65 P1
 
   G90
   F#507
@@ -548,5 +585,7 @@ G90
 F#705
 G1 B0 C0
 
+M65 P0
+M65 P1
 (DEBUG, TCPC_SYMMETRIC_POSE_VECTOR complete)
 M2

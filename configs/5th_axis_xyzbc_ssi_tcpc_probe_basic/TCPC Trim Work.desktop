@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=TCPC Trim Work
+Comment=Launch XYZBC SSI TCPC Probe Basic for 5-axis trim work
+Exec=/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/launch_xyzbc_ssi_tcpc_probe_basic.sh
+Icon=/home/cnc5/dev/probe_basic/dev_launchers/probe_basic_icon.png
+Path=/home/cnc5/linuxcnc-dev
+Terminal=false
+StartupNotify=false

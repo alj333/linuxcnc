@@ -1722,3 +1722,117 @@ Deferred toolsetter tasks:
 - add automatic large-tool X offset handling: read the active tool diameter,
   and when the diameter is greater than `10 mm`, shift X by the tool radius so
   the side of the end mill is centered over the toolsetter sensor
+
+## TCPC Forward Plan - 2026-05-11 +07
+
+Current agreed sequence:
+
+- finish the active 3-axis work before making further TCPC/QtPyVCP code
+  changes
+- after the 3-axis work is complete, inspect and correct the Probe Basic
+  backplot offset issue seen with `G43` active: the loaded plotted toolpath is
+  below the live tool-follow path, so the display appears to be mixing tool
+  length offset frames. Important display rule for this machine: all production
+  G-code is programmed at the tooltip/TCP. The loaded G-code path and toolpath
+  backplot should therefore remain at the tooltip path. Tool length should only
+  change the length/holder end of the displayed tool and the real machine
+  compensation, not translate the programmed path away from the tooltip.
+- after the display issue is understood, run the final TCPC verification
+  probing pass with the short probe to confirm current fitted corrections,
+  error vectors, and error magnitudes
+- once verification probing is acceptable, set the CNC up for TCPC 5-axis trim
+  work and test the real trim workpath without assuming more calibration work
+  is required
+- use the trim workpath test to surface any remaining production issues; fix
+  only issues that actually affect the production workflow or operator safety
+
+Remaining TCPC/production tasks to continue as time allows:
+
+- repeat the T24 toolsetter cycle enough times to establish repeatability
+  before trimming the sensor calibration again
+- add the known-tool toolsetter sensor calibration routine
+- add automatic large-tool X offset handling for tools over `10 mm` diameter
+- run full TCPC g-code motion checks with no cutting tool installed
+- continue servo acceleration/speed checks with TCPC and active tool length,
+  prioritizing controlled 5-axis ABS trim motion over maximum speed
+- finish production behavior checks for startup, `G43`, `G49`, `G43.4`,
+  `G49.1`, TWP/TCPC lockouts, M6 lockouts, and spindle/flood air-bearing
+  behavior
+
+## Probe Basic Backplot Tooltip Rule - 2026-05-11 +07
+
+The backplot offset issue seen in 3-axis work with `G43` active was traced to
+the VTK backplot's remaining generic 3-axis tool-length path adjustment. The
+previous TCPC display fix only skipped that path adjustment for `headheadkins`,
+so the normal SSI/3-axis `trivkins coordinates=XYZBC` config could still plot
+loaded G-code and live breadcrumb/tool-follow points in different tool-length
+frames.
+
+Display rule now applied in `/home/cnc5/dev/qtpyvcp`:
+
+- any `XYZBC` machine config used here is treated as tooltip-programmed for
+  backplot purposes
+- loaded G-code path points are not translated by active tool length
+- live breadcrumb/tool-follow points are not translated by active tool length
+- active `G43` remains available to size the displayed tool geometry, so tool
+  length changes the displayed holder/tool extension but not the programmed
+  path
+
+Changed files:
+
+- `src/qtpyvcp/widgets/display_widgets/vtk_backplot/vtk_canon.py`
+- `src/qtpyvcp/widgets/display_widgets/vtk_backplot/vtk_backplot.py`
+- `src/qtpyvcp/widgets/display_widgets/vtk_backplot/tool_actor.py`
+
+Syntax was checked with a no-bytecode `compile()` pass because the normal
+`py_compile` command tried to write `.pyc` files into the QtPyVCP source tree.
+Next step is a live UI reload/screenshot check with `G43` active to confirm the
+loaded path and live follow path now overlay.
+
+## TCPC Trim Work Readiness - 2026-05-11 +07
+
+Short-probe TCPC verification was rerun with the corrected probe gate pattern
+in `tcpc_symmetric_pose_vector_sphere_auto.ngc`.
+
+Latest conservative verification envelope:
+
+- B/C poses checked: `B0 C0`, `B+5 C+20`, `B+5 C-20`, `B-5 C+20`,
+  `B-5 C-20`, and closing `B0 C0`
+- closing `B0 C0` drift from the accepted opening reference was about
+  `0.008 mm`
+- worst accepted small-angle pose-center vector error was about `0.045 mm`
+- result is inside the current production requirement of `<0.2 mm` and inside
+  the preferred local target of `<0.1 mm`
+- this verifies the conservative trim-style motion range only; it is not a
+  full high-B calibration validation
+
+Backlash decision for production TCPC trim startup:
+
+- keep LinuxCNC backlash compensation disabled in the TCPC config
+- B/C backlash compensation remains intentionally set to `0.0` because direct
+  SSI feedback is at the rotary output and the previous software backlash
+  values created approach-dependent TCP error
+- measured X/Y lost-motion values remain diagnostic only; do not add X/Y
+  backlash compensation before the first 5-axis trim work because the values
+  were measured at one location and have not been separated from local rack,
+  scale, compliance, or thermal effects
+- the current TCPC fit and verification are valid for the config as tested;
+  adding backlash compensation now would change reversal behavior and require
+  a new verification pass
+
+Production setup changes:
+
+- TCPC Probe Basic now opens the file browser in the mounted CNC share path
+  `/home/cnc5/mnt/cnc/5th axis`. This is the configured mount location for the
+  CNC share; it corresponds to the requested `/mnt/cnc/5th axis` working area
+  on this machine.
+- a desktop launcher for TCPC trim work is provided as
+  `TCPC Trim Work.desktop` and points at
+  `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/launch_xyzbc_ssi_tcpc_probe_basic.sh`
+
+Known deferred issue:
+
+- the Probe Basic/VTK backplot tooltip display work is still WIP. Machine
+  motion with active tool length checked correctly, but the display alignment
+  issue has not been fully closed, so do not use the backplot alone as the
+  authority for TCPC tooltip behavior.
