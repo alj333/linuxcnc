@@ -1837,6 +1837,16 @@ Known deferred issue:
   issue has not been fully closed, so do not use the backplot alone as the
   authority for TCPC tooltip behavior.
 
+Operational update - 2026-05-12 +07:
+
+- early 5-axis TCPC trim work with this config is working correctly in real
+  operations so far
+- TCPC entry and exit are working correctly in mixed TCPC-on/TCPC-off cut files
+- continue treating this as the active trim-work config while monitoring for
+  any toolpath, TCPC entry/exit, tool-length, probing, or servo-following issues
+- long-probe validation and deeper interpreter tool-state cleanup remain
+  deferred follow-up work, not blockers for the current trim workload
+
 ## Probe Basic Probing Gate Compatibility - 2026-05-11 +07
 
 The original Probe Basic probing routines in the shared subroutine folder were
