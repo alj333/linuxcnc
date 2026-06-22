@@ -1895,11 +1895,113 @@ Expected behavior after restart:
 - probe macros now abort if the live tool diameter is zero so a missing or
   incomplete tool-table diameter cannot silently corrupt a work offset
 
+## Runtime Update - 2026-06-16 B-Axis Home-Zero Trim
+
+After the loose conical shaft clamp was found and retorqued, the B encoder was
+treated as trustworthy because it is a direct-coupled output-shaft encoder. The
+remaining error is treated as a LinuxCNC B home-zero reference error, not an
+encoder feedback error.
+
+The first sphere data after the sphere moved starts at
+`tcpc-b-angle-scaling-diagnostic-2pass-results.csv` line `775`; earlier rows
+from the old sphere position are not used. The accepted C0-only B sweep
+produced a tight opening/closing B0 repeat of about `0.011 mm`, so the run is
+usable for B-zero trim. The paired B `+/-30` and B `+/-60` Z deltas at the
+current effective `~308 mm` B-to-probe-tip lever arm indicate a B-zero trim of
+about `0.026 deg`. B `+/-90` was downweighted because the remaining X-heavy
+high-B residual includes known non-B-zero machine geometry/alignment error.
+
+Applied TCPC-test-config-only trim:
+
+```hal
+setp b_ssi_zero.in1 -176.1245
+```
+
+This replaces the post-clamp dial-gauge value `-176.0981`. The change moves the
+commanded B0 physical output by about `+0.0264 deg` while keeping LinuxCNC
+rotary backlash compensation disabled.
+
+Immediate rerun caveat: rows `791-802` were started after this trim but are not
+valid for another adjustment. The operator saw the sphere move on a Z probe
+touch, and the run stopped after accepted `B+90 C0` pass 2 before `B-90` and
+the closing `B0` repeat. Treat rows `791-802` as contaminated/incomplete; the
+next heavy-base rerun should start from line `803`.
+
+Heavy-base rerun caveat: rows `803-808` also do not form a usable B-zero fit.
+The opening `B0` and `B+30` accepted rows were clean enough to show that the
+trim moved the positive-B Z error in the correct direction, but the operator
+reported probe errors during `B-30`. The logged `B-30` pass-2 row had corrected
+diameters around `29.52 mm` and a multi-millimeter center jump, so discard row
+`808` and the run as a whole before applying any further B-zero adjustment.
+After the probe issue is cleared, rerun from a fresh B0 baseline; new candidate
+data should start after line `808`.
+
+Probe-reset heavy-base rerun rows `809-824` completed cleanly. Accepted pass-2
+diameters returned to the expected range, and the opening/closing B0 repeat was
+about `0.019 mm`. The first B-zero trim improved the positive-B Z error but
+slightly overshot the paired `+/-30` and `+/-60` Z balance. B `+/-90` still
+contains larger non-B-zero geometry/alignment residual, so the second B-zero
+trim intentionally used only the `+/-30` and `+/-60` pairs. Applied
+TCPC-test-config-only value:
+
+```hal
+setp b_ssi_zero.in1 -176.1160
+```
+
+This is a conservative back-off from `-176.1245`; repeat the same C0-only B
+sweep after restart before making any further B-zero change.
+
+Restarted C0-only sweep rows `825-838` were interrupted by a probe fault at
+`B-90`. Rows `825-836` are usable through `B+90`; row `838` is invalid and is
+discarded because the corrected diameters fell to about `29.30/29.33 mm`.
+The resume program
+`nc_files/calibration/tcpc_b_angle_scaling_resume_bminus90_c0.ngc` then ran a
+fresh `B0 C0` seed, `B-90 C0`, and closing `B0 C0` in rows `839-844`. The
+combined valid set has an opening/closing B0 repeat of about `0.0116 mm`; the
+resume-only B0 seed-to-close repeat is about `0.0093 mm`.
+
+Final B-zero assessment at `b_ssi_zero.in1 = -176.1160`: using the valid
+low-angle `+/-30` and `+/-60` pairs, the remaining indicated trim is only about
+`+0.0058 deg` and `-0.0007 deg` respectively, averaging about `+0.0026 deg`.
+That is within the current repeatability/noise of this setup, so no further
+B home-zero change was applied. The `B-90` row still shows a larger
+X/Y/Z-heavy residual, so treat that as remaining high-B machine geometry /
+alignment error rather than a clean B-zero-home error.
+
+Operational context from the owner/operator: this machine cuts large vacuum
+formed parts and is not expected to behave like a high-rigidity precision
+5-axis machining center. For this recovery work, focus B-axis diagnostics on
+balanced `+B/-B` motion around the output-shaft encoder zero, not on forcing a
+global fit through every remaining TCPC residual. If the balanced B sweep is
+around `0.1 mm` or better at the probe tip, that is sufficient for the intended
+machine use; larger high-B vector residuals should be handled later as separate
+machine geometry, stiffness, probe-length, or alignment work.
+
+Session close-out: no further B-home-zero changes are planned for now. The next
+major calibration task should wait until the long probe arrives so short/long
+probe comparison runs can separate tool/probe-length effects from machine
+geometry. Laser alignment and correction-table work remains a future project
+only if the machine's production needs warrant that level of correction.
+
 Follow-up:
 
 - investigate why the interpreter volatile current-tool parameters
   `#5400/#5410/#<_current_tool>` remain zero after the Probe Basic remembered
   tool restore (`M61 Q3 G43`) even though LinuxCNC status, `iocontrol`, HAL
   tool offset, and `halui.tool.diameter` are correct
+- investigate the Probe Basic UI/toolbox versus live runtime tool-offset
+  mismatch seen during the 2026-06-16 B-axis recovery run: the UI/toolbox
+  could show the intended T3 probe data while LinuxCNC's active
+  `motion.tooloffset.z`/`halui.tool.length_offset.z` still held the previous
+  T97 length (`168.306`) instead of T3 H3 (`128.606729`). Future TCPC probing
+  preflight must verify the live runtime pins/status, not only the displayed
+  tool row.
+- investigate intermittent wireless probe electrical/charge noise through the
+  machine: during the 2026-06-16 B-axis recovery run the probe could show a
+  multi-flash fault and a faint flicker on the diagnostic LEDs, without a
+  solid input-on state. Unseating and reseating the probe in the spindle
+  cleared the symptom. Treat this as a physical/electrical probe contact,
+  grounding, shielding, or charge-coupling investigation before blaming TCPC or
+  calibration G-code.
 - keep probing routines on the HAL/status tool source unless the interpreter
   current-tool model is made reliable again for this non-random toolchanger
