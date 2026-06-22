@@ -38,6 +38,40 @@ new PC unless the configs are deliberately edited and retested:
 
 Create the OS user as `cnc5`. Give it sudo access.
 
+## Git Repositories In Use
+
+LinuxCNC:
+
+```text
+Primary fork: https://github.com/alj333/linuxcnc.git
+Upstream: https://github.com/LinuxCNC/linuxcnc
+Remote branch for this machine: head-head-kinematics-rnd
+Old-PC local branch name: head-head-kinematics-rnd-pushable
+```
+
+Probe Basic:
+
+```text
+Configured repo on the old PC: https://github.com/kcjengr/probe_basic.git
+Branch: main
+Captured public commit: 5a76d5a4008b0ba4242c472fc0d1ee641eff7e5e
+Old-PC state: ahead of origin/main with dirty launcher edits
+```
+
+QtPyVCP, required by Probe Basic:
+
+```text
+Primary fork with local display work: https://github.com/alj333/qtpyvcp.git
+Upstream: https://github.com/kcjengr/qtpyvcp.git
+Branch: main
+Captured public commit: 17b7803c7b7e586713bd4afc0414e7eda447e934
+Old-PC state: ahead of origin/main with dirty display/backplot edits
+```
+
+For a same-machine replacement, copy the full old-PC Probe Basic and QtPyVCP
+working trees if possible. Re-cloning only the public commits will miss local
+dirty edits unless those edits are committed or reapplied.
+
 ## Before Retiring The Old PC
 
 The LinuxCNC repository alone is not the entire running system. Preserve these
