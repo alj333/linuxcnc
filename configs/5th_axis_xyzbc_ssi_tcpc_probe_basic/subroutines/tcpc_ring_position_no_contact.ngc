@@ -1,0 +1,79 @@
+(Protected no-contact positioning move for the pinned TCPC ring stack.)
+(Arguments: axis 1=X 2=Y 3=Z, mode 0=incremental 1=absolute, value, feed.)
+
+o<tcpc_ring_position_no_contact> sub
+  #<position_axis> = #1
+  #<position_mode> = #2
+  #<position_value> = #3
+  #<position_feed> = #4
+
+  o<tcpc_ring_position_axis> if [[#<position_axis> LT 0.5] OR [#<position_axis> GT 3.5] OR [ABS[#<position_axis> - FIX[#<position_axis>]] GT 0.000001]]
+    (abort, Protected ring positioning axis must be 1 X 2 Y or 3 Z)
+  o<tcpc_ring_position_axis> endif
+  o<tcpc_ring_position_mode> if [[#<position_mode> LT -0.1] OR [#<position_mode> GT 1.1] OR [ABS[#<position_mode> - FIX[#<position_mode>]] GT 0.000001]]
+    (abort, Protected ring positioning mode must be 0 incremental or 1 absolute)
+  o<tcpc_ring_position_mode> endif
+  o<tcpc_ring_position_feed> if [[#<position_feed> LE 0.0] OR [#<position_feed> GT 300.0]]
+    (abort, Protected ring positioning feed must be above zero and at most 300 mm/min)
+  o<tcpc_ring_position_feed> endif
+
+  #<position_start_x> = #5420
+  #<position_start_y> = #5421
+  #<position_start_z> = #5422
+  F[#<position_feed>]
+
+  o<tcpc_ring_position_x_axis> if [#<position_axis> EQ 1]
+    o<tcpc_ring_position_x_absolute> if [#<position_mode> EQ 1]
+      G90
+      G38.3 X[#<position_value>]
+    o<tcpc_ring_position_x_absolute> else
+      G91
+      G38.3 X[#<position_value>]
+    o<tcpc_ring_position_x_absolute> endif
+    #<position_unexpected_trip> = #5070
+    G90
+    o<tcpc_ring_position_x_trip> if [#<position_unexpected_trip> NE 0]
+      G1 F[#<position_feed>] X[#<position_start_x>]
+      M66 E0 L0
+      M65 P0
+      M65 P1
+      (abort, Unexpected probe trip during protected ring X positioning)
+    o<tcpc_ring_position_x_trip> endif
+  o<tcpc_ring_position_x_axis> else if [#<position_axis> EQ 2]
+    o<tcpc_ring_position_y_absolute> if [#<position_mode> EQ 1]
+      G90
+      G38.3 Y[#<position_value>]
+    o<tcpc_ring_position_y_absolute> else
+      G91
+      G38.3 Y[#<position_value>]
+    o<tcpc_ring_position_y_absolute> endif
+    #<position_unexpected_trip> = #5070
+    G90
+    o<tcpc_ring_position_y_trip> if [#<position_unexpected_trip> NE 0]
+      G1 F[#<position_feed>] Y[#<position_start_y>]
+      M66 E0 L0
+      M65 P0
+      M65 P1
+      (abort, Unexpected probe trip during protected ring Y positioning)
+    o<tcpc_ring_position_y_trip> endif
+  o<tcpc_ring_position_x_axis> else
+    o<tcpc_ring_position_z_absolute> if [#<position_mode> EQ 1]
+      G90
+      G38.3 Z[#<position_value>]
+    o<tcpc_ring_position_z_absolute> else
+      G91
+      G38.3 Z[#<position_value>]
+    o<tcpc_ring_position_z_absolute> endif
+    #<position_unexpected_trip> = #5070
+    G90
+    o<tcpc_ring_position_z_trip> if [#<position_unexpected_trip> NE 0]
+      G1 F[#<position_feed>] Z[#<position_start_z>]
+      M66 E0 L0
+      M65 P0
+      M65 P1
+      (abort, Unexpected probe trip during protected ring Z positioning)
+    o<tcpc_ring_position_z_trip> endif
+  o<tcpc_ring_position_x_axis> endif
+o<tcpc_ring_position_no_contact> endsub
+
+M2

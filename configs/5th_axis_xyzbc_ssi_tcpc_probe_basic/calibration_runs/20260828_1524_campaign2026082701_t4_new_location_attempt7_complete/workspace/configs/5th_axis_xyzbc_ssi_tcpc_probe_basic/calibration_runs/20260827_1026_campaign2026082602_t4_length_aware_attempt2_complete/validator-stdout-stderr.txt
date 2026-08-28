@@ -1,0 +1,2 @@
+TCPC length-aware T4 result validation: PASS
+report: /home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_LENGTH_AWARE_T4_ATTEMPT2_VALIDATION_REPORT.md

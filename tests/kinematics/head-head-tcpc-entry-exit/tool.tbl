@@ -1,1 +1,21 @@
-T1 P1 Z+25.000000 D+0.000000 ; test tool
+T1 P1 Z+128.606729 D+0.000000 ; T3 calibration length
+T2 P2 Z+99.997000 D+0.000000 ; below lower tolerance
+T3 P3 Z+100.000000 D+0.000000 ; hard lower endpoint
+T4 P4 Z+430.000000 D+0.000000 ; hard upper endpoint
+T5 P5 Z+430.003000 D+0.000000 ; above upper tolerance
+T6 P6 Z+425.022000 D+0.000000 ; recent historical T69
+T7 P7 X+0.010000 Z+128.606729 D+0.000000 ; unsupported XY offset
+T8 P8 Z+99.999000 D+0.000000 ; accepted lower tolerance
+T9 P9 Z+430.001000 D+0.000000 ; accepted upper tolerance
+T10 P10 Z+114.677000 D+0.000000 ; current table minimum
+T11 P11 Z+229.407000 D+0.000000 ; T4 calibration length
+T12 P12 Z+411.810000 D+0.000000 ; current table maximum
+T13 P13 Z+99.998000 D+0.000000 ; accepted lower tolerance endpoint
+T14 P14 Z+430.002000 D+0.000000 ; accepted upper tolerance endpoint
+T15 P15 Z+200.000000 A+0.010000 D+0.000000 ; unsupported non-Z offset
+T16 P16 Z+200.000000 Y+0.010000 D+0.000000 ; unsupported non-Z offset
+T17 P17 Z+200.000000 B+0.010000 D+0.000000 ; unsupported non-Z offset
+T18 P18 Z+200.000000 C+0.010000 D+0.000000 ; unsupported non-Z offset
+T19 P19 Z+200.000000 U+0.010000 D+0.000000 ; unsupported non-Z offset
+T20 P20 Z+200.000000 V+0.010000 D+0.000000 ; unsupported non-Z offset
+T21 P21 Z+200.000000 W+0.010000 D+0.000000 ; unsupported non-Z offset

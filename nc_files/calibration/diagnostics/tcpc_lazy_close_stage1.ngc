@@ -1,0 +1,30 @@
+%
+(No-motion diagnostic: establish deferred close with TCPC active.)
+
+o<runtime_preflight> if [#<_task> GT 0.5]
+  o<tcpc_required> if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+    (abort, Diagnostic requires TCPC active)
+  o<tcpc_required> endif
+  o<twp_clear> if [[#<_hal[headheadtwp.active]> GT 0.5] OR [#<_hal[headheadtwp.valid]> GT 0.5] OR [#<_hal[headheadtwp.motion_enabled]> GT 0.5]]
+    (abort, Diagnostic requires TWP clear)
+  o<twp_clear> endif
+  o<b_zero> if [ABS[#<_hal[headheadtwp.current_joint_b]>] GT 0.01]
+    (abort, Diagnostic requires B0 within 0.01 degree)
+  o<b_zero> endif
+  o<c_zero> if [ABS[MOD[[#<_hal[headheadtwp.current_joint_c]> + 180.0] [360.0]] - 180.0] GT 0.01]
+    (abort, Diagnostic requires C0 within 0.01 degree)
+  o<c_zero> endif
+o<runtime_preflight> endif
+
+(MSG, No-motion task diagnostic ready. Resume once to end this file with TCPC active.)
+M0
+
+o<runtime_recheck> if [#<_task> GT 0.5]
+  o<tcpc_still_active> if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+    (abort, TCPC changed during diagnostic hold)
+  o<tcpc_still_active> endif
+o<runtime_recheck> endif
+
+(DEBUG, TCPC_LAZY_CLOSE_STAGE1 complete; no axis motion was commanded)
+M2
+%

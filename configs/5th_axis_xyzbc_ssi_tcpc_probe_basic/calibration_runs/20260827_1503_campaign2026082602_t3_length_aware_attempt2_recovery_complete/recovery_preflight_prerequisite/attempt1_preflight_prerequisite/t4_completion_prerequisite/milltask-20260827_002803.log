@@ -1,0 +1,83 @@
+wrapper_started=2026-08-27T00:28:03,155216101+07:00
+wrapper_pid=644313
+cwd=/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic
+real_task=/home/cnc5/linuxcnc-dev/bin/milltask
+23f640db275c1fb5f8e2d938448ce1a0cd726ea002e3550e52439a9396ef1625  /home/cnc5/linuxcnc-dev/bin/milltask
+    Build ID: 8dbfca515ceb9c7191711f73edd6001791b1833f
+argv=-ini /home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/5th_axis_xyzbc_ssi_tcpc_probe_basic_length_model_validation_2026082601.ini 
+core_pattern=core
+core_limit_before=0
+core_limit_child=unlimited
+milltask_pid=644326
+
+child_status_at_launch:
+Name:	milltask
+Umask:	0022
+State:	R (running)
+Tgid:	644326
+Ngid:	0
+Pid:	644326
+PPid:	644313
+TracerPid:	0
+Uid:	1000	1000	1000	1000
+Gid:	1000	1000	1000	1000
+FDSize:	256
+Groups:	24 25 27 29 30 44 46 100 106 111 114 1000 
+NStgid:	644326
+NSpid:	644326
+NSpgid:	644195
+NSsid:	644195
+VmPeak:	   17212 kB
+VmSize:	   17212 kB
+VmLck:	       0 kB
+VmPin:	       0 kB
+VmHWM:	    1616 kB
+VmRSS:	    1616 kB
+RssAnon:	     172 kB
+RssFile:	    1444 kB
+RssShmem:	       0 kB
+VmData:	    2156 kB
+VmStk:	     136 kB
+VmExe:	     272 kB
+VmLib:	    7208 kB
+VmPTE:	      60 kB
+VmSwap:	       0 kB
+HugetlbPages:	       0 kB
+CoreDumping:	0
+THP_enabled:	0
+Threads:	1
+SigQ:	0/63400
+SigPnd:	0000000000000000
+ShdPnd:	0000000000000000
+SigBlk:	0000000000000000
+SigIgn:	0000000000001006
+SigCgt:	0000000000000000
+CapInh:	0000000000000000
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+CapBnd:	000001ffffffffff
+
+child_limits_at_launch:
+Limit                     Soft Limit           Hard Limit           Units     
+Max cpu time              unlimited            unlimited            seconds   
+Max file size             unlimited            unlimited            bytes     
+Max data size             unlimited            unlimited            bytes     
+Max stack size            8388608              unlimited            bytes     
+Max core file size        unlimited            unlimited            bytes     
+Max resident set          unlimited            unlimited            bytes     
+Max processes             63400                63400                processes 
+Max open files            1048576              1048576              files     
+Max locked memory         2087030784           2087030784           bytes     
+Max address space         unlimited            unlimited            bytes     
+Max file locks            unlimited            unlimited            locks     
+Max pending signals       63400                63400                signals   
+Max msgqueue size         819200               819200               bytes     
+Max nice priority         0                    0                    
+Max realtime priority     0                    0                    
+Max realtime timeout      unlimited            unlimited            us        
+child_finished=2026-08-27T10:25:07,920076739+07:00
+wait_status=137
+shell_signal_number=9
+backtrace_file=none
+core_file=none
+classification=probable_sigkill

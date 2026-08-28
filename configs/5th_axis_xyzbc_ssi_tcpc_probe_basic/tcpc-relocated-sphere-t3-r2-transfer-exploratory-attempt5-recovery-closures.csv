@@ -1,0 +1,2 @@
+schema_version,campaign_id,stage_mode,attempt_id,block_id,open_sample_seq,close_sample_seq,abs_b_deg,abs_c_deg,closure_dx_mm,closure_dy_mm,closure_dz_mm,closure_norm_mm,limit_mm,pass
+1.0,2026082601.000000,31.000000,5.000000,200.000000,27.000000,31.000000,0.000000,0.000000,-0.002963,0.007967,0.001166,0.008579,0.050,1.000000

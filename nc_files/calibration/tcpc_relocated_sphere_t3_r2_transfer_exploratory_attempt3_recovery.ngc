@@ -1,0 +1,1498 @@
+(TCPC relocated-sphere T3 R2-transfer exploratory recovery runner.)
+(Dedicated campaign 2026082601 mode 31 attempt 3; R2 is NOT loaded.)
+(No WCS changes. No G43/G49 changes. TCPC must already be ON.)
+
+(Operator setup:)
+(1. Start at the reviewed T3 B-90/C90 top-clear point left by attempt 2.)
+(   Keep T3/H3 and G43.4 active.)
+(2. Keep hand on feed hold/stop for the full first run.)
+(3. This exact file is frozen to mode 31, attempt 3, campaign 2026082601.)
+(4. It records global sequences 23-31 in fresh attempt-3 recovery outputs.)
+(   Attempt-1 sequences 1-14 and attempt-2 sequences 15-22 are immutable.)
+(   Source-local closure 200 is the only controller closure written here.)
+(   Cross-segment closures are reconstructed and validated offline.)
+(   Any abort, missed touch, or probe reseat requires a new attempt file.)
+(5. Sphere-to-post direction remains X- Y+ Z-.)
+(6. Run only from the separate baseline diagnostic INI after its offline)
+(   configuration, program, pose, hash, and reachability preflight passes.)
+(7. This runner installs the frozen T3 #3032 value before probing.)
+(8. Outside-G38 probe activity never pauses; each G38 requires clear inputs.)
+(9. Each pose uses W, the sign-aware upper U side, -V, and +V.)
+(10. Only C quadrants are used. C135/C315 are excluded at nonzero B.)
+(11. This is an exploratory tool-length transfer check. It cannot accept R2.)
+
+(Accepted recovery rows log only to:)
+(/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc-relocated-sphere-t3-r2-transfer-exploratory-attempt3-recovery-results.csv)
+(State logs only to tcpc-relocated-sphere-t3-r2-transfer-exploratory-attempt3-recovery-state.csv.)
+(Every G38 transaction logs counters to the dedicated T3 exploratory)
+(contact trace. Counter snapshots add diagnostics; they do not alter motion.)
+(A second gap trace accounts for every sticky edge between one contact's)
+(release-ready snapshot and the next G38 pre-contact snapshot.)
+
+G21 G17 G40 G64 P0.001 G80 G90 G94
+
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, TCPC_RELOCATED_SPHERE_T3_R2_TRANSFER_A3_RECOVERY preview only)
+  M2
+o<preview_guard> endif
+
+(The TCPC HAL gates motion.probe-input only from real-time G38 motion type.)
+(Clear legacy digital requests; this runner does not drive either physical gate.)
+M65 P0
+M65 P1
+
+o<tcpc_enabled_required> if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  (abort, Sphere diagnostic requires TCPC active; apply G43 Hn then G43.4)
+o<tcpc_enabled_required> endif
+o<twp_disabled_required> if [#<_hal[headheadtwp.motion_enabled]> GT 0.5]
+  (abort, Sphere diagnostic requires TWP motion off)
+o<twp_disabled_required> endif
+o<twp_active_clear_required> if [#<_hal[headheadtwp.active]> GT 0.5]
+  (abort, Sphere diagnostic requires TWP active state clear)
+o<twp_active_clear_required> endif
+o<twp_valid_clear_required> if [#<_hal[headheadtwp.valid]> GT 0.5]
+  (abort, Sphere diagnostic requires TWP definition clear)
+o<twp_valid_clear_required> endif
+o<b_ssi_valid_required> if [#<_hal[b-ssi-invalid]> GT 0.5]
+  (abort, Sphere diagnostic requires valid B SSI feedback)
+o<b_ssi_valid_required> endif
+o<c_ssi_valid_required> if [#<_hal[c-ssi-invalid]> GT 0.5]
+  (abort, Sphere diagnostic requires valid C SSI feedback)
+o<c_ssi_valid_required> endif
+o<start_b_minus90_required> if [ABS[[[#<_hal[headheadtwp.current_joint_b]> + 90.0 + 540.0] MOD 360.0] - 180.0] GT 0.05]
+  (abort, T3 attempt-3 recovery must start near B-90)
+o<start_b_minus90_required> endif
+o<start_c_plus90_required> if [ABS[[[#<_hal[headheadtwp.current_joint_c]> - 90.0 + 540.0] MOD 360.0] - 180.0] GT 0.05]
+  (abort, T3 attempt-3 recovery must start near C90)
+o<start_c_plus90_required> endif
+(The relocated XYZ is intentionally not known yet. The initial M0 freezes the)
+(operator-established position; the hold guard rejects any change before motion.)
+
+(Use live HAL state. Interpreter parameters #3014/#5400/#5410 have been)
+(observed stale after restored machine state and are retained only in the)
+(legacy detail log for comparison.)
+#500 = #<_hal[iocontrol.0.tool-number]>
+o<exact_t3_tool_required> if [ABS[#500 - 3.0] GT 0.1]
+  (abort, This exploratory runner requires live T3 H3 short probe)
+o<exact_t3_tool_required> endif
+#516 = 128.606729      (frozen T3/H3 live Z tool length)
+
+#501 = 6.0            (frozen physical ball diameter for T3 exploratory run)
+o<probe_diameter_low> if [#501 LT 5.99]
+  (abort, Frozen probe diameter must be 6 mm)
+o<probe_diameter_low> endif
+o<probe_diameter_high> if [#501 GT 6.01]
+  (abort, Frozen probe diameter must be 6 mm)
+o<probe_diameter_high> endif
+
+#517 = #<_hal[motion.tooloffset.z]>
+#518 = #<_hal[halui.tool.length_offset.z]>
+#519 = #<_hal[headheadkins.active-tool-offset.z]>
+o<motion_tlo_required> if [ABS[#517 - #516] GT 0.002]
+  (abort, motion.tooloffset.z does not match T3 H3 length)
+o<motion_tlo_required> endif
+o<halui_tlo_required> if [ABS[#518 - #516] GT 0.002]
+  (abort, halui Z tool length does not match T3 H3 length)
+o<halui_tlo_required> endif
+o<kins_tlo_required> if [ABS[#519 - #516] GT 0.002]
+  (abort, headheadkins active Z tool length does not match selected H length)
+o<kins_tlo_required> endif
+o<motion_tlo_x_zero> if [ABS[#<_hal[motion.tooloffset.x]>] GT 0.002]
+  (abort, Sphere diagnostic expects zero active X tool offset)
+o<motion_tlo_x_zero> endif
+o<motion_tlo_y_zero> if [ABS[#<_hal[motion.tooloffset.y]>] GT 0.002]
+  (abort, Sphere diagnostic expects zero active Y tool offset)
+o<motion_tlo_y_zero> endif
+o<motion_tlo_abc_zero> if [[ABS[#<_hal[motion.tooloffset.a]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.b]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.c]>] GT 0.002]]
+  (abort, Sphere diagnostic expects zero active A B and C tool offsets)
+o<motion_tlo_abc_zero> endif
+o<motion_tlo_uvw_zero> if [[ABS[#<_hal[motion.tooloffset.u]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.v]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.w]>] GT 0.002]]
+  (abort, Sphere diagnostic expects zero active U V and W tool offsets)
+o<motion_tlo_uvw_zero> endif
+
+#717 = 0.117658       (frozen ring-qualified #3032 for T3)
+#3032 = #717          (install this dedicated runner's qualified probe offset)
+#502 = #3032          (live Probe Basic probe calibration offset)
+o<probe_cal_offset_required> if [#502 LE 0.0]
+  (abort, Qualify this probe and set its nonzero calibration offset first)
+o<probe_cal_offset_required> endif
+o<probe_cal_offset_bounded> if [#502 GT 1.0]
+  (abort, Probe calibration offset is outside the 0 to 1 mm safety bound)
+o<probe_cal_offset_bounded> endif
+#503 = 15.0           (sphere radius, 30 mm sphere)
+#504 = [[#501 / 2.0] - #502]
+#505 = [#503 + #504]
+
+#506 = 50.0           (probe feed)
+#507 = 1200.0         (linear positioning / transit feed)
+#508 = 7.0            (top probe vector; 2-3 mm miss overtravel from 4-5 mm clear)
+#509 = 5.0            (top clearance past sphere+probe)
+#510 = 4.0            (side start clearance past sphere+probe)
+#511 = 6.0            (side probe vector length)
+#512 = 3.0            (side retract vector length)
+#513 = [#505 + #509]
+#514 = [#505 + #510]
+#515 = 25.0           (machine-Z lift for high-B C-index transit moves)
+#756 = 10.00          (post-contact ignore and release timeout; matches HAL)
+#739 = 2.0            (maximum whole-pose acquisitions after quality rejects)
+#759 = 1.0            (minimum valid travel along every probe vector)
+
+#700 = 0.0            (last accepted center valid)
+#701 = 0.0            (last accepted center abs X)
+#702 = 0.0            (last accepted center abs Y)
+#703 = 0.0            (last accepted center abs Z)
+#704 = 0.0            (reserved; released runners have no pose inspection M0s)
+#705 = 200.0          (rotary index feed)
+#706 = 0.0            (reserved; no intermediate B-block pauses by default)
+#707 = 9.0            (exact accepted-row count for this recovery acquisition)
+#708 = 1.0            (reserved)
+#709 = 90.0           (reserved)
+#710 = 0.0            (reserved)
+#711 = 31.0           (dedicated baseline T3 transfer-recovery mode)
+#715 = 2026082601.0   (separate exploratory campaign ID; YYYYMMDDNN)
+#716 = 1.0            (fixed T3 short-probe leg marker)
+#727 = 3.0            (fresh recovery acquisition attempt ID)
+#714 = 1.0            (dedicated summary-log flag; legacy modes are locked out)
+#718 = 0.0            (live persistent-correction gate state)
+#719 = 0.0            (live tool number captured at an accepted pose)
+#720 = 0.0            (live TCPC enabled state at an accepted pose)
+#721 = 0.0            (live TWP active state at an accepted pose)
+#722 = 0.0            (live TWP motion state at an accepted pose)
+#723 = 0.0            (live TWP valid state at an accepted pose)
+#724 = 0.0            (live B SSI invalid state at an accepted pose)
+#725 = 0.0            (live C SSI invalid state at an accepted pose)
+#726 = 0.0            (accepted global exploratory-pose sequence)
+#728 = 0.0            (primary block ID)
+#729 = 0.0            (sequence within the current primary block)
+#738 = 0.0            (1 when this accepted pose is a closure sample)
+#788 = 0.0            (accepted rows written by this recovery acquisition)
+#920 = 0.0            (trace pre raw count)
+#921 = 0.0            (trace pre mux count)
+#922 = 0.0            (trace pre gated count)
+#923 = 0.0            (trace immediate-post raw count)
+#924 = 0.0            (trace immediate-post mux count)
+#925 = 0.0            (trace immediate-post gated count)
+#926 = 0.0            (trace release-ready raw count)
+#927 = 0.0            (trace release-ready mux count)
+#928 = 0.0            (trace release-ready gated count)
+#929 = 0.0            (trace G38 #5070 result)
+#930 = 0.0            (trace projected probe travel)
+#931 = 0.0            (trace pass ID)
+#932 = 0.0            (trace contact ID)
+#933 = 0.0            (trace original global sequence)
+#934 = 0.0            (trace B pose)
+#935 = 0.0            (trace C pose)
+#936 = 0.0            (current transaction retrigger-burst flag)
+#937 = 0.0            (previous transaction retrigger-burst flag)
+#938 = 0.0            (last finalized retrigger-burst flag)
+#939 = 0.0            (trace acquisition try)
+#950 = 0.0            (prior release-ready raw baseline)
+#951 = 0.0            (prior release-ready mux baseline)
+#952 = 0.0            (prior release-ready gated baseline)
+#953 = 0.0            (prior contact raw-minus-gated extra edges)
+#954 = 0.0            (sticky counter baseline valid)
+#955 = 0.0            (1 only for the post-M0 initial baseline)
+#956 = 0.0            (inter-contact raw edge delta)
+#957 = 0.0            (inter-contact mux edge delta)
+#958 = 0.0            (inter-contact gated edge delta)
+#959 = 0.0            (prior contact plus inter-contact extra edges)
+#960 = 0.0            (inter-contact combined burst flag)
+#961 = 0.0            (inter-contact counter consistency fault)
+#962 = 0.0            (current contact counter consistency fault)
+#963 = 0.0            (contact raw delta)
+#964 = 0.0            (contact mux delta)
+#965 = 0.0            (contact gated delta)
+#966 = 0.0            (post-contact raw repeat delta)
+#967 = 0.0            (post-contact mux repeat delta)
+#968 = 0.0            (post-contact gated repeat delta)
+#969 = 0.0            (contact raw-minus-gated extra edges)
+#970 = 0.0            (contact terminal-failure flag)
+#971 = 0.0            (post-contact release-fault status)
+#972 = 0.0            (current gap initial-baseline snapshot)
+
+o<high_b_mode_required> if [ABS[#711 - 31.0] GT 0.000001]
+  (abort, This dedicated T3 recovery runner requires mode #711 equal to 31)
+o<high_b_mode_required> endif
+
+o<baseline_short_leg_required> if [ABS[#716 - 1.0] GT 0.000001]
+  (abort, This exact exploratory runner requires T3 short leg #716 equal to 1)
+o<baseline_short_leg_required> endif
+o<pair_campaign_integral> if [ABS[#715 - FIX[#715]] GT 0.000001]
+  (abort, Paired campaign ID #715 must be an integer YYYYMMDDNN)
+o<pair_campaign_integral> endif
+o<pair_campaign_low> if [#715 LT 2020010100.0]
+  (abort, Set paired campaign ID #715 to YYYYMMDDNN)
+o<pair_campaign_low> endif
+o<pair_campaign_high> if [#715 GT 2099123199.0]
+  (abort, Paired campaign ID #715 is outside the accepted YYYYMMDDNN range)
+o<pair_campaign_high> endif
+o<pair_leg_integral> if [ABS[#716 - FIX[#716]] GT 0.000001]
+  (abort, Paired leg #716 must be exactly 1, 2, or 3)
+o<pair_leg_integral> endif
+o<pair_leg_low> if [#716 LT 0.5]
+  (abort, Set paired leg #716 to 1 short-open, 2 long, or 3 short-close)
+o<pair_leg_low> endif
+o<pair_leg_high> if [#716 GT 3.5]
+  (abort, Set paired leg #716 to 1 short-open, 2 long, or 3 short-close)
+o<pair_leg_high> endif
+o<pair_attempt_integral> if [ABS[#727 - FIX[#727]] GT 0.000001]
+  (abort, Paired attempt ID #727 must be a positive integer)
+o<pair_attempt_integral> endif
+o<pair_attempt_required> if [#727 LT 0.5]
+  (abort, Set paired attempt ID #727 to 1 or the next retry number)
+o<pair_attempt_required> endif
+o<pair_short_tool_required> if [ABS[#500 - 3.0] GT 0.1]
+  (abort, T3 exploratory leg requires live T3 H3 short probe)
+o<pair_short_tool_required> endif
+o<pair_expected_cal_low> if [#717 LE 0.0]
+  (abort, Set #717 to this probe ring-qualified calibration offset)
+o<pair_expected_cal_low> endif
+o<pair_expected_cal_high> if [#717 GT 1.0]
+  (abort, Expected probe calibration offset #717 must be at most 1 mm)
+o<pair_expected_cal_high> endif
+o<pair_cal_match> if [ABS[#502 - #717] GT 0.0005]
+  (abort, Live #3032 does not match expected paired probe calibration)
+o<pair_cal_match> endif
+#718 = #<_hal[headheadkins.sim-bharm-enable]>
+o<pair_correction_required> if [#718 LT 0.5]
+  (abort, T3 exploratory run requires the baseline correction enabled)
+o<pair_correction_required> endif
+
+(No diagnostic overlay or alternate margin is permitted for this runner.)
+
+#540 = [#<_abs_x> - #<_x>]
+#541 = [#<_abs_y> - #<_y>]
+#542 = [#<_abs_z> - #<_z>]
+
+o<tcpc_pair_coordinate_guard> sub
+  o<pair_wcs_index_range> if [[#5220 LT 0.5] OR [#5220 GT 9.5] OR [ABS[#5220 - FIX[#5220]] GT 0.000001]]
+    (abort, Paired sphere run requires a valid integral active WCS index)
+  o<pair_wcs_index_range> endif
+  o<pair_wcs_index_unchanged> if [ABS[#5220 - #760] GT 0.000001]
+    (abort, Active WCS changed during the paired sphere run; reload the program)
+  o<pair_wcs_index_unchanged> endif
+
+  o<pair_g52_g92_enable_clear> if [ABS[#5210] GT 0.0001]
+    (abort, Paired sphere run requires G52 and G92 disabled)
+  o<pair_g52_g92_enable_clear> endif
+  o<pair_g52_g92_xyz_clear> if [[ABS[#5211] GT 0.0001] OR [ABS[#5212] GT 0.0001] OR [ABS[#5213] GT 0.0001]]
+    (abort, Paired sphere run requires XYZ G52 and G92 offsets zero)
+  o<pair_g52_g92_xyz_clear> endif
+  o<pair_g52_g92_abc_clear> if [[ABS[#5214] GT 0.0001] OR [ABS[#5215] GT 0.0001] OR [ABS[#5216] GT 0.0001]]
+    (abort, Paired sphere run requires ABC G52 and G92 offsets zero)
+  o<pair_g52_g92_abc_clear> endif
+  o<pair_g52_g92_uvw_clear> if [[ABS[#5217] GT 0.0001] OR [ABS[#5218] GT 0.0001] OR [ABS[#5219] GT 0.0001]]
+    (abort, Paired sphere run requires UVW G52 and G92 offsets zero)
+  o<pair_g52_g92_uvw_clear> endif
+
+  o<pair_wcs_rotary_clear> if [[ABS[#[5205 + [20 * #5220]]] GT 0.0001] OR [ABS[#[5206 + [20 * #5220]]] GT 0.0001]]
+    (abort, Paired sphere run requires active WCS B and C offsets zero)
+  o<pair_wcs_rotary_clear> endif
+  o<pair_wcs_rotation_clear> if [ABS[#[5210 + [20 * #5220]]] GT 0.0001]
+    (abort, Paired sphere run requires zero active WCS XY rotation)
+  o<pair_wcs_rotation_clear> endif
+
+  o<pair_wcs_offsets_a> if [[ABS[#[5201 + [20 * #5220]] - #761] GT 0.0001] OR [ABS[#[5202 + [20 * #5220]] - #762] GT 0.0001] OR [ABS[#[5203 + [20 * #5220]] - #763] GT 0.0001] OR [ABS[#[5204 + [20 * #5220]] - #764] GT 0.0001]]
+    (abort, Active WCS XYZ or A offset changed during the paired sphere run)
+  o<pair_wcs_offsets_a> endif
+  o<pair_wcs_offsets_b> if [[ABS[#[5205 + [20 * #5220]] - #765] GT 0.0001] OR [ABS[#[5206 + [20 * #5220]] - #766] GT 0.0001] OR [ABS[#[5207 + [20 * #5220]] - #767] GT 0.0001]]
+    (abort, Active WCS B C or U offset changed during the paired sphere run)
+  o<pair_wcs_offsets_b> endif
+  o<pair_wcs_offsets_c> if [[ABS[#[5208 + [20 * #5220]] - #768] GT 0.0001] OR [ABS[#[5209 + [20 * #5220]] - #769] GT 0.0001] OR [ABS[#[5210 + [20 * #5220]] - #770] GT 0.0001]]
+    (abort, Active WCS V W or rotation changed during the paired sphere run)
+  o<pair_wcs_offsets_c> endif
+o<tcpc_pair_coordinate_guard> endsub
+
+o<tcpc_pair_hold_position_guard> sub
+  o<pair_hold_xyz_unchanged> if [[ABS[#<_abs_x> - #771] GT 0.001] OR [ABS[#<_abs_y> - #772] GT 0.001] OR [ABS[#<_abs_z> - #773] GT 0.001]]
+    (abort, XYZ position changed during an operator hold; reload and re-establish the reviewed start)
+  o<pair_hold_xyz_unchanged> endif
+o<tcpc_pair_hold_position_guard> endsub
+
+o<tcpc_pair_selector_guard> sub
+  o<pair_mode_unchanged> if [ABS[#711 - #730] GT 0.000001]
+    (abort, Paired stage changed during an operator hold; reload the program)
+  o<pair_mode_unchanged> endif
+  o<pair_campaign_unchanged> if [ABS[#715 - #731] GT 0.000001]
+    (abort, Paired campaign changed during an operator hold; reload the program)
+  o<pair_campaign_unchanged> endif
+  o<pair_leg_unchanged> if [ABS[#716 - #732] GT 0.000001]
+    (abort, Paired leg changed during an operator hold; reload the program)
+  o<pair_leg_unchanged> endif
+  o<pair_calibration_unchanged> if [ABS[#717 - #733] GT 0.000001]
+    (abort, Expected probe offset changed during an operator hold; reload the program)
+  o<pair_calibration_unchanged> endif
+  o<pair_attempt_unchanged> if [ABS[#727 - #734] GT 0.000001]
+    (abort, Paired attempt changed during an operator hold; reload the program)
+  o<pair_attempt_unchanged> endif
+  o<pair_flag_unchanged> if [[ABS[#714 - #735] GT 0.000001] OR [ABS[#714 - 1.0] GT 0.000001]]
+    (abort, Paired-only mode flag changed during an operator hold)
+  o<pair_flag_unchanged> endif
+  o<pair_motion_constants_a> if [[ABS[#503 - #740] GT 0.000001] OR [ABS[#504 - #741] GT 0.000001] OR [ABS[#505 - #742] GT 0.000001] OR [ABS[#506 - #743] GT 0.000001]]
+    (abort, Paired sphere geometry or probe feed changed during an operator hold)
+  o<pair_motion_constants_a> endif
+  o<pair_motion_constants_b> if [[ABS[#507 - #744] GT 0.000001] OR [ABS[#508 - #745] GT 0.000001] OR [ABS[#509 - #746] GT 0.000001] OR [ABS[#510 - #747] GT 0.000001]]
+    (abort, Paired positioning feed or top clearance changed during an operator hold)
+  o<pair_motion_constants_b> endif
+  o<pair_motion_constants_c> if [[ABS[#511 - #748] GT 0.000001] OR [ABS[#512 - #749] GT 0.000001] OR [ABS[#513 - #750] GT 0.000001] OR [ABS[#514 - #751] GT 0.000001]]
+    (abort, Paired side probe or clearance value changed during an operator hold)
+  o<pair_motion_constants_c> endif
+  o<pair_motion_constants_d> if [[ABS[#515 - #752] GT 0.000001] OR [ABS[#516 - #753] GT 0.000001] OR [ABS[#704 - #754] GT 0.000001] OR [ABS[#705 - #755] GT 0.000001]]
+    (abort, Paired lift length pause or rotary feed changed during an operator hold)
+  o<pair_motion_constants_d> endif
+  o<pair_release_wait_unchanged> if [ABS[#756 - #757] GT 0.000001]
+    (abort, Paired probe release wait changed during an operator hold)
+  o<pair_release_wait_unchanged> endif
+  o<pair_probe_quality_constants> if [[ABS[#739 - #786] GT 0.000001] OR [ABS[#759 - #787] GT 0.000001]]
+    (abort, Paired probe retry or travel constants changed during the run)
+  o<pair_probe_quality_constants> endif
+  o<tcpc_pair_coordinate_guard> call
+o<tcpc_pair_selector_guard> endsub
+
+(Read-only identity guard for the exact baseline totals of all 30 pins that)
+(R2 would change. The G-code never writes coefficients or correction enables.)
+o<tcpc_baseline_pin_guard> sub
+  o<cand01> if [ABS[#<_hal[headheadkins.charm.cos.x]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 01 charm cos x)
+  o<cand01> endif
+  o<cand02> if [ABS[#<_hal[headheadkins.charm.cos.y]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 02 charm cos y)
+  o<cand02> endif
+  o<cand03> if [ABS[#<_hal[headheadkins.charm.cos.z]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 03 charm cos z)
+  o<cand03> endif
+  o<cand04> if [ABS[#<_hal[headheadkins.bharm-m.sin.x]> - 0.015577123] GT 0.000000001]
+    (abort, Baseline pin mismatch 04 bharm-m sin x)
+  o<cand04> endif
+  o<cand05> if [ABS[#<_hal[headheadkins.bharm-m.sin.y]> - 0.060508594] GT 0.000000001]
+    (abort, Baseline pin mismatch 05 bharm-m sin y)
+  o<cand05> endif
+  o<cand06> if [ABS[#<_hal[headheadkins.bharm-m.sin.z]> - 0.312123080] GT 0.000000001]
+    (abort, Baseline pin mismatch 06 bharm-m sin z)
+  o<cand06> endif
+  o<cand07> if [ABS[#<_hal[headheadkins.bharm-m.sin2.x]> + 0.013271805] GT 0.000000001]
+    (abort, Baseline pin mismatch 07 bharm-m sin2 x)
+  o<cand07> endif
+  o<cand08> if [ABS[#<_hal[headheadkins.bharm-m.sin2.y]> - 0.050707231] GT 0.000000001]
+    (abort, Baseline pin mismatch 08 bharm-m sin2 y)
+  o<cand08> endif
+  o<cand09> if [ABS[#<_hal[headheadkins.bharm-m.sin2.z]> + 0.156014210] GT 0.000000001]
+    (abort, Baseline pin mismatch 09 bharm-m sin2 z)
+  o<cand09> endif
+  o<cand10> if [ABS[#<_hal[headheadkins.bcross.sinb-sinc.x]> + 0.006371196] GT 0.000000001]
+    (abort, Baseline pin mismatch 10 bcross sinb-sinc x)
+  o<cand10> endif
+  o<cand11> if [ABS[#<_hal[headheadkins.bcross.sinb-sinc.y]> - 0.325723886] GT 0.000000001]
+    (abort, Baseline pin mismatch 11 bcross sinb-sinc y)
+  o<cand11> endif
+  o<cand12> if [ABS[#<_hal[headheadkins.bcross.sinb-sinc.z]> - 0.130042953] GT 0.000000001]
+    (abort, Baseline pin mismatch 12 bcross sinb-sinc z)
+  o<cand12> endif
+  o<cand13> if [ABS[#<_hal[headheadkins.bcross.omcb-sin2c.x]> + 0.017723675] GT 0.000000001]
+    (abort, Baseline pin mismatch 13 bcross omcb-sin2c x)
+  o<cand13> endif
+  o<cand14> if [ABS[#<_hal[headheadkins.bcross.omcb-sin2c.y]> + 0.255875638] GT 0.000000001]
+    (abort, Baseline pin mismatch 14 bcross omcb-sin2c y)
+  o<cand14> endif
+  o<cand15> if [ABS[#<_hal[headheadkins.bcross.omcb-sin2c.z]> + 0.055414262] GT 0.000000001]
+    (abort, Baseline pin mismatch 15 bcross omcb-sin2c z)
+  o<cand15> endif
+  o<cand16> if [ABS[#<_hal[headheadkins.bcross.sinb-cos2c.x]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 16 bcross sinb-cos2c x)
+  o<cand16> endif
+  o<cand17> if [ABS[#<_hal[headheadkins.bcross.sinb-cos2c.y]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 17 bcross sinb-cos2c y)
+  o<cand17> endif
+  o<cand18> if [ABS[#<_hal[headheadkins.bcross.sinb-cos2c.z]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 18 bcross sinb-cos2c z)
+  o<cand18> endif
+  o<cand19> if [ABS[#<_hal[headheadkins.bmid.base.x]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 19 bmid base x)
+  o<cand19> endif
+  o<cand20> if [ABS[#<_hal[headheadkins.bmid.base.y]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 20 bmid base y)
+  o<cand20> endif
+  o<cand21> if [ABS[#<_hal[headheadkins.bmid.base.z]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 21 bmid base z)
+  o<cand21> endif
+  o<cand22> if [ABS[#<_hal[headheadkins.bmid.cosc.x]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 22 bmid cosc x)
+  o<cand22> endif
+  o<cand23> if [ABS[#<_hal[headheadkins.bmid.cosc.y]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 23 bmid cosc y)
+  o<cand23> endif
+  o<cand24> if [ABS[#<_hal[headheadkins.bmid.cosc.z]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 24 bmid cosc z)
+  o<cand24> endif
+  o<cand25> if [ABS[#<_hal[headheadkins.bmid.sinc.x]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 25 bmid sinc x)
+  o<cand25> endif
+  o<cand26> if [ABS[#<_hal[headheadkins.bmid.sinc.y]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 26 bmid sinc y)
+  o<cand26> endif
+  o<cand27> if [ABS[#<_hal[headheadkins.bmid.sinc.z]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 27 bmid sinc z)
+  o<cand27> endif
+  o<cand28> if [ABS[#<_hal[headheadkins.bmid.cos2c.x]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 28 bmid cos2c x)
+  o<cand28> endif
+  o<cand29> if [ABS[#<_hal[headheadkins.bmid.cos2c.y]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 29 bmid cos2c y)
+  o<cand29> endif
+  o<cand30> if [ABS[#<_hal[headheadkins.bmid.cos2c.z]>] GT 0.000000001]
+    (abort, Baseline pin mismatch 30 bmid cos2c z)
+  o<cand30> endif
+o<tcpc_baseline_pin_guard> endsub
+
+o<tcpc_pair_live_guard> sub
+  #<check_pose> = #1
+  #<guard_target_b> = #2
+  #<guard_target_c> = #3
+
+  (Drain queued motion before sampling live HAL state. Post-contact release)
+  (checking is handled separately by tcpc_pair_release_guard.)
+  M66 E0 L0
+
+  o<tcpc_baseline_pin_guard> call
+  o<tcpc_pair_coordinate_guard> call
+
+  o<pair_machine_on> if [#<_hal[halui.machine.is-on]> LT 0.5]
+    (abort, Paired sphere run requires the machine enabled)
+  o<pair_machine_on> endif
+  o<pair_all_homed> if [[#<_hal[joint.0.homed]> + #<_hal[joint.1.homed]> + #<_hal[joint.2.homed]> + #<_hal[joint.3.homed]> + #<_hal[joint.4.homed]>] LT 4.5]
+    (abort, Paired sphere run requires all five joints homed)
+  o<pair_all_homed> endif
+  o<pair_spindle_off> if [#<_hal[spindle.0.on]> GT 0.5]
+    (abort, Paired sphere run requires the spindle stopped)
+  o<pair_spindle_off> endif
+
+  #718 = #<_hal[headheadkins.sim-bharm-enable]>
+  o<pair_correction_live> if [#718 LT 0.5]
+    (abort, Persistent correction is not enabled for paired sphere run)
+  o<pair_correction_live> endif
+  #719 = #<_hal[iocontrol.0.tool-number]>
+  o<pair_tool_live> if [ABS[#719 - #500] GT 0.1]
+    (abort, Live tool number changed during paired sphere run)
+  o<pair_tool_live> endif
+
+  o<pair_diameter_unchanged> if [[ABS[#501 - #758] GT 0.000001] OR [ABS[#501 - 6.0] GT 0.000001]]
+    (abort, Frozen 6 mm paired probe diameter changed during the run)
+  o<pair_diameter_unchanged> endif
+
+  #502 = #3032
+  o<pair_calibration_live> if [ABS[#502 - #717] GT 0.0005]
+    (abort, Live #3032 changed from the frozen paired probe offset)
+  o<pair_calibration_live> endif
+
+  #517 = #<_hal[motion.tooloffset.z]>
+  #518 = #<_hal[halui.tool.length_offset.z]>
+  #519 = #<_hal[headheadkins.active-tool-offset.z]>
+  o<pair_motion_tlo_live> if [ABS[#517 - #516] GT 0.002]
+    (abort, Live motion Z tool offset changed during paired sphere run)
+  o<pair_motion_tlo_live> endif
+  o<pair_halui_tlo_live> if [ABS[#518 - #516] GT 0.002]
+    (abort, Live HALUI Z tool offset changed during paired sphere run)
+  o<pair_halui_tlo_live> endif
+  o<pair_kins_tlo_live> if [ABS[#519 - #516] GT 0.002]
+    (abort, Live kinematics Z tool offset changed during paired sphere run)
+  o<pair_kins_tlo_live> endif
+  o<pair_tlo_x_live> if [ABS[#<_hal[motion.tooloffset.x]>] GT 0.002]
+    (abort, Paired sphere run requires zero active X tool offset)
+  o<pair_tlo_x_live> endif
+  o<pair_tlo_y_live> if [ABS[#<_hal[motion.tooloffset.y]>] GT 0.002]
+    (abort, Paired sphere run requires zero active Y tool offset)
+  o<pair_tlo_y_live> endif
+  o<pair_tlo_abc_live> if [[ABS[#<_hal[motion.tooloffset.a]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.b]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.c]>] GT 0.002]]
+    (abort, Paired sphere run requires zero active A B and C tool offsets)
+  o<pair_tlo_abc_live> endif
+  o<pair_tlo_uvw_live> if [[ABS[#<_hal[motion.tooloffset.u]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.v]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.w]>] GT 0.002]]
+    (abort, Paired sphere run requires zero active U V and W tool offsets)
+  o<pair_tlo_uvw_live> endif
+
+  #720 = #<_hal[headheadtwp.tcpc_enabled]>
+  #721 = #<_hal[headheadtwp.active]>
+  #722 = #<_hal[headheadtwp.motion_enabled]>
+  #723 = #<_hal[headheadtwp.valid]>
+  #724 = #<_hal[b-ssi-invalid]>
+  #725 = #<_hal[c-ssi-invalid]>
+  o<pair_tcpc_live> if [#720 LT 0.5]
+    (abort, TCPC is not enabled during paired sphere run)
+  o<pair_tcpc_live> endif
+  o<pair_twp_clear_live> if [[#721 + #722 + #723] GT 0.5]
+    (abort, TWP state is present during paired sphere run)
+  o<pair_twp_clear_live> endif
+  o<pair_ssi_valid_live> if [[#724 + #725] GT 0.5]
+    (abort, Rotary SSI feedback is invalid during paired sphere run)
+  o<pair_ssi_valid_live> endif
+
+  o<pair_probe_gates_clear> if [[#<_hal[motion.digital-out-00]> GT 0.5] OR [#<_hal[motion.digital-out-01]> GT 0.5]]
+    (abort, Paired sphere probe gates are not clear before motion)
+  o<pair_probe_gates_clear> endif
+  o<pair_probe_inputs_clear> if [[#<_hal[t_probe-in]> GT 0.5] OR [#<_hal[probe-mux]> GT 0.5] OR [#<_hal[motion.probe-input]> GT 0.5]]
+    (abort, Paired sphere probe input is active before a probe move)
+  o<pair_probe_inputs_clear> endif
+
+  o<pair_pose_check> if [#<check_pose> GT 0.5]
+    #<b_cmd_error> = ABS[[[#<_hal[headheadtwp.current_joint_b]> - #<guard_target_b> + 540.0] MOD 360.0] - 180.0]
+    #<b_fb_error> = ABS[[[#<_hal[joint.3.pos-fb]> - #<guard_target_b> + 540.0] MOD 360.0] - 180.0]
+    #<b_ssi_error> = ABS[[[#<_hal[b-ssi-zeroed-position]> - #<guard_target_b> + 540.0] MOD 360.0] - 180.0]
+    #<c_cmd_error> = ABS[[[#<_hal[headheadtwp.current_joint_c]> - #<guard_target_c> + 540.0] MOD 360.0] - 180.0]
+    #<c_fb_error> = ABS[[[#<_hal[joint.4.pos-fb]> - #<guard_target_c> + 540.0] MOD 360.0] - 180.0]
+    (The physical C SSI zeroed signal has the opposite polarity to joint C.)
+    #<c_ssi_error> = ABS[[[#<_hal[c-ssi-zeroed-position]> + #<guard_target_c> + 540.0] MOD 360.0] - 180.0]
+    o<pair_b_pose_live> if [[#<b_cmd_error> GT 0.01] OR [#<b_fb_error> GT 0.01] OR [#<b_ssi_error> GT 0.01]]
+      (abort, B command feedback or SSI is outside paired pose tolerance)
+    o<pair_b_pose_live> endif
+    o<pair_c_pose_live> if [[#<c_cmd_error> GT 0.01] OR [#<c_fb_error> GT 0.01] OR [#<c_ssi_error> GT 0.01]]
+      (abort, C command feedback or SSI is outside paired pose tolerance)
+    o<pair_c_pose_live> endif
+  o<pair_pose_check> endif
+o<tcpc_pair_live_guard> endsub
+
+o<tcpc_pair_release_guard> sub
+  #<release_target_b> = #1
+  #<release_target_c> = #2
+  #<release_status_mode> = #3
+  #971 = 0.0
+
+  (A valid wireless contact can repeat during the HAL post-G38 ignore window.)
+  (After retract, require two consecutive clear samples 0.05 s apart within)
+  (the configured post-contact timeout. The pre-G38 guard rechecks clear state.)
+  M66 E0 L0
+  o<pair_release_hal_window_match> if [ABS[#<_hal[tcpc_probe_gate_ignore.width]> - #756] GT 0.001]
+    #971 = 1.0
+    o<pair_release_window_hard_abort> if [#<release_status_mode> LT 0.5]
+      (abort, Paired probe release wait does not match the HAL ignore window)
+    o<pair_release_window_hard_abort> endif
+  o<pair_release_hal_window_match> endif
+  o<pair_release_gate_clear> if [[#<_hal[motion.digital-out-00]> GT 0.5] OR [#<_hal[motion.digital-out-01]> GT 0.5] OR [#<_hal[motion.probe-input]> GT 0.5]]
+    #971 = 1.0
+    o<pair_release_gate_hard_abort> if [#<release_status_mode> LT 0.5]
+      (abort, Paired sphere probe gate remained active after retract)
+    o<pair_release_gate_hard_abort> endif
+  o<pair_release_gate_clear> endif
+
+  #<release_elapsed> = 0.0
+  #<release_clear_count> = 0.0
+  o<pair_release_wait> while [[[#<release_elapsed> LT #756] AND [#<release_clear_count> LT 1.5]] AND [#971 LT 0.5]]
+    G4 P0.05
+    M66 E0 L0
+    o<pair_release_gate_still_clear> if [[#<_hal[motion.digital-out-00]> GT 0.5] OR [#<_hal[motion.digital-out-01]> GT 0.5] OR [#<_hal[motion.probe-input]> GT 0.5]]
+      #971 = 1.0
+      o<pair_release_reactivated_hard_abort> if [#<release_status_mode> LT 0.5]
+        (abort, Paired sphere probe gate reactivated after retract)
+      o<pair_release_reactivated_hard_abort> endif
+    o<pair_release_gate_still_clear> endif
+    o<pair_release_sample_clear> if [[#<_hal[t_probe-in]> LT 0.5] AND [#<_hal[probe-mux]> LT 0.5]]
+      #<release_clear_count> = [#<release_clear_count> + 1.0]
+    o<pair_release_sample_clear> else
+      #<release_clear_count> = 0.0
+    o<pair_release_sample_clear> endif
+    #<release_elapsed> = [#<release_elapsed> + 0.05]
+  o<pair_release_wait> endwhile
+  o<pair_release_timeout> if [#<release_clear_count> LT 1.5]
+    #971 = 1.0
+    o<pair_release_timeout_hard_abort> if [#<release_status_mode> LT 0.5]
+      (abort, Paired sphere probe did not release within post-contact timeout)
+    o<pair_release_timeout_hard_abort> endif
+  o<pair_release_timeout> endif
+
+  o<pair_release_hard_guard> if [#<release_status_mode> LT 0.5]
+    o<tcpc_pair_live_guard> call [1.0] [#<release_target_b>] [#<release_target_c>]
+  o<pair_release_hard_guard> endif
+o<tcpc_pair_release_guard> endsub
+
+o<tcpc_probe_counter_guard> sub
+  (Referencing all three pins makes a missing counter a hard pre-G38 error.)
+  #<counter_raw> = #<_hal[counter.0.counts]>
+  #<counter_mux> = #<_hal[counter.1.counts]>
+  #<counter_gated> = #<_hal[counter.2.counts]>
+  o<counter_raw_valid> if [[#<counter_raw> LT 0.0] OR [ABS[#<counter_raw> - FIX[#<counter_raw>]] GT 0.000001]]
+    (abort, Raw probe edge counter is missing or inconsistent)
+  o<counter_raw_valid> endif
+  o<counter_mux_valid> if [[#<counter_mux> LT 0.0] OR [ABS[#<counter_mux> - FIX[#<counter_mux>]] GT 0.000001]]
+    (abort, Probe mux edge counter is missing or inconsistent)
+  o<counter_mux_valid> endif
+  o<counter_gated_valid> if [[#<counter_gated> LT 0.0] OR [ABS[#<counter_gated> - FIX[#<counter_gated>]] GT 0.000001]]
+    (abort, Gated probe edge counter is missing or inconsistent)
+  o<counter_gated_valid> endif
+o<tcpc_probe_counter_guard> endsub
+
+o<tcpc_contact_gap_log> sub
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc-relocated-sphere-t3-r2-transfer-exploratory-attempt3-recovery-gap-trace.csv)
+  (LOG,1.0,#715,#711,#727,#933,#934,#935,#939,#931,#932,#950,#951,#952,#920,#921,#922,#956,#957,#958,#953,#959,#960,#961,#955)
+  (LOGCLOSE)
+  #955 = 0.0
+o<tcpc_contact_gap_log> endsub
+
+o<tcpc_contact_trace_begin> sub
+  #932 = #1
+  #971 = 0.0
+  M66 E0 L0
+  o<tcpc_probe_counter_guard> call
+  #920 = #<_hal[counter.0.counts]>
+  #921 = #<_hal[counter.1.counts]>
+  #922 = #<_hal[counter.2.counts]>
+  #937 = #938
+  #972 = #955
+  o<trace_gap_baseline_required> if [#954 LT 0.5]
+    (abort, Probe edge gap baseline was not established after the operator hold)
+  o<trace_gap_baseline_required> endif
+  #956 = [#920 - #950]
+  #957 = [#921 - #951]
+  #958 = [#922 - #952]
+  o<trace_gap_raw_monotonic> if [#956 LT 0.0]
+    (abort, Raw probe edge counter moved backwards between contacts)
+  o<trace_gap_raw_monotonic> endif
+  o<trace_gap_mux_monotonic> if [#957 LT 0.0]
+    (abort, Probe mux edge counter moved backwards between contacts)
+  o<trace_gap_mux_monotonic> endif
+  o<trace_gap_gated_monotonic> if [#958 LT 0.0]
+    (abort, Gated probe edge counter moved backwards between contacts)
+  o<trace_gap_gated_monotonic> endif
+  #959 = [#953 + [#956 - #958]]
+  #960 = 0.0
+  o<trace_gap_retrigger_burst> if [#959 GT 2.0]
+    #960 = 1.0
+  o<trace_gap_retrigger_burst> endif
+  #961 = 0.0
+  o<trace_gap_counter_consistency> if [[ABS[#956 - #957] GT 0.000001] OR [ABS[#958] GT 0.000001]]
+    #961 = 1.0
+  o<trace_gap_counter_consistency> endif
+  o<trace_initial_baseline_activity> if [[#972 GT 0.5] AND [[ABS[#956] GT 0.000001] OR [ABS[#957] GT 0.000001] OR [ABS[#958] GT 0.000001]]]
+    #961 = 1.0
+  o<trace_initial_baseline_activity> endif
+  o<trace_gap_pre_g38_fault> if [[#960 GT 0.5] OR [#961 GT 0.5]]
+    o<tcpc_contact_gap_log> call
+    o<trace_initial_activity_abort> if [#972 GT 0.5]
+      (abort, Probe edge activity occurred after M0 before the first G38)
+    o<trace_initial_activity_abort> else
+      o<trace_gap_burst_abort> if [#960 GT 0.5]
+        (abort, Electrical retrigger burst exceeded two repeats across inter-contact gap)
+      o<trace_gap_burst_abort> else
+        (abort, Raw mux gated probe counters are inconsistent before G38)
+      o<trace_gap_burst_abort> endif
+    o<trace_initial_activity_abort> endif
+  o<trace_gap_pre_g38_fault> endif
+o<tcpc_contact_trace_begin> endsub
+
+o<tcpc_contact_trace_post> sub
+  #929 = #1
+  #930 = #2
+  M66 E0 L0
+  o<tcpc_probe_counter_guard> call
+  #923 = #<_hal[counter.0.counts]>
+  #924 = #<_hal[counter.1.counts]>
+  #925 = #<_hal[counter.2.counts]>
+  o<trace_post_raw_monotonic> if [#923 LT #920]
+    (abort, Raw probe edge counter moved backwards during G38)
+  o<trace_post_raw_monotonic> endif
+  o<trace_post_mux_monotonic> if [#924 LT #921]
+    (abort, Probe mux edge counter moved backwards during G38)
+  o<trace_post_mux_monotonic> endif
+  o<trace_post_gated_monotonic> if [#925 LT #922]
+    (abort, Gated probe edge counter moved backwards during G38)
+  o<trace_post_gated_monotonic> endif
+  (Persist the already-computed gap only after the immediate post-G38 snapshot.)
+  (A gap fault instead logs and aborts in tcpc_contact_trace_begin.)
+  o<tcpc_contact_gap_log> call
+o<tcpc_contact_trace_post> endsub
+
+o<tcpc_contact_trace_finish> sub
+  #970 = #1
+  M66 E0 L0
+  o<tcpc_probe_counter_guard> call
+  #926 = #<_hal[counter.0.counts]>
+  #927 = #<_hal[counter.1.counts]>
+  #928 = #<_hal[counter.2.counts]>
+  o<trace_ready_raw_monotonic> if [#926 LT #923]
+    (abort, Raw probe edge counter moved backwards after G38)
+  o<trace_ready_raw_monotonic> endif
+  o<trace_ready_mux_monotonic> if [#927 LT #924]
+    (abort, Probe mux edge counter moved backwards after G38)
+  o<trace_ready_mux_monotonic> endif
+  o<trace_ready_gated_monotonic> if [#928 LT #925]
+    (abort, Gated probe edge counter moved backwards after G38)
+  o<trace_ready_gated_monotonic> endif
+  #963 = [#923 - #920]
+  #964 = [#924 - #921]
+  #965 = [#925 - #922]
+  #966 = [#926 - #923]
+  #967 = [#927 - #924]
+  #968 = [#928 - #925]
+  #969 = [[#926 - #920] - [#928 - #922]]
+  #936 = 0.0
+  o<trace_retrigger_burst> if [#969 GT 2.0]
+    #936 = 1.0
+  o<trace_retrigger_burst> endif
+  #962 = 0.0
+  o<trace_success_counter_consistency> if [#929 GT 0.5]
+    o<trace_success_direct_raw_mux> if [ABS[#963 - #964] GT 0.000001]
+      #962 = 1.0
+    o<trace_success_direct_raw_mux> endif
+    o<trace_success_repeat_raw_mux> if [ABS[#966 - #967] GT 0.000001]
+      #962 = 1.0
+    o<trace_success_repeat_raw_mux> endif
+    #<trace_total_raw> = [#963 + #966]
+    #<trace_total_mux> = [#964 + #967]
+    o<trace_success_total_raw_mux> if [ABS[#<trace_total_raw> - #<trace_total_mux>] GT 0.000001]
+      #962 = 1.0
+    o<trace_success_total_raw_mux> endif
+    o<trace_success_one_gated_edge> if [ABS[#965 - 1.0] GT 0.000001]
+      #962 = 1.0
+    o<trace_success_one_gated_edge> endif
+    o<trace_success_mux_edge_required> if [#964 LT 1.0]
+      #962 = 1.0
+    o<trace_success_mux_edge_required> endif
+    o<trace_success_no_gated_repeat> if [ABS[#968] GT 0.000001]
+      #962 = 1.0
+    o<trace_success_no_gated_repeat> endif
+  o<trace_success_counter_consistency> else
+    o<trace_no_touch_gated_edge> if [ABS[#965] GT 0.000001]
+      #962 = 1.0
+    o<trace_no_touch_gated_edge> endif
+  o<trace_success_counter_consistency> endif
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc-relocated-sphere-t3-r2-transfer-exploratory-attempt3-recovery-contact-trace.csv)
+  (LOG,1.0,#715,#711,#727,#933,#934,#935,#939,#931,#932,#920,#921,#922,#923,#924,#925,#926,#927,#928,#929,#930,#963,#964,#965,#966,#967,#968,#969,#936,#962,#971,#970)
+  (LOGCLOSE)
+  #938 = #936
+  #950 = #926
+  #951 = #927
+  #952 = #928
+  #953 = #969
+  #954 = 1.0
+  o<trace_release_fault_abort> if [#971 GT 0.5]
+    (abort, Probe did not reach a valid two-sample released state after contact)
+  o<trace_release_fault_abort> endif
+  o<trace_success_burst_abort> if [[#936 GT 0.5] AND [#970 LT 0.5]]
+    (abort, Electrical retrigger burst exceeded two repeats after successful probe contact)
+  o<trace_success_burst_abort> endif
+  o<trace_success_consistency_abort> if [[#962 GT 0.5] AND [#970 LT 0.5]]
+    (abort, Successful G38 raw mux gated edge counters are inconsistent)
+  o<trace_success_consistency_abort> endif
+  o<trace_post_log_live_guard> if [#970 LT 0.5]
+    o<tcpc_pair_live_guard> call [1.0] [#934] [#935]
+  o<trace_post_log_live_guard> endif
+o<tcpc_contact_trace_finish> endsub
+
+o<tcpc_pair_probe_ready_guard> sub
+  #<ready_target_b> = #1
+  #<ready_target_c> = #2
+
+  (Do not dwell or retry here. Require synchronized clear state before G38.)
+  M66 E0 L0
+  o<pair_ready_hal_width> if [ABS[#<_hal[tcpc_probe_fault_pause.width]> - 0.50] GT 0.001]
+    (abort, Paired probe abnormal-pulse event latch is not 0.5 seconds)
+  o<pair_ready_hal_width> endif
+  o<pair_ready_ignore_width> if [ABS[#<_hal[tcpc_probe_gate_ignore.width]> - #756] GT 0.001]
+    (abort, Paired probe post-contact ignore does not match the runner)
+  o<pair_ready_ignore_width> endif
+
+  o<tcpc_pair_live_guard> call [1.0] [#<ready_target_b>] [#<ready_target_c>]
+
+  (Close the live-guard-to-G38 gap with one final synchronized hard check.)
+  M66 E0 L0
+  o<pair_ready_final_probe_inputs> if [[#<_hal[t_probe-in]> GT 0.5] OR [#<_hal[probe-mux]> GT 0.5] OR [#<_hal[motion.probe-input]> GT 0.5]]
+    (abort, Paired probe input is active immediately before G38)
+  o<pair_ready_final_probe_inputs> endif
+  o<pair_ready_final_gates> if [[#<_hal[motion.digital-out-00]> GT 0.5] OR [#<_hal[motion.digital-out-01]> GT 0.5]]
+    (abort, Paired probe gate request is active immediately before G38)
+  o<pair_ready_final_gates> endif
+  o<pair_ready_final_fault> if [#<_hal[tcpc_probe_fault_pause.out]> GT 0.5]
+    (abort, Paired probe abnormal-pulse event is active immediately before G38)
+  o<pair_ready_final_fault> endif
+  o<tcpc_probe_counter_guard> call
+o<tcpc_pair_probe_ready_guard> endsub
+
+o<tcpc_vector_sphere_pass4> sub
+  #<pass_id> = #1
+  #<start_x> = #2
+  #<start_y> = #3
+  #<start_z> = #4
+  #<accepted> = #5
+  #939 = #6
+  #931 = #<pass_id>
+  #933 = [#726 + 1.0]
+  #934 = #520
+  #935 = #521
+
+  G90
+  F#507
+  o<tcpc_pair_live_guard> call [1.0] [#520] [#521]
+  G1 X#<start_x> Y#<start_y> Z#<start_z>
+  o<tcpc_pair_live_guard> call [1.0] [#520] [#521]
+
+  (Contact 1: W surface from the reviewed top-clear point.)
+  #122 = [#530 * #508]
+  #123 = [#531 * #508]
+  #124 = [#532 * #508]
+  G91
+  F#506
+  o<tcpc_contact_trace_begin> call [1.0]
+  o<tcpc_pair_probe_ready_guard> call [#520] [#521]
+  o<tcpc_contact_trace_begin> call [1.0]
+  G38.3 X#122 Y#123 Z#124
+  #<trace_w_travel> = #508
+  o<trace_w_touched> if [#5070 GT 0.5]
+    #<trace_w_travel> = [[[#5061 - #<start_x>] * #530] + [[#5062 - #<start_y>] * #531] + [[#5063 - #<start_z>] * #532]]
+  o<trace_w_touched> endif
+  o<tcpc_contact_trace_post> call [#5070] [#<trace_w_travel>]
+  o<top4_fail> if [#5070 EQ 0]
+    G90
+    F#507
+    G1 X#<start_x> Y#<start_y> Z#<start_z>
+    M66 E0 L0
+    M65 P0
+    M65 P1
+    o<tcpc_contact_trace_finish> call [1.0]
+    o<top4_dropout_burst> if [[[#936 GT 0.5] OR [#937 GT 0.5]] OR [#962 GT 0.5]]
+      (abort, Electrical dropout after retrigger burst on four-contact W touch)
+    o<top4_dropout_burst> else
+      (abort, Four-contact W touch did not record point data)
+    o<top4_dropout_burst> endif
+  o<top4_fail> endif
+
+  #<qw_x> = #5061
+  #<qw_y> = #5062
+  #<qw_z> = #5063
+  #612 = [[[#<qw_x> - #<start_x>] * #530] + [[#<qw_y> - #<start_y>] * #531] + [[#<qw_z> - #<start_z>] * #532]]
+  #<qw_abs_x> = [#<qw_x> + #540]
+  #<qw_abs_y> = [#<qw_y> + #541]
+  #<qw_abs_z> = [#<qw_z> + #542]
+
+  (The W contact provides the W coordinate and the first center estimate.)
+  #<top_center_x> = [#<qw_x> + [#530 * #505]]
+  #<top_center_y> = [#<qw_y> + [#531 * #505]]
+  #<top_center_z> = [#<qw_z> + [#532 * #505]]
+  #<top_center_abs_x> = [#<qw_abs_x> + [#530 * #505]]
+  #<top_center_abs_y> = [#<qw_abs_y> + [#531 * #505]]
+  #<top_center_abs_z> = [#<qw_abs_z> + [#532 * #505]]
+  #<top_clear_x> = [#<top_center_x> - [#530 * #513]]
+  #<top_clear_y> = [#<top_center_y> - [#531 * #513]]
+  #<top_clear_z> = [#<top_center_z> - [#532 * #513]]
+
+  G90
+  F#507
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  (Contact 2: start on the sign-aware upper U side and probe inward.)
+  #<um_start_x> = [#<top_center_x> + [#539 * #533 * #514]]
+  #<um_start_y> = [#<top_center_y> + [#539 * #534 * #514]]
+  #<um_start_z> = [#<top_center_z> + [#539 * #535 * #514]]
+  #<um_clear_x> = [#<um_start_x> - [#530 * #513]]
+  #<um_clear_y> = [#<um_start_y> - [#531 * #513]]
+  #<um_clear_z> = [#<um_start_z> - [#532 * #513]]
+  o<tcpc_pair_release_guard> call [#520] [#521] [1.0]
+  o<tcpc_contact_trace_finish> call [0.0]
+  G90
+  F#507
+  G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+  G1 X#<um_start_x> Y#<um_start_y> Z#<um_start_z>
+  #122 = [-#539 * #533 * #511]
+  #123 = [-#539 * #534 * #511]
+  #124 = [-#539 * #535 * #511]
+  G91
+  F#506
+  o<tcpc_contact_trace_begin> call [2.0]
+  o<tcpc_pair_probe_ready_guard> call [#520] [#521]
+  o<tcpc_contact_trace_begin> call [2.0]
+  G38.3 X#122 Y#123 Z#124
+  #<trace_u_travel> = #511
+  o<trace_u_touched> if [#5070 GT 0.5]
+    #<trace_u_travel> = [-#539 * [[[#5061 - #<um_start_x>] * #533] + [[#5062 - #<um_start_y>] * #534] + [[#5063 - #<um_start_z>] * #535]]]
+  o<trace_u_touched> endif
+  o<tcpc_contact_trace_post> call [#5070] [#<trace_u_travel>]
+  o<um4_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    M66 E0 L0
+    M65 P0
+    M65 P1
+    o<tcpc_contact_trace_finish> call [1.0]
+    o<um4_dropout_burst> if [[[#936 GT 0.5] OR [#937 GT 0.5]] OR [#962 GT 0.5]]
+      (abort, Electrical dropout after retrigger burst on four-contact safe U touch)
+    o<um4_dropout_burst> else
+      (abort, Four-contact safe U touch did not record point data)
+    o<um4_dropout_burst> endif
+  o<um4_fail> endif
+  #<qu_x> = #5061
+  #<qu_y> = #5062
+  #<qu_z> = #5063
+  #613 = [-#539 * [[[#<qu_x> - #<um_start_x>] * #533] + [[#<qu_y> - #<um_start_y>] * #534] + [[#<qu_z> - #<um_start_z>] * #535]]]
+  #125 = [#539 * #533 * #512]
+  #126 = [#539 * #534 * #512]
+  #127 = [#539 * #535 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<um_clear_x> Y#<um_clear_y> Z#<um_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  (Contact 3: -V side toward +V.)
+  #<vm_start_x> = [#<top_center_x> - [#536 * #514]]
+  #<vm_start_y> = [#<top_center_y> - [#537 * #514]]
+  #<vm_start_z> = [#<top_center_z> - [#538 * #514]]
+  #<vm_clear_x> = [#<vm_start_x> - [#530 * #513]]
+  #<vm_clear_y> = [#<vm_start_y> - [#531 * #513]]
+  #<vm_clear_z> = [#<vm_start_z> - [#532 * #513]]
+  o<tcpc_pair_release_guard> call [#520] [#521] [1.0]
+  o<tcpc_contact_trace_finish> call [0.0]
+  G90
+  F#507
+  G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+  G1 X#<vm_start_x> Y#<vm_start_y> Z#<vm_start_z>
+  #122 = [#536 * #511]
+  #123 = [#537 * #511]
+  #124 = [#538 * #511]
+  G91
+  F#506
+  o<tcpc_contact_trace_begin> call [3.0]
+  o<tcpc_pair_probe_ready_guard> call [#520] [#521]
+  o<tcpc_contact_trace_begin> call [3.0]
+  G38.3 X#122 Y#123 Z#124
+  #<trace_vm_travel> = #511
+  o<trace_vm_touched> if [#5070 GT 0.5]
+    #<trace_vm_travel> = [[[#5061 - #<vm_start_x>] * #536] + [[#5062 - #<vm_start_y>] * #537] + [[#5063 - #<vm_start_z>] * #538]]
+  o<trace_vm_touched> endif
+  o<tcpc_contact_trace_post> call [#5070] [#<trace_vm_travel>]
+  o<vm4_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    M66 E0 L0
+    M65 P0
+    M65 P1
+    o<tcpc_contact_trace_finish> call [1.0]
+    o<vm4_dropout_burst> if [[[#936 GT 0.5] OR [#937 GT 0.5]] OR [#962 GT 0.5]]
+      (abort, Electrical dropout after retrigger burst on four-contact -V touch)
+    o<vm4_dropout_burst> else
+      (abort, Four-contact -V touch did not record point data)
+    o<vm4_dropout_burst> endif
+  o<vm4_fail> endif
+  #<qvm_x> = #5061
+  #<qvm_y> = #5062
+  #<qvm_z> = #5063
+  #615 = [[[#<qvm_x> - #<vm_start_x>] * #536] + [[#<qvm_y> - #<vm_start_y>] * #537] + [[#<qvm_z> - #<vm_start_z>] * #538]]
+  #125 = [-#536 * #512]
+  #126 = [-#537 * #512]
+  #127 = [-#538 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  (Contact 4: +V side toward -V.)
+  #<vp_start_x> = [#<top_center_x> + [#536 * #514]]
+  #<vp_start_y> = [#<top_center_y> + [#537 * #514]]
+  #<vp_start_z> = [#<top_center_z> + [#538 * #514]]
+  #<vp_clear_x> = [#<vp_start_x> - [#530 * #513]]
+  #<vp_clear_y> = [#<vp_start_y> - [#531 * #513]]
+  #<vp_clear_z> = [#<vp_start_z> - [#532 * #513]]
+  o<tcpc_pair_release_guard> call [#520] [#521] [1.0]
+  o<tcpc_contact_trace_finish> call [0.0]
+  G90
+  F#507
+  G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+  G1 X#<vp_start_x> Y#<vp_start_y> Z#<vp_start_z>
+  #122 = [-#536 * #511]
+  #123 = [-#537 * #511]
+  #124 = [-#538 * #511]
+  G91
+  F#506
+  o<tcpc_contact_trace_begin> call [4.0]
+  o<tcpc_pair_probe_ready_guard> call [#520] [#521]
+  o<tcpc_contact_trace_begin> call [4.0]
+  G38.3 X#122 Y#123 Z#124
+  #<trace_vp_travel> = #511
+  o<trace_vp_touched> if [#5070 GT 0.5]
+    #<trace_vp_travel> = [[[#<vp_start_x> - #5061] * #536] + [[#<vp_start_y> - #5062] * #537] + [[#<vp_start_z> - #5063] * #538]]
+  o<trace_vp_touched> endif
+  o<tcpc_contact_trace_post> call [#5070] [#<trace_vp_travel>]
+  o<vp4_fail> if [#5070 EQ 0]
+    F#507
+    G1 X[-#122] Y[-#123] Z[-#124]
+    G90
+    G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+    M66 E0 L0
+    M65 P0
+    M65 P1
+    o<tcpc_contact_trace_finish> call [1.0]
+    o<vp4_dropout_burst> if [[[#936 GT 0.5] OR [#937 GT 0.5]] OR [#962 GT 0.5]]
+      (abort, Electrical dropout after retrigger burst on four-contact +V touch)
+    o<vp4_dropout_burst> else
+      (abort, Four-contact +V touch did not record point data)
+    o<vp4_dropout_burst> endif
+  o<vp4_fail> endif
+  #<qvp_x> = #5061
+  #<qvp_y> = #5062
+  #<qvp_z> = #5063
+  #616 = [[[#<vp_start_x> - #<qvp_x>] * #536] + [[#<vp_start_y> - #<qvp_y>] * #537] + [[#<vp_start_z> - #<qvp_z>] * #538]]
+  #125 = [#536 * #512]
+  #126 = [#537 * #512]
+  #127 = [#538 * #512]
+  G91
+  F#507
+  G1 X#125 Y#126 Z#127
+  G90
+  G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+  o<tcpc_pair_release_guard> call [#520] [#521] [1.0]
+  o<tcpc_contact_trace_finish> call [0.0]
+
+  #<qu_abs_x> = [#<qu_x> + #540]
+  #<qu_abs_y> = [#<qu_y> + #541]
+  #<qu_abs_z> = [#<qu_z> + #542]
+  #<qvm_abs_x> = [#<qvm_x> + #540]
+  #<qvm_abs_y> = [#<qvm_y> + #541]
+  #<qvm_abs_z> = [#<qvm_z> + #542]
+  #<qvp_abs_x> = [#<qvp_x> + #540]
+  #<qvp_abs_y> = [#<qvp_y> + #541]
+  #<qvp_abs_z> = [#<qvp_z> + #542]
+
+  (Certified-radius single-side reconstruction in the orthonormal W/U/V basis.)
+  #<center_w> = [[[#<qw_abs_x> * #530] + [#<qw_abs_y> * #531] + [#<qw_abs_z> * #532]] + #505]
+  #<center_u> = [[[#<qu_abs_x> * #533] + [#<qu_abs_y> * #534] + [#<qu_abs_z> * #535]] - [#539 * #505]]
+  #<center_v> = [[[[#<qvm_abs_x> * #536] + [#<qvm_abs_y> * #537] + [#<qvm_abs_z> * #538]] + [[#<qvp_abs_x> * #536] + [#<qvp_abs_y> * #537] + [#<qvp_abs_z> * #538]]] / 2.0]
+  #603 = [[#530 * #<center_w>] + [#533 * #<center_u>] + [#536 * #<center_v>]]
+  #604 = [[#531 * #<center_w>] + [#534 * #<center_u>] + [#537 * #<center_v>]]
+  #605 = [[#532 * #<center_w>] + [#535 * #<center_u>] + [#538 * #<center_v>]]
+
+  #600 = [#<top_center_abs_x> - #540]
+  #601 = [#<top_center_abs_y> - #541]
+  #602 = [#<top_center_abs_z> - #542]
+  #<corr_x> = [#603 - #<top_center_abs_x>]
+  #<corr_y> = [#604 - #<top_center_abs_y>]
+  #<corr_z> = [#605 - #<top_center_abs_z>]
+  #606 = [[#<corr_x> * #533] + [#<corr_y> * #534] + [#<corr_z> * #535]]
+  #607 = [[#<corr_x> * #536] + [#<corr_y> * #537] + [#<corr_z> * #538]]
+  #630 = SQRT[[#<corr_x> * #<corr_x>] + [#<corr_y> * #<corr_y>] + [#<corr_z> * #<corr_z>]]
+
+  (Only V has two measured opposing contacts; never report a U diameter.)
+  #<v_dx> = [#<qvp_abs_x> - #<qvm_abs_x>]
+  #<v_dy> = [#<qvp_abs_y> - #<qvm_abs_y>]
+  #<v_dz> = [#<qvp_abs_z> - #<qvm_abs_z>]
+  #609 = [[#<v_dx> * #536] + [#<v_dy> * #537] + [#<v_dz> * #538]]
+  #611 = [#609 - [2.0 * #504]]
+  #614 = 0.0
+
+  (Full radial residuals expose inconsistent contacts not visible in projections.)
+  #<rw> = SQRT[[[#603 - #<qw_abs_x>] * [#603 - #<qw_abs_x>]] + [[#604 - #<qw_abs_y>] * [#604 - #<qw_abs_y>]] + [[#605 - #<qw_abs_z>] * [#605 - #<qw_abs_z>]]]
+  #<ru> = SQRT[[[#603 - #<qu_abs_x>] * [#603 - #<qu_abs_x>]] + [[#604 - #<qu_abs_y>] * [#604 - #<qu_abs_y>]] + [[#605 - #<qu_abs_z>] * [#605 - #<qu_abs_z>]]]
+  #<rvm> = SQRT[[[#603 - #<qvm_abs_x>] * [#603 - #<qvm_abs_x>]] + [[#604 - #<qvm_abs_y>] * [#604 - #<qvm_abs_y>]] + [[#605 - #<qvm_abs_z>] * [#605 - #<qvm_abs_z>]]]
+  #<rvp> = SQRT[[[#603 - #<qvp_abs_x>] * [#603 - #<qvp_abs_x>]] + [[#604 - #<qvp_abs_y>] * [#604 - #<qvp_abs_y>]] + [[#605 - #<qvp_abs_z>] * [#605 - #<qvp_abs_z>]]]
+  #631 = ABS[#<rw> - #505]
+  #632 = ABS[#<ru> - #505]
+  #633 = ABS[#<rvm> - #505]
+  #634 = ABS[#<rvp> - #505]
+
+  (Capture rotary, endpoint, and linear-axis state for the accepted-row schema.)
+  #150 = #<_hal[joint.3.pos-cmd]>
+  #151 = #<_hal[joint.3.pos-fb]>
+  #154 = #<_hal[joint.4.pos-cmd]>
+  #155 = #<_hal[joint.4.pos-fb]>
+  #159 = #<_hal[b-ssi-zeroed-position]>
+  #161 = #<_hal[c-ssi-zeroed-position]>
+  #184 = #<_abs_x>
+  #185 = #<_abs_y>
+  #186 = #<_abs_z>
+  #187 = #<_hal[joint.0.motor-pos-cmd]>
+  #188 = #<_hal[joint.0.motor-pos-fb]>
+  #189 = [#188 - #187]
+  #190 = #<_hal[joint.1.motor-pos-cmd]>
+  #191 = #<_hal[joint.1.motor-pos-fb]>
+  #192 = [#191 - #190]
+  #193 = #<_hal[joint.2.motor-pos-cmd]>
+  #194 = #<_hal[joint.2.motor-pos-fb]>
+  #195 = [#194 - #193]
+
+  (DEBUG, TCPC_VECTOR4 pass #<pass_id> accepted #<accepted>)
+  (DEBUG, TCPC_VECTOR4 center #603 #604 #605 correction_norm=#630)
+  (DEBUG, TCPC_VECTOR4 v_diam=#611 radial_residuals=#631/#632/#633/#634)
+o<tcpc_vector_sphere_pass4> endsub
+
+
+o<tcpc_measure_pose> sub
+  #<target_b> = #1
+  #<target_c> = #2
+  (Arguments #3 and #4 are reserved; pose inspection M0s are disabled.)
+
+  (Fail before any retract, index, or positioning move if live state changed.)
+  o<tcpc_pair_selector_guard> call
+  o<tcpc_baseline_pin_guard> call
+  o<pair_first_pose_start_guard> if [#700 LT 0.5]
+    o<tcpc_pair_live_guard> call [1.0] [#<target_b>] [#<target_c>]
+  o<pair_first_pose_start_guard> else
+    o<tcpc_pair_live_guard> call [0.0] [0.0] [0.0]
+  o<pair_first_pose_start_guard> endif
+
+  (For later poses, retract along current W to the known top-clear point,)
+  (then lift in machine Z, index, XY, and lower Z. A Z-only lift is not)
+  (a safe pull-away when B is near +/-90.)
+  o<use_high_z_transit> if [#700 GT 0.5]
+    #540 = [#<_abs_x> - #<_x>]
+    #541 = [#<_abs_y> - #<_y>]
+    #542 = [#<_abs_z> - #<_z>]
+
+    #<current_b> = #<_abs_b>
+    #<current_c> = #<_abs_c>
+    #<current_w_x> = [-SIN[#<current_b>] * COS[#<current_c>]]
+    #<current_w_y> = [-SIN[#<current_b>] * SIN[#<current_c>]]
+    #<current_w_z> = [-COS[#<current_b>]]
+    #<current_clear_x> = [#701 - #540 - [#<current_w_x> * #513]]
+    #<current_clear_y> = [#702 - #541 - [#<current_w_y> * #513]]
+    #<current_clear_z> = [#703 - #542 - [#<current_w_z> * #513]]
+
+    G90
+    F#507
+    G1 X#<current_clear_x> Y#<current_clear_y> Z#<current_clear_z>
+
+    #<safe_z> = [#<_z> + #515]
+    G1 Z#<safe_z>
+
+    F#705
+    (For a B-sign change, stop at B0/C0 at high Z so the next block is)
+    (approached outward from zero. Every measured block closes at C0.)
+    o<primary_sign_change_zero_transit> if [[[#<current_b> * #<target_b>] LT -0.01] AND [ABS[#<current_c>] LT 0.05] AND [ABS[#<target_c>] LT 0.05]]
+      G1 B0 C0
+      o<tcpc_pair_live_guard> call [1.0] [0.0] [0.0]
+    o<primary_sign_change_zero_transit> endif
+    G1 B#<target_b> C#<target_c>
+    (Verify target rotary command/feedback/SSI while still at high Z.)
+    o<tcpc_pair_live_guard> call [1.0] [#<target_b>] [#<target_c>]
+
+    #540 = [#<_abs_x> - #<_x>]
+    #541 = [#<_abs_y> - #<_y>]
+    #542 = [#<_abs_z> - #<_z>]
+
+    #<start_w_x> = [-SIN[#<target_b>] * COS[#<target_c>]]
+    #<start_w_y> = [-SIN[#<target_b>] * SIN[#<target_c>]]
+    #<start_w_z> = [-COS[#<target_b>]]
+    #<next_start_x> = [#701 - #540 - [#<start_w_x> * #513]]
+    #<next_start_y> = [#702 - #541 - [#<start_w_y> * #513]]
+    #<next_start_z> = [#703 - #542 - [#<start_w_z> * #513]]
+    F#507
+    G1 X#<next_start_x> Y#<next_start_y>
+    F200.0
+    G1 Z#<next_start_z>
+    F#507
+  o<use_high_z_transit> else
+    (First pose starts at the guarded operator-set recovery position.)
+    (Do not issue a redundant rotary command before the first touch.)
+    G90
+
+    #540 = [#<_abs_x> - #<_x>]
+    #541 = [#<_abs_y> - #<_y>]
+    #542 = [#<_abs_z> - #<_z>]
+  o<use_high_z_transit> endif
+
+  (Verify commanded, feedback, and SSI pose before either probe pass.)
+  o<tcpc_pair_live_guard> call [1.0] [#<target_b>] [#<target_c>]
+
+  #520 = #<_abs_b>
+  #521 = #<_abs_c>
+
+  (W points along the probe vector toward the table at this B/C pose.)
+  #530 = [-SIN[#520] * COS[#521]]
+  #531 = [-SIN[#520] * SIN[#521]]
+  #532 = [-COS[#520]]
+
+  (U is perpendicular to W in the tilt plane.)
+  #533 = [COS[#520] * COS[#521]]
+  #534 = [COS[#520] * SIN[#521]]
+  #535 = [-SIN[#520]]
+
+  (V is perpendicular to W and U.)
+  #536 = [-SIN[#521]]
+  #537 = [COS[#521]]
+  #538 = 0.0
+
+  (Use the upper U side: -U for B>=0, +U for B<0.)
+  #539 = -1.0
+  #635 = 1.0
+  o<negative_b_upper_u> if [#520 LT -0.001]
+    #539 = 1.0
+    #635 = 2.0
+  o<negative_b_upper_u> endif
+
+  #550 = #<_x>
+  #551 = #<_y>
+  #552 = #<_z>
+
+  #<pose_acquisition_try> = 0.0
+  #<pose_acquisition_ok> = 0.0
+  #<pose_reject_stage> = 0.0
+  #<pose_reject_reason> = 0.0
+
+  (Retry one complete two-pass pose after a bounded quality rejection.)
+  o<pose_acquisition_loop> while [[#<pose_acquisition_try> LT #739] AND [#<pose_acquisition_ok> LT 0.5]]
+    #<pose_acquisition_try> = [#<pose_acquisition_try> + 1.0]
+    #<pose_quality_ok> = 1.0
+    #<pose_reject_stage> = 0.0
+    #<pose_reject_reason> = 0.0
+    #629 = 0.0
+
+    (Run pass 1 from the frozen current/operator start point.)
+    o<tcpc_vector_sphere_pass4> call [1.0] [#550] [#551] [#552] [0.0] [#<pose_acquisition_try>]
+    #<pose_reject_stage> = 1.0
+    o<pose_p1_travel_quality> if [[#612 LT #759] OR [#613 LT #759] OR [#615 LT #759] OR [#616 LT #759]]
+      #<pose_quality_ok> = 0.0
+      #<pose_reject_reason> = 1.0
+    o<pose_p1_travel_quality> endif
+    o<pose_p1_center_quality> if [#630 GE 2.0]
+      #<pose_quality_ok> = 0.0
+      #<pose_reject_reason> = 2.0
+    o<pose_p1_center_quality> endif
+    o<pose_p1_diameter_quality> if [[#611 LT 29.5] OR [#611 GT 31.0]]
+      #<pose_quality_ok> = 0.0
+      #<pose_reject_reason> = 3.0
+    o<pose_p1_diameter_quality> endif
+    o<pose_p1_radial_quality> if [[#631 GT 1.0] OR [#632 GT 1.0] OR [#633 GT 1.0] OR [#634 GT 1.0]]
+      #<pose_quality_ok> = 0.0
+      #<pose_reject_reason> = 4.0
+    o<pose_p1_radial_quality> endif
+
+    o<pose_pass1_quality_ok> if [#<pose_quality_ok> GT 0.5]
+      (Use the complete four-contact reconstructed center for pass 2.)
+      #623 = [#603 - #540]
+      #624 = [#604 - #541]
+      #625 = [#605 - #542]
+      #620 = [#623 - #600]
+      #621 = [#624 - #601]
+      #622 = [#625 - #602]
+
+      (Start pass 2 at top clearance above the corrected center.)
+      #626 = [#623 - [#530 * #513]]
+      #627 = [#624 - [#531 * #513]]
+      #628 = [#625 - [#532 * #513]]
+
+      (DEBUG, TCPC_VECTOR4 correction #620 #621 #622)
+      o<tcpc_vector_sphere_pass4> call [2.0] [#626] [#627] [#628] [1.0] [#<pose_acquisition_try>]
+      #<pose_reject_stage> = 2.0
+      o<pose_p2_travel_quality> if [[#612 LT #759] OR [#613 LT #759] OR [#615 LT #759] OR [#616 LT #759]]
+        #<pose_quality_ok> = 0.0
+        #<pose_reject_reason> = 5.0
+      o<pose_p2_travel_quality> endif
+      o<pose_p2_diameter_quality> if [[#611 LT 29.9] OR [#611 GT 30.5]]
+        #<pose_quality_ok> = 0.0
+        #<pose_reject_reason> = 6.0
+      o<pose_p2_diameter_quality> endif
+      o<pose_p2_radial_quality> if [[#630 GT 0.25] OR [#631 GT 0.25] OR [#632 GT 0.25] OR [#633 GT 0.25] OR [#634 GT 0.25]]
+        #<pose_quality_ok> = 0.0
+        #<pose_reject_reason> = 7.0
+      o<pose_p2_radial_quality> endif
+      #629 = SQRT[[[#603 - [#623 + #540]] * [#603 - [#623 + #540]]] + [[#604 - [#624 + #541]] * [#604 - [#624 + #541]]] + [[#605 - [#625 + #542]] * [#605 - [#625 + #542]]]]
+      o<pose_p2_center_agreement> if [#629 GT 0.10]
+        #<pose_quality_ok> = 0.0
+        #<pose_reject_reason> = 8.0
+      o<pose_p2_center_agreement> endif
+    o<pose_pass1_quality_ok> endif
+
+    o<pose_quality_accept> if [#<pose_quality_ok> GT 0.5]
+      #<pose_acquisition_ok> = 1.0
+    o<pose_quality_accept> else
+      (DEBUG, TCPC_VECTOR4 reject try=#<pose_acquisition_try> stage=#<pose_reject_stage> reason=#<pose_reject_reason> travel=#612/#613/#615/#616 correction_norm=#630 v_diam=#611 radial=#631/#632/#633/#634 center_delta=#629)
+      o<pose_quality_retry_available> if [#<pose_acquisition_try> LT #739]
+        (DEBUG, TCPC_VECTOR4 retrying complete pose after release check)
+        o<tcpc_pair_live_guard> call [1.0] [#520] [#521]
+        G90
+        F#507
+        G1 X#550 Y#551 Z#552
+        o<tcpc_pair_release_guard> call [#520] [#521] [0.0]
+      o<pose_quality_retry_available> endif
+    o<pose_quality_accept> endif
+  o<pose_acquisition_loop> endwhile
+
+  o<pose_quality_retry_exhausted> if [#<pose_acquisition_ok> LT 0.5]
+    (abort, Sphere pose quality failed twice; retain partial and restart with a new attempt)
+  o<pose_quality_retry_exhausted> endif
+
+  #700 = 1.0
+  #701 = #603
+  #702 = #604
+  #703 = #605
+
+  o<pair_summary_logging> if [#714 GT 0.5]
+    (Refresh the logged fields and reject state changes after the accepted pass.)
+    o<tcpc_pair_selector_guard> call
+    o<tcpc_pair_live_guard> call [1.0] [#520] [#521]
+    o<tcpc_baseline_pin_guard> call
+    #726 = [#726 + 1.0]
+    #788 = [#788 + 1.0]
+    (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc-relocated-sphere-t3-r2-transfer-exploratory-attempt3-recovery-results.csv)
+    (LOG,1.0,#715,#711,#727,#726,#728,#729,#738,4.0,#635,#520,#521,#719,#516,#502,#501,#505,#603,#604,#605,#606,#607,#630,#611,#629,#631,#632,#633,#634,#612,#613,#615,#616)
+    (LOGCLOSE)
+    (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc-relocated-sphere-t3-r2-transfer-exploratory-attempt3-recovery-state.csv)
+    (LOG,1.0,#715,#711,#727,#726,#520,#521,#718,#720,#721,#722,#723,#724,#725,#517,#518,#519,#150,#151,#154,#155,#159,#161,#184,#185,#186,#187,#188,#189,#190,#191,#192,#193,#194,#195)
+    (LOGCLOSE)
+  o<pair_summary_logging> endif
+
+o<tcpc_measure_pose> endsub
+
+o<tcpc_primary_closure_guard> sub
+  #<closure_dx> = [#701 - #1]
+  #<closure_dy> = [#702 - #2]
+  #<closure_dz> = [#703 - #3]
+  #<closure_norm> = SQRT[[#<closure_dx> * #<closure_dx>] + [#<closure_dy> * #<closure_dy>] + [#<closure_dz> * #<closure_dz>]]
+  #<closure_pass> = 1.0
+  o<primary_closure_failed> if [#<closure_norm> GT 0.050]
+    #<closure_pass> = 0.0
+  o<primary_closure_failed> endif
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc-relocated-sphere-t3-r2-transfer-exploratory-attempt3-recovery-closures.csv)
+  (LOG,1.0,#715,#711,#727,#4,#5,#6,#520,#521,#<closure_dx>,#<closure_dy>,#<closure_dz>,#<closure_norm>,0.050,#<closure_pass>)
+  (LOGCLOSE)
+  (DEBUG, T3_R2_TRANSFER closure block=#4 open=#5 close=#6 norm=#<closure_norm>)
+  o<primary_closure_limit> if [#<closure_pass> LT 0.5]
+    (abort, T3 exploratory same-pose closure exceeds 0.050 mm; retain rows and use a new attempt)
+  o<primary_closure_limit> endif
+o<tcpc_primary_closure_guard> endsub
+
+o<tcpc_recovery_closing_b0_sweep> sub
+  #728 = 200.0
+  #729 = 1.0
+  #738 = 0.0
+  o<tcpc_measure_pose> call [0.0] [0.0] [0.0] [0.0]
+  #<sweep_open_seq> = #726
+  #<sweep_open_x> = #701
+  #<sweep_open_y> = #702
+  #<sweep_open_z> = #703
+  (The midpoint seq16 belongs to attempt 2; closure 906 is offline.)
+  #729 = 2.0
+  o<tcpc_measure_pose> call [0.0] [90.0] [0.0] [0.0]
+  #729 = 3.0
+  o<tcpc_measure_pose> call [0.0] [180.0] [0.0] [0.0]
+  #729 = 4.0
+  o<tcpc_measure_pose> call [0.0] [270.0] [0.0] [0.0]
+  #729 = 5.0
+  #738 = 1.0
+  o<tcpc_measure_pose> call [0.0] [0.0] [0.0] [0.0]
+  o<tcpc_primary_closure_guard> call [#<sweep_open_x>] [#<sweep_open_y>] [#<sweep_open_z>] [#728] [#<sweep_open_seq>] [#726]
+  #738 = 0.0
+o<tcpc_recovery_closing_b0_sweep> endsub
+
+o<tcpc_baseline_return_top_clear> sub
+  o<tcpc_pair_selector_guard> call
+  o<tcpc_pair_live_guard> call [1.0] [0.0] [0.0]
+  #540 = [#<_abs_x> - #<_x>]
+  #541 = [#<_abs_y> - #<_y>]
+  #542 = [#<_abs_z> - #<_z>]
+  #<final_w_x> = [-SIN[#<_abs_b>] * COS[#<_abs_c>]]
+  #<final_w_y> = [-SIN[#<_abs_b>] * SIN[#<_abs_c>]]
+  #<final_w_z> = [-COS[#<_abs_b>]]
+  #<final_clear_x> = [#701 - #540 - [#<final_w_x> * #513]]
+  #<final_clear_y> = [#702 - #541 - [#<final_w_y> * #513]]
+  #<final_clear_z> = [#703 - #542 - [#<final_w_z> * #513]]
+  G90
+  F#507
+  G1 X#<final_clear_x> Y#<final_clear_y> Z#<final_clear_z>
+  o<tcpc_pair_live_guard> call [1.0] [0.0] [0.0]
+o<tcpc_baseline_return_top_clear> endsub
+
+(Freeze every selector and motion constant before the single mode-31 body.)
+#730 = #711
+#731 = #715
+#732 = #716
+#733 = #717
+#734 = #727
+#735 = #714
+#740 = #503
+#741 = #504
+#742 = #505
+#743 = #506
+#744 = #507
+#745 = #508
+#746 = #509
+#747 = #510
+#748 = #511
+#749 = #512
+#750 = #513
+#751 = #514
+#752 = #515
+#753 = #516
+#754 = #704
+#755 = #705
+#757 = #756
+#758 = #501
+#786 = #739
+#787 = #759
+o<pair_initial_wcs_index> if [[#5220 LT 0.5] OR [#5220 GT 9.5] OR [ABS[#5220 - FIX[#5220]] GT 0.000001]]
+  (abort, Paired sphere run requires a valid integral active WCS index)
+o<pair_initial_wcs_index> endif
+#760 = #5220
+#761 = #[5201 + [20 * #760]]
+#762 = #[5202 + [20 * #760]]
+#763 = #[5203 + [20 * #760]]
+#764 = #[5204 + [20 * #760]]
+#765 = #[5205 + [20 * #760]]
+#766 = #[5206 + [20 * #760]]
+#767 = #[5207 + [20 * #760]]
+#768 = #[5208 + [20 * #760]]
+#769 = #[5209 + [20 * #760]]
+#770 = #[5210 + [20 * #760]]
+o<tcpc_pair_coordinate_guard> call
+(Confirm the baseline configuration has supplied every frozen baseline total.)
+o<tcpc_baseline_pin_guard> call
+(MSG, Confirm T3/H3 and TCPC, clear probe, physical clearance, and reviewed B-90 C90 top-clear recovery start.)
+#771 = #<_abs_x>
+#772 = #<_abs_y>
+#773 = #<_abs_z>
+M0
+
+(The operator hold is a state-change boundary. Selectors are immutable.)
+o<tcpc_pair_hold_position_guard> call
+o<tcpc_pair_selector_guard> call
+o<tcpc_pair_live_guard> call [1.0] [-90.0] [90.0]
+o<tcpc_baseline_pin_guard> call
+
+(Establish the sticky edge baseline only after the operator M0 boundary.)
+M66 E0 L0
+o<tcpc_probe_counter_guard> call
+#950 = #<_hal[counter.0.counts]>
+#951 = #<_hal[counter.1.counts]>
+#952 = #<_hal[counter.2.counts]>
+#953 = 0.0
+#954 = 1.0
+#955 = 1.0
+
+(Dedicated mode 31 T3 baseline transfer-exploratory recovery body.)
+
+o<run_relocated_t3_recovery> if [ABS[#711 - 31.0] LT 0.1]
+  #726 = 22.0
+  #788 = 0.0
+  #700 = 0.0
+  (Seq 23 begins directly at the held B-90/C90 top-clear point.)
+  (#700 remains clear, so no rotary or relocation move precedes its probing.)
+  #728 = -90.0
+  #729 = 2.0
+  #738 = 0.0
+  o<tcpc_measure_pose> call [-90.0] [90.0] [0.0] [0.0]
+  #729 = 3.0
+  o<tcpc_measure_pose> call [-90.0] [180.0] [0.0] [0.0]
+  #729 = 4.0
+  o<tcpc_measure_pose> call [-90.0] [270.0] [0.0] [0.0]
+  #729 = 5.0
+  #738 = 1.0
+  o<tcpc_measure_pose> call [-90.0] [0.0] [0.0] [0.0]
+  #738 = 0.0
+  (Closure -90 spans attempts 2 and 3 and is reconstructed offline.)
+  (Seq 27-31: closing B0 sweep; closure 200 is source-local.)
+  o<tcpc_recovery_closing_b0_sweep> call
+  o<primary_sequence_complete> if [[ABS[#726 - 31.0] GT 0.000001] OR [ABS[#788 - #707] GT 0.000001]]
+    (abort, Relocated-sphere T3 recovery did not log exact seq23-31 contract)
+  o<primary_sequence_complete> endif
+  o<tcpc_baseline_return_top_clear> call
+o<run_relocated_t3_recovery> endif
+
+G90
+F#705
+o<tcpc_pair_live_guard> call [1.0] [0.0] [0.0]
+
+M65 P0
+M65 P1
+(DEBUG, TCPC_RELOCATED_SPHERE_T3_R2_TRANSFER_EXPLORATORY_ATTEMPT3_RECOVERY complete)
+M2

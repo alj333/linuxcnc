@@ -1,0 +1,10 @@
+2026-08-28 01:11:41,194 - qtpyvcp.plugins.notifications - INFO - TCPC_VECTOR4 pass 2.000000 accepted 1.000000 
+
+2026-08-28 01:11:41,396 - qtpyvcp.plugins.notifications - INFO - TCPC_VECTOR4 center 2501.156895 696.528585 -302.580083 
+ correction_norm=0.003166
+2026-08-28 01:11:41,594 - qtpyvcp.plugins.notifications - INFO - TCPC_VECTOR4 v_diam=30.133835 radial_residuals=0.000000/0.000000/0.066918/0.066917
+2026-08-28 01:11:41,794 - qtpyvcp.plugins.notifications - INFO - TCPC_LENGTH_AWARE_T4 closure block=-5.000000 open=17.000000 close=23.000000 
+ norm=0.010175
+2026-08-28 01:12:15,194 - qtpyvcp.plugins.notifications - ERROR - Raw mux gated probe counters 
+ or bounded extras are inconsistent 
+ before G38

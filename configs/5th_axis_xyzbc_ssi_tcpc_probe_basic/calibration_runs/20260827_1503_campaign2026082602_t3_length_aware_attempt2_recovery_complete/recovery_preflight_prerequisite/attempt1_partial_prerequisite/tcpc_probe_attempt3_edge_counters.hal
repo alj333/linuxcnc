@@ -1,0 +1,40 @@
+# Campaign 2026082404 attempt-3 recovery diagnostics only.
+#
+# Preserve the existing G38-only motion.probe-input gate. These counters are
+# observation-only: they retain every raw, muxed, and physically gated rising
+# edge so a post-contact pulse burst cannot expire between G-code samples.
+# They drive no motion, enable, pause, probe, or hardware-output pin.
+
+loadrt counter num_chan=3
+
+# Channel 0: physical wireless-probe receiver input.
+net t_probe-in => counter.0.phase-A
+
+# Channel 1: probe/toolsetter mux presented to the G38 gate.
+net probe-mux => counter.1.phase-A
+
+# Channel 2: input actually admitted while motion type is G38 probing.
+net tcpc-probe-gated => counter.2.phase-A
+
+setp counter.0.phase-Z false
+setp counter.1.phase-Z false
+setp counter.2.phase-Z false
+setp counter.0.index-enable false
+setp counter.1.index-enable false
+setp counter.2.index-enable false
+setp counter.0.reset false
+setp counter.1.reset false
+setp counter.2.reset false
+setp counter.0.position-scale 1.0
+setp counter.1.position-scale 1.0
+setp counter.2.position-scale 1.0
+
+# Append both functions to the 1 kHz servo thread. update-counters captures
+# edges after the existing hardware/gate functions; capture-position exposes
+# the sticky counts to HAL_PIN_VARS and the timestamped userspace monitor.
+addf counter.update-counters servo-thread
+addf counter.capture-position servo-thread
+
+# Start a timestamped userspace observer only after its required counter pins
+# exist. LinuxCNC session cleanup owns this child process.
+loadusr -Wn tcpc_probe_edge_monitor /home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/diagnostics/start_tcpc_probe_edge_monitor.sh

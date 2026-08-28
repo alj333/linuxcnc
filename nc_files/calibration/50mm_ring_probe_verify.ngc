@@ -1,74 +1,260 @@
-(50 mm ring verification after probe qualification)
-(Start above the left inside edge of the ring, roughly centered in Y, at safe Z)
-(Uses the Probe Basic UI probe tool number and probe parameters)
+%
+(50 mm ring verification for the guarded T3/T4 TCPC campaign.)
+(Start 3-4 mm onto the left wall from the bore, centered in Y, within 15 mm above the top.)
+(The fixed +X 10 mm step places the 6 mm ball center safely inside the bore.)
+(This cycle keeps G43 H3/H4, preserves #3032, and must not change the WCS.)
 
-G21 G17 G40 G49 G64 P0.001 G80 G90 G94
+G21 G17 G40 G64 P0.001 G80 G90 G94
 
-#<probe_tool_number> = #3014
-#<max_z_distance> = #3020
-#<max_xy_distance> = #3018
-#<xy_clearance> = #3019
-#<z_clearance> = #3021
-#<step_off_width> = #3023
-#<extra_probe_depth> = #3022
-#<probe_slow_fr> = #3015
-#<probe_fast_fr> = #3016
-#<edge_width> = #3024
-#<max_vel_slider> = #3017
+o<preview_guard> if [#<_task> EQ 0]
+  (DEBUG, RING_VERIFY_50MM preview only)
+  M2
+o<preview_guard> endif
 
-o<10> if [#<probe_tool_number> LE 0]
-  #<probe_tool_number> = #5400
-o<10> endif
-o<11> if [#<max_z_distance> LE 0]
-  #<max_z_distance> = 15.0
-o<11> endif
-o<12> if [#<max_xy_distance> LE 0]
-  #<max_xy_distance> = 35.0
-o<12> endif
-o<13> if [#<xy_clearance> LE 0]
-  #<xy_clearance> = 1.0
-o<13> endif
-o<14> if [#<z_clearance> LE 0]
-  #<z_clearance> = 2.0
-o<14> endif
-o<15> if [#<step_off_width> LE 0]
-  #<step_off_width> = 3.0
-o<15> endif
-o<16> if [#<probe_slow_fr> LE 0]
-  #<probe_slow_fr> = 50.0
-o<16> endif
-o<17> if [#<probe_fast_fr> LE 0]
-  #<probe_fast_fr> = 100.0
-o<17> endif
-o<18> if [#<edge_width> LE 0]
-  #<edge_width> = 5.0
-o<18> endif
-o<19> if [#<max_vel_slider> LE 0]
-  #<max_vel_slider> = 300.0
-o<19> endif
-o<20> if [#<probe_traverse_fr> LE 0]
-  #<probe_traverse_fr> = 300.0
-o<20> endif
-o<21> if [#<probe_traverse_fr> GT 300.0]
-  #<probe_traverse_fr> = 300.0
-o<21> endif
-o<22> if [#<max_vel_slider> GT 300.0]
-  #<max_vel_slider> = 300.0
-o<22> endif
+(Required operator selectors. Sentinel defaults abort before motion.)
+#715 = 0.0            (campaign ID YYYYMMDDNN; intentionally disarmed)
+#717 = -1.0           (frozen qualification offset; intentionally disarmed)
+#727 = 0.0            (verification attempt; attempt 10 was waived unexecuted)
 
-#3015 = #<probe_slow_fr>
-#3016 = #<probe_fast_fr>
-#3017 = #<probe_traverse_fr>
+M65 P0
+M65 P1
 
-#<ring_diameter> = 50.0
-#<calibration_offset> = 0.0000
-#<x_hint> = 0.0
-#<y_hint> = 0.0
-#<diameter_hint> = 50.0
-#<probe_mode> = 1
+o<campaign_integral> if [ABS[#715 - FIX[#715]] GT 0.000001]
+  (abort, Ring campaign ID #715 must be an integer YYYYMMDDNN)
+o<campaign_integral> endif
+o<campaign_low> if [#715 LT 2020010100.0]
+  (abort, Set ring campaign ID #715 to YYYYMMDDNN)
+o<campaign_low> endif
+o<campaign_high> if [#715 GT 2099123199.0]
+  (abort, Ring campaign ID #715 is outside the accepted YYYYMMDDNN range)
+o<campaign_high> endif
+o<attempt_integral> if [ABS[#727 - FIX[#727]] GT 0.000001]
+  (abort, Ring verification attempt #727 must be a positive integer)
+o<attempt_integral> endif
+o<attempt_low> if [#727 LT 0.5]
+  (abort, Set ring verification attempt #727 to 1 or the next repeat)
+o<attempt_low> endif
+o<expected_calibration_low> if [#717 LE 0.0]
+  (abort, Set #717 to this probe's frozen ring-qualified offset)
+o<expected_calibration_low> endif
+o<expected_calibration_high> if [#717 GT 1.0]
+  (abort, Frozen ring-qualified offset #717 must be at most 1 mm)
+o<expected_calibration_high> endif
+o<calibration_match> if [ABS[#3032 - #717] GT 0.0005]
+  (abort, Live #3032 does not match the expected frozen probe offset #717)
+o<calibration_match> endif
 
-(DEBUG, RING_VERIFY_50MM start)
-o<probe_round_pocket> call [#<probe_tool_number>] [#<max_z_distance>] [#<max_xy_distance>] [#<xy_clearance>] [#<z_clearance>] [#<step_off_width>] [#<extra_probe_depth>] [#<probe_slow_fr>] [#<probe_fast_fr>] [#<calibration_offset>] [#<x_hint>] [#<y_hint>] [#<diameter_hint>] [#<edge_width>] [#<probe_mode>] [#<max_vel_slider>]
-(DEBUG, RING_VERIFY_50MM complete - record x/y diameter and averaged_diam from the Probe Basic widget)
+o<machine_on_required> if [#<_hal[halui.machine.is-on]> LT 0.5]
+  (abort, Ring verification requires the machine enabled)
+o<machine_on_required> endif
+o<all_homed_required> if [[#<_hal[joint.0.homed]> + #<_hal[joint.1.homed]> + #<_hal[joint.2.homed]> + #<_hal[joint.3.homed]> + #<_hal[joint.4.homed]>] LT 4.5]
+  (abort, Ring verification requires all five joints homed)
+o<all_homed_required> endif
+o<spindle_off_required> if [#<_hal[spindle.0.on]> GT 0.5]
+  (abort, Ring verification requires the spindle stopped)
+o<spindle_off_required> endif
+o<tcpc_off_required> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+  (abort, Exit TCPC with G49.1 before ring verification)
+o<tcpc_off_required> endif
+o<twp_clear_required> if [[#<_hal[headheadtwp.active]> + #<_hal[headheadtwp.motion_enabled]> + #<_hal[headheadtwp.valid]>] GT 0.5]
+  (abort, Ring verification requires TWP off and undefined)
+o<twp_clear_required> endif
+o<ssi_valid_required> if [[#<_hal[b-ssi-invalid]> + #<_hal[c-ssi-invalid]>] GT 0.5]
+  (abort, Ring verification requires valid B and C SSI feedback)
+o<ssi_valid_required> endif
 
+#<b_cmd_zero_error> = ABS[[[#<_hal[headheadtwp.current_joint_b]> + 540.0] MOD 360.0] - 180.0]
+#<b_fb_zero_error> = ABS[[[#<_hal[joint.3.pos-fb]> + 540.0] MOD 360.0] - 180.0]
+#<b_ssi_zero_error> = ABS[[[#<_hal[b-ssi-zeroed-position]> + 540.0] MOD 360.0] - 180.0]
+#<c_cmd_zero_error> = ABS[[[#<_hal[headheadtwp.current_joint_c]> + 540.0] MOD 360.0] - 180.0]
+#<c_fb_zero_error> = ABS[[[#<_hal[joint.4.pos-fb]> + 540.0] MOD 360.0] - 180.0]
+#<c_ssi_zero_error> = ABS[[[#<_hal[c-ssi-zeroed-position]> + 540.0] MOD 360.0] - 180.0]
+o<b_zero_required> if [[#<b_cmd_zero_error> GT 0.005] OR [#<b_fb_zero_error> GT 0.005] OR [#<b_ssi_zero_error> GT 0.005]]
+  (abort, Ring verification requires B command feedback and SSI at B0)
+o<b_zero_required> endif
+o<c_zero_required> if [[#<c_cmd_zero_error> GT 0.005] OR [#<c_fb_zero_error> GT 0.005] OR [#<c_ssi_zero_error> GT 0.005]]
+  (abort, Ring verification requires C command feedback and SSI at C0)
+o<c_zero_required> endif
+
+o<raw_probe_clear> if [[#<_hal[t_probe-in]> GT 0.5] OR [#<_hal[probe-mux]> GT 0.5] OR [#<_hal[motion.probe-input]> GT 0.5]]
+  (abort, Ring verification requires all probe inputs clear)
+o<raw_probe_clear> endif
+o<probe_gates_clear> if [[#<_hal[motion.digital-out-00]> GT 0.5] OR [#<_hal[motion.digital-out-01]> GT 0.5]]
+  (abort, Ring verification requires both probe gates clear)
+o<probe_gates_clear> endif
+
+#<probe_tool_number> = #<_hal[iocontrol.0.tool-number]>
+#<expected_tool_length> = 0.0
+o<short_probe_selected> if [ABS[#<probe_tool_number> - 3.0] LT 0.1]
+  #<expected_tool_length> = 128.606729
+o<short_probe_selected> endif
+o<long_probe_selected> if [ABS[#<probe_tool_number> - 4.0] LT 0.1]
+  #<expected_tool_length> = 229.407000
+o<long_probe_selected> endif
+o<known_probe_required> if [#<expected_tool_length> LT 1.0]
+  (abort, Ring verification requires live T3 H3 or T4 H4)
+o<known_probe_required> endif
+
+#<probe_diameter> = #<_hal[halui.tool.diameter]>
+o<diameter_low> if [#<probe_diameter> LT 5.99]
+  (abort, Ring verification requires a live 6 mm probe diameter)
+o<diameter_low> endif
+o<diameter_high> if [#<probe_diameter> GT 6.01]
+  (abort, Ring verification requires a live 6 mm probe diameter)
+o<diameter_high> endif
+
+#<motion_tlo_z> = #<_hal[motion.tooloffset.z]>
+#<halui_tlo_z> = #<_hal[halui.tool.length_offset.z]>
+#<kins_tlo_z> = #<_hal[headheadkins.active-tool-offset.z]>
+o<motion_tlo_required> if [ABS[#<motion_tlo_z> - #<expected_tool_length>] GT 0.002]
+  (abort, Ring verification motion TLO does not match H3 or H4)
+o<motion_tlo_required> endif
+o<halui_tlo_required> if [ABS[#<halui_tlo_z> - #<expected_tool_length>] GT 0.002]
+  (abort, Ring verification HALUI TLO does not match H3 or H4)
+o<halui_tlo_required> endif
+o<kins_tlo_required> if [ABS[#<kins_tlo_z> - #<expected_tool_length>] GT 0.002]
+  (abort, Ring verification kinematics TLO does not match H3 or H4)
+o<kins_tlo_required> endif
+o<tlo_x_zero> if [ABS[#<_hal[motion.tooloffset.x]>] GT 0.002]
+  (abort, Ring verification requires zero active X tool offset)
+o<tlo_x_zero> endif
+o<tlo_y_zero> if [ABS[#<_hal[motion.tooloffset.y]>] GT 0.002]
+  (abort, Ring verification requires zero active Y tool offset)
+o<tlo_y_zero> endif
+o<tlo_abc_zero> if [[ABS[#<_hal[motion.tooloffset.a]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.b]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.c]>] GT 0.002]]
+  (abort, Ring verification requires zero active A B and C tool offsets)
+o<tlo_abc_zero> endif
+o<tlo_uvw_zero> if [[ABS[#<_hal[motion.tooloffset.u]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.v]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.w]>] GT 0.002]]
+  (abort, Ring verification requires zero active U V and W tool offsets)
+o<tlo_uvw_zero> endif
+
+o<g92_x_zero> if [ABS[#5211] GT 0.0001]
+  (abort, Ring verification requires G92 X zero)
+o<g92_x_zero> endif
+o<g92_y_zero> if [ABS[#5212] GT 0.0001]
+  (abort, Ring verification requires G92 Y zero)
+o<g92_y_zero> endif
+o<g92_z_zero> if [ABS[#5213] GT 0.0001]
+  (abort, Ring verification requires G92 Z zero)
+o<g92_z_zero> endif
+
+o<wcs_index_valid> if [[#5220 LT 0.5] OR [#5220 GT 9.5] OR [ABS[#5220 - FIX[#5220]] GT 0.000001]]
+  (abort, Ring verification requires a valid integral active WCS index)
+o<wcs_index_valid> endif
+o<wcs_rotary_offsets_zero> if [[ABS[#[5205 + [20 * #5220]]] GT 0.0001] OR [ABS[#[5206 + [20 * #5220]]] GT 0.0001]]
+  (abort, Ring verification requires active WCS B and C offsets zero)
+o<wcs_rotary_offsets_zero> endif
+o<wcs_xy_rotation_zero> if [ABS[#[5210 + [20 * #5220]]] GT 0.0001]
+  (abort, Ring verification requires zero active WCS XY rotation)
+o<wcs_xy_rotation_zero> endif
+
+#<wcs_index> = #5220
+#<wcs_x_before> = #[5201 + [20 * #<wcs_index>]]
+#<wcs_y_before> = #[5202 + [20 * #<wcs_index>]]
+#<wcs_z_before> = #[5203 + [20 * #<wcs_index>]]
+#<calibration_before> = #3032
+#<campaign_snapshot> = #715
+#<calibration_snapshot> = #717
+#<attempt_snapshot> = #727
+#<hold_abs_x> = #<_abs_x>
+#<hold_abs_y> = #<_abs_y>
+#<hold_abs_z> = #<_abs_z>
+
+(MSG, Confirm T3 or T4, G43, frozen #3032, ring start 3-4 mm on left wall, +X10 enters bore, and clearances.)
+M0
+
+(Reject selector or coordinate-state changes made across the operator hold.)
+o<campaign_unchanged_after_hold> if [ABS[#715 - #<campaign_snapshot>] GT 0.000001]
+  (abort, Ring campaign ID changed during the operator hold; reload the program)
+o<campaign_unchanged_after_hold> endif
+o<calibration_unchanged_after_hold> if [ABS[#717 - #<calibration_snapshot>] GT 0.000001]
+  (abort, Frozen ring offset changed during the operator hold; reload the program)
+o<calibration_unchanged_after_hold> endif
+o<attempt_unchanged_after_hold> if [ABS[#727 - #<attempt_snapshot>] GT 0.000001]
+  (abort, Ring verification attempt changed during the operator hold; reload the program)
+o<attempt_unchanged_after_hold> endif
+o<live_calibration_unchanged_after_hold> if [ABS[#3032 - #<calibration_before>] GT 0.0005]
+  (abort, Live #3032 changed during the operator hold; reload the program)
+o<live_calibration_unchanged_after_hold> endif
+o<wcs_index_unchanged_after_hold> if [ABS[#5220 - #<wcs_index>] GT 0.0001]
+  (abort, Active WCS changed during the operator hold; reload the program)
+o<wcs_index_unchanged_after_hold> endif
+o<wcs_xyz_unchanged_after_hold> if [[ABS[#[5201 + [20 * #<wcs_index>]] - #<wcs_x_before>] GT 0.0001] OR [ABS[#[5202 + [20 * #<wcs_index>]] - #<wcs_y_before>] GT 0.0001] OR [ABS[#[5203 + [20 * #<wcs_index>]] - #<wcs_z_before>] GT 0.0001]]
+  (abort, Active WCS offsets changed during the operator hold; reload the program)
+o<wcs_xyz_unchanged_after_hold> endif
+o<xyz_unchanged_after_hold> if [[ABS[#<_abs_x> - #<hold_abs_x>] GT 0.001] OR [ABS[#<_abs_y> - #<hold_abs_y>] GT 0.001] OR [ABS[#<_abs_z> - #<hold_abs_z>] GT 0.001]]
+  (abort, XYZ position changed during the operator hold; re-establish the reviewed ring start)
+o<xyz_unchanged_after_hold> endif
+
+(Rewrite the fixed campaign contract after the operator hold, then validate it.)
+#3014 = #<probe_tool_number>
+#3015 = 50.0          (slow probe feed)
+#3016 = 100.0         (fast probe feed)
+#3017 = 300.0         (bounded traverse feed)
+#3018 = 35.0          (maximum XY probe distance)
+#3019 = 1.0           (XY clearance)
+#3020 = 15.0          (maximum Z probe distance)
+#3021 = 2.0           (Z clearance)
+#3022 = 0.0           (extra probe depth)
+#3023 = 10.0          (left wall to safe bore position for 6 mm ball)
+#3024 = 5.0           (edge width)
+#3025 = 50.001        (certified stamped verification diameter hint)
+#3030 = 1.0           (measurement-only; never write WCS)
+#3032 = #717          (restore the selected frozen offset)
+#3033 = 50.001        (certified stamped ring diameter contract)
+#3036 = 0.0           (explicit average-axis contract)
+o<tcpc_ring_live_guard> call [#<probe_tool_number>] [#<expected_tool_length>] [1.0] [#717]
+
+(DEBUG, RING_VERIFY_50MM start campaign=#715 attempt=#727 tool=#<probe_tool_number>)
+o<tcpc_ring_round_pocket> call
+
+M65 P0
+M65 P1
+
+o<calibration_preserved> if [ABS[#3032 - #717] GT 0.0005]
+  (abort, Ring verification changed the frozen probe calibration offset)
+o<calibration_preserved> endif
+o<wcs_index_preserved> if [ABS[#5220 - #<wcs_index>] GT 0.0001]
+  (abort, Ring verification changed the active WCS)
+o<wcs_index_preserved> endif
+o<tcpc_ring_live_guard> call [#<probe_tool_number>] [#<expected_tool_length>] [1.0] [#717]
+
+#<motion_tlo_z> = #<_hal[motion.tooloffset.z]>
+#<halui_tlo_z> = #<_hal[halui.tool.length_offset.z]>
+#<kins_tlo_z> = #<_hal[headheadkins.active-tool-offset.z]>
+
+#<wcs_x_after> = #[5201 + [20 * #<wcs_index>]]
+#<wcs_y_after> = #[5202 + [20 * #<wcs_index>]]
+#<wcs_z_after> = #[5203 + [20 * #<wcs_index>]]
+o<wcs_unchanged> if [[ABS[#<wcs_x_after> - #<wcs_x_before>] GT 0.0001] OR [ABS[#<wcs_y_after> - #<wcs_y_before>] GT 0.0001] OR [ABS[#<wcs_z_after> - #<wcs_z_before>] GT 0.0001]]
+  (abort, Ring verification unexpectedly changed the active WCS)
+o<wcs_unchanged> endif
+o<probe_released> if [[#<_hal[t_probe-in]> GT 0.5] OR [#<_hal[probe-mux]> GT 0.5]]
+  (abort, Probe did not release after ring verification)
+o<probe_released> endif
+
+#1100 = #<probe_tool_number>
+#1101 = #<expected_tool_length>
+#1102 = #<calibration_before>
+#1103 = #<wcs_index>
+#1104 = #<wcs_x_before>
+#1105 = #<wcs_y_before>
+#1106 = #<wcs_z_before>
+#1107 = #<wcs_x_after>
+#1108 = #<wcs_y_after>
+#1109 = #<wcs_z_after>
+#1110 = #<motion_tlo_z>
+#1111 = #<halui_tlo_z>
+#1112 = #<kins_tlo_z>
+(LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc-long-short-ring-results.csv)
+(LOG,#715,#727,2,#1100,#1101,#1102,#3032,#1001,#1003,#1010,#1002,#1004,#1103,#1104,#1105,#1106,#1107,#1108,#1109,#1110,#1111,#1112)
+(LOGCLOSE)
+
+#<diameter_error> = ABS[#1010 - #3033]
+o<ring_verify_diameter_gate> if [#<diameter_error> GT 0.010]
+  (abort, Ring verification average exceeded 0.010 mm; diagnostic row retained at measured-center clearance)
+o<ring_verify_diameter_gate> endif
+
+(DEBUG, RING_VERIFY_50MM complete - record X Y and averaged diameter)
 M2
+%

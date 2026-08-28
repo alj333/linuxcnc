@@ -1,0 +1,166 @@
+(Pinned TCPC ring-campaign copy; do not resolve through shared Probe Basic names.)
+(author: Chris P)
+(version: 0.3)
+(date: 01/28/26)
+
+(Probe round pocket center measure x and y Diam, find xy center position)
+(Start probe position is over left side edge of pocket wall)
+(inside the step off width distance and within max z distance)
+(ensure all settings have been set properly according to help diagrams)
+
+o<tcpc_ring_round_pocket> sub
+
+  (uses NGCGUI style arg spec)
+  (number after "=" in comment is default value)
+  #<probe_tool_number> = #3014    (=99)
+  #<probe_slow_fr> = #3015        (=0)
+  #<probe_fast_fr> = #3016        (=10.0)
+  #<probe_traverse_fr> = #3017    (=50)
+  #<max_xy_distance> = #3018      (=0.5000)
+  #<xy_clearance> = #3019         (=0.1000)
+  #<max_z_distance> = #3020       (=0.5000)
+  #<z_clearance> = #3021          (=0.1000)
+  #<extra_probe_depth> = #3022    (=0.0000)
+  #<step_off_width> = #3023       (=0.5000)
+  #<diameter_hint> = #3025        (=0)
+  #<probe_mode> = #3030           (=0)
+  #<calibration_offset> = #3032   (=0)
+
+  (G52/G92 are required zero by the caller and are not altered here.)
+
+  #<workspace_x> = #[5201 + [20 * #5220]]
+  #<workspace_y> = #[5202 + [20 * #5220]]
+
+  (Probe Tool Safety Check)
+  o100 if [#<_hal[iocontrol.0.tool-number]> NE #<probe_tool_number>]
+      (abort, Specified probe tool %d#<probe_tool_number> not in spindle, aborting)
+  o100 endif
+
+  (Probe Diameter)
+  #<probe_diameter> = #<_hal[halui.tool.diameter]>
+  o<probe_diameter_check> if [#<probe_diameter> LE 0]
+      (abort, Probe tool diameter is zero in tool table, aborting)
+  o<probe_diameter_check> endif
+
+  (remove probe tip diam and cal offset from probed width calculations)
+  #<probe_diameter_offset> = [#<probe_diameter> - [#<calibration_offset> * 2]]
+
+  #<z_probe_stack> = [#<z_clearance> + #<probe_diameter> + #<extra_probe_depth>]
+
+  (Call sub "tcpc_ring_probe_z_minus" to Probe top of Workpiece)
+  o<tcpc_ring_probe_z_minus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_z_distance>][#<z_clearance>][#<probe_mode>]
+
+  (Probe X Positioning Move, Step Off Width)
+  o<tcpc_ring_position_no_contact> call [1] [0] [#<step_off_width>] [#<probe_traverse_fr>]
+
+  (Probe X Positioning Move, to Probing Depth)
+  o<tcpc_ring_position_no_contact> call [3] [0] [-#<z_probe_stack>] [#<probe_fast_fr>]
+
+  (Call sub "tcpc_ring_probe_x_minus" to Probe x-)
+  o<tcpc_ring_probe_x_minus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_xy_distance>][#<xy_clearance>][#<calibration_offset>]
+
+  #<x_minus_probed> = #5061
+
+  (Call sub "tcpc_ring_probe_x_plus" to Probe x+)
+  o<tcpc_ring_probe_x_plus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_xy_distance> + #<diameter_hint>][#<xy_clearance>][#<calibration_offset>]
+
+  #<x_plus_probed> = #5061
+
+  (probed center calculation)
+  #<x_center_probed> = [[#<x_plus_probed> + #<x_minus_probed>] / 2]
+
+  #1002 = #<x_center_probed>
+  (DEBUG, EVAL[vcp.getWidget{"x_center_probed"}.setValue{#1002}])
+
+  (Probe Completion Move to Z Clearance Plane, and X Zero)
+  o<tcpc_ring_position_no_contact> call [1] [1] [#<x_center_probed>] [#<probe_traverse_fr>]
+
+  (Call sub "tcpc_ring_probe_y_plus" to Probe Y+)
+  o<tcpc_ring_probe_y_plus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_xy_distance> + #<diameter_hint> / 2][#<xy_clearance>][#<calibration_offset>]
+
+  #<y_plus_probed> = #5062
+
+  (Call sub "tcpc_ring_probe_y_minus" to Probe Y-)
+  o<tcpc_ring_probe_y_minus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_xy_distance> + #<diameter_hint>][#<xy_clearance>][#<calibration_offset>]
+
+  #<y_minus_probed> = #5062
+
+  (probed center calculation)
+  #<y_center_probed> = [[#<y_plus_probed> + #<y_minus_probed>] / 2]
+
+  #1004 = #<y_center_probed>
+  (DEBUG, EVAL[vcp.getWidget{"y_center_probed"}.setValue{#1004}])
+
+  (Probe Completion Move to Z Clearance Plane, Y Zero)
+  o<tcpc_ring_position_no_contact> call [2] [1] [#<y_center_probed>] [#<probe_traverse_fr>]
+
+  (Call sub "tcpc_ring_probe_x_minus" to Probe x-)
+  o<tcpc_ring_probe_x_minus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_xy_distance> + #<diameter_hint> / 2][#<xy_clearance>][#<calibration_offset>]
+
+  #<x_minus_probed> = #5061
+
+  (Call sub "tcpc_ring_probe_x_plus" to Probe x+)
+  o<tcpc_ring_probe_x_plus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_xy_distance> + #<diameter_hint>][#<xy_clearance>][#<calibration_offset>]
+
+  #<x_plus_probed> = #5061
+
+  (probed center calculation)
+  #<x_center_probed> = [[#<x_plus_probed> + #<x_minus_probed>] / 2]
+
+  (calculate X Width Probed)
+  #<raw_width> = [#<x_plus_probed> - #<x_minus_probed>]
+
+  (Completed probed width calculations)
+  #<x_probed_width> = [#<raw_width> + #<probe_diameter_offset>]
+
+  #1001 = #<x_probed_width>
+  (DEBUG, EVAL[vcp.getWidget{"x_probed_width"}.setValue{#1001}])
+
+  #1002 = #<x_center_probed>
+  (DEBUG, EVAL[vcp.getWidget{"x_center_probed"}.setValue{#1002}])
+
+  o<tcpc_ring_position_no_contact> call [1] [1] [#<x_center_probed>] [#<probe_traverse_fr>]
+
+  (Call sub "tcpc_ring_probe_y_plus" to Probe Y+)
+  o<tcpc_ring_probe_y_plus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_xy_distance> + #<diameter_hint> / 2][#<xy_clearance>][#<calibration_offset>]
+
+  #<y_plus_probed> = #5062
+
+  (Call sub "tcpc_ring_probe_y_minus" to Probe Y-)
+  o<tcpc_ring_probe_y_minus> call [#<probe_tool_number>][#<probe_slow_fr>][#<probe_fast_fr>][#<probe_traverse_fr>][#<max_xy_distance> + #<diameter_hint>][#<xy_clearance>][#<calibration_offset>]
+
+  #<y_minus_probed> = #5062
+
+  (probed center calculation)
+  #<y_center_probed> = [[#<y_plus_probed> + #<y_minus_probed>] / 2]
+
+  (calculate Y Width Probed)
+  #<raw_width> = [#<y_plus_probed> - #<y_minus_probed>]
+
+  (Completed probed diameter calculations)
+  #<y_probed_width> = [#<raw_width> + #<probe_diameter_offset>]
+
+  #1003 = #<y_probed_width>
+  (DEBUG, EVAL[vcp.getWidget{"y_probed_width"}.setValue{#1003}])
+
+  #1004 = #<y_center_probed>
+  (DEBUG, EVAL[vcp.getWidget{"y_center_probed"}.setValue{#1004}])
+
+  #<averaged_diam> = [[#<x_probed_width> + #<y_probed_width>] / 2]
+
+  #1010 = #<averaged_diam>
+  (DEBUG, EVAL[vcp.getWidget{"averaged_diam"}.setValue{#1010}])
+
+  o<tcpc_ring_position_no_contact> call [2] [1] [#<y_center_probed>] [#<probe_traverse_fr>]
+  o<tcpc_ring_position_no_contact> call [3] [0] [#<z_probe_stack>] [#<probe_traverse_fr>]
+
+  (probe mode rules for WCO or probe position measuring only)
+  o110 if [#<probe_mode> EQ 0]
+      (Record Y Zero in selected WCO)
+      G10 L2 P#5220 X[#<x_center_probed> + #<workspace_x>]
+      G10 L2 P#5220 Y[#<y_center_probed> + #<workspace_y>]
+  o110 endif
+
+o<tcpc_ring_round_pocket> endsub
+
+M2 (end program)

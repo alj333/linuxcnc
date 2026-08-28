@@ -1,0 +1,22 @@
+T3 attempt-2 recovery COMPOSITE ENGINEERING PASS; NOT FORMAL T3 RELEASE
+runner_sha256=1924e4af8be964a29442f23903e3566daceb4e65dde0e334bd595ba2dcb31294
+identity=campaign2026082602/mode34/attempt2 rows=11 closures=6 traces=88
+b0_bridge_mm=0.005719
+bm90_bridge_mm=0.013314
+canonical_closure_max_mm=0.016482
+raw_rms_mm=0.107172
+raw_max_mm=0.238596
+unique_rms_mm=0.103060
+unique_max_mm=0.218333
+raw_h0_rms_mm=0.222423
+raw_h0_max_mm=0.627672
+unique_h0_rms_mm=0.251775
+unique_h0_max_mm=0.592990
+positive_b_rms_mm=0.089938
+positive_b_h0_rms_mm=0.208666
+negative_b_rms_mm=0.111950
+negative_b_h0_rms_mm=0.318974
+b0_rms_mm=0.108919
+b0_h0_rms_mm=0.162422
+maximum_pose_worsening_mm=0.008584
+filtered_extra_edges=4

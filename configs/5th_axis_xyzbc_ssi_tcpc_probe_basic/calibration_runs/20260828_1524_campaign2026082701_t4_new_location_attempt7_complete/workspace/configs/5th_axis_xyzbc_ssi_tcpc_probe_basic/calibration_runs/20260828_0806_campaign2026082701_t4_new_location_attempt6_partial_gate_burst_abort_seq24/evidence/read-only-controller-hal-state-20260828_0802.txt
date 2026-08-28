@@ -1,0 +1,80 @@
+Capture purpose: Attempt-6 partial-stop read-only audit
+Capture window: 2026-08-28 08:01:01 through 08:02:20 +07:00
+No controller command was issued.
+
+LinuxCNC status
+task_state=4
+task_mode=2
+interp_state=1
+paused=false
+queue=0
+inpos=true
+enabled=true
+estop=0
+current_line=1021
+motion_line=1021
+read_line=0
+file=/home/cnc5/linuxcnc-dev/nc_files/calibration/tcpc_length_aware_t4_new_location_2026082701_attempt6_recovery.ngc
+command=(abort, Raw mux gated probe counters or bounded extras are inconsistent before G38)
+g5x_index=1
+tool_in_spindle=4
+position_abs_commanded=[2479.642700100176,696.5286156215981,-298.7791376421428,0.0,10.0,0.0,0.0,0.0,0.0]
+position_actual=[2479.6431895569804,696.5282153892126,-298.77919813978167,0.0,9.999951538085924,0.00032014160154858473,0.0,0.0,0.0]
+joint_position=[2550.6594636817354,696.4717820192672,-305.111782513821,10.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+dtg=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+g5x_offset=[2501.9412544845527,696.8993474512587,-510.27312827156186,0.0,0.0,0.0,0.0,0.0,0.0]
+tool_offset=[0.0,0.0,229.407,0.0,0.0,0.0,0.0,0.0,0.0]
+work_position_derived=[-22.29855438437653,-0.37073182966059903,-17.913009370580966,0.0,10.0]
+probed_position=[2504.2548760768245,696.5286156215981,-284.99837845160357,0.0,10.00029486083983,-0.00002318115235766527,0.0,0.0,0.0]
+homed_first_five=[1,1,1,1,1]
+probe_val=0
+probing=false
+probe_tripped=true
+
+HAL snapshot
+t_probe-in=FALSE
+probe-mux=FALSE
+motion.probe-input=FALSE
+motion.digital-out-00=FALSE
+motion.digital-out-01=FALSE
+tcpc_probe_gate_ignore.out=FALSE
+tcpc_probe_gate_ignore.width=10
+tcpc-probe-abnormal-level=FALSE
+tcpc_probe_fault_pause.out=FALSE
+tcpc_probe_fault_pause.width=0.5
+tcpc-probe-gate-closed=TRUE
+tcpc-probe-gate-enable=FALSE
+tcpc-probe-gated=FALSE
+counter.0.counts=1182
+counter.1.counts=1182
+counter.2.counts=618
+iocontrol.0.tool-number=4
+motion.tooloffset.z=229.407
+halui.tool.length_offset.z=229.407
+headheadkins.active-tool-offset.z=229.407
+headhead-tcpc-enabled=TRUE
+headheadkins.length-model.id=2026082601
+headheadkins.length-model.expected-id=2026082601
+headheadkins.length-model.configured=TRUE
+headheadkins.length-model.valid=TRUE
+headheadkins.length-model.fault-code=0
+headheadkins.length-model.q=0
+headheadkins.tool-offset-eval.b=10
+headheadkins.tool-offset-eval.c=0
+headheadkins.tool-offset-eval.length=229.407
+joint.3.pos-cmd=10
+joint.3.pos-fb=9.999952
+joint.4.pos-cmd=0
+joint.4.pos-fb=-0.00002318115
+b-ssi-zeroed-position=9.999952
+c-ssi-zeroed-position=-360
+joint.0.motor-pos-cmd=1553.13
+joint.0.motor-pos-fb=1553.13
+joint.1.motor-pos-cmd=212.4098
+joint.1.motor-pos-fb=212.4098
+joint.2.motor-pos-cmd=404.7592
+joint.2.motor-pos-fb=404.7592
+
+Continuous monitor heartbeats over the stated window show unchanged counters,
+zero probe/gate/fault levels, zero velocity, in-position state, and unchanged
+commanded XYZBC at line 1021.

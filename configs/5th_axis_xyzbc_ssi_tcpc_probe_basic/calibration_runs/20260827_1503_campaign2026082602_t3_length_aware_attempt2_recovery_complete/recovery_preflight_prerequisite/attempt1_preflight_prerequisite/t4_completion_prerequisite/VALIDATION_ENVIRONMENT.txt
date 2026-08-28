@@ -1,0 +1,14 @@
+validation_time=2026-08-27T10:26:07+07:00
+linuxcnc_version=2.9.8
+kernel=Linux cnc5 6.1.0-43-rt-amd64 #1 SMP PREEMPT_RT Debian 6.1.162-1 (2026-02-08) x86_64 GNU/Linux
+distribution=Debian GNU/Linux 12 (bookworm)
+python_version=3.11.2
+numpy_version=1.24.2
+scipy_version=1.10.1
+git_commit=86dd4068016ab748cf0e0e454075f2e2b6b6a7d2
+git_description=v2.9.8-168-g86dd406801-dirty
+milltask_sha256=23f640db275c1fb5f8e2d938448ce1a0cd726ea002e3550e52439a9396ef1625
+rs274_sha256=1ac7ac4e0e2f3ae07a42ca02a34730d370651063e7dcfcc093643d76063cb4c9
+headheadkins_so_sha256=1cc5b7023bed01bd2eb56bb52139e74f964cf17754b440aff42a987f4b22ac4c
+controller_processes=absent
+linuxcnc_lock=absent

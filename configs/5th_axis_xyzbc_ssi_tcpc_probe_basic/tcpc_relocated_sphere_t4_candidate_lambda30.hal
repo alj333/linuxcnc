@@ -1,0 +1,42 @@
+# REJECTED PRE-MOTION: do not load. Exact runnable R1 is archived under
+# calibration_runs/20260825_0833_campaign04_t4_candidate_r1_rejected_pre_motion.
+# Campaign 2026082404 frozen T4-only lambda-30 candidate overlay.
+# Absolute totals recomputed from the immutable attempt-1 inputs named in
+# TCPC_RELOCATED_SPHERE_T4_FIT_REPORT.md. This file intentionally contains
+# only the selected nine XYZ tuning vectors (27 setp commands).
+
+# setp headheadkins.bcross.omcb-sin2c.x -0.031144594922244
+# setp headheadkins.bcross.omcb-sin2c.y 0.147037704892355
+# setp headheadkins.bcross.omcb-sin2c.z -0.126972049192931
+
+# setp headheadkins.charm.cos.x -0.018417306861316
+# setp headheadkins.charm.cos.y 0.059820553484954
+# setp headheadkins.charm.cos.z 0.012777449605307
+
+# setp headheadkins.bcross.sinb-sinc.x -0.063056888844143
+# setp headheadkins.bcross.sinb-sinc.y 0.455163613565816
+# setp headheadkins.bcross.sinb-sinc.z 0.117781622954655
+
+# setp headheadkins.bmid.sinc.x -0.004859882822453
+# setp headheadkins.bmid.sinc.y -0.091165545733395
+# setp headheadkins.bmid.sinc.z 0.003700491027508
+
+# setp headheadkins.bharm-m.sin.x 0.037834581629410
+# setp headheadkins.bharm-m.sin.y 0.043652874261357
+# setp headheadkins.bharm-m.sin.z 0.377892823717914
+
+# setp headheadkins.bcross.sinb-cos2c.x -0.022482124211408
+# setp headheadkins.bcross.sinb-cos2c.y 0.056498109523342
+# setp headheadkins.bcross.sinb-cos2c.z -0.003097113748449
+
+# setp headheadkins.bmid.cosc.x -0.077381903554096
+# setp headheadkins.bmid.cosc.y 0.032648436527379
+# setp headheadkins.bmid.cosc.z 0.007022421859552
+
+# setp headheadkins.bmid.base.x 0.039607853668348
+# setp headheadkins.bmid.base.y 0.060817434425637
+# setp headheadkins.bmid.base.z -0.009749765228322
+
+# setp headheadkins.charm.sin.x -0.022394938336773
+# setp headheadkins.charm.sin.y -0.013148381941270
+# setp headheadkins.charm.sin.z 0.002711441184455

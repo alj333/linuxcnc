@@ -1,0 +1,45 @@
+# Campaign 2026082404 isolated T4-only R2 candidate overlay.
+# Absolute totals independently reconstructed from the frozen 76-pose,
+# ten-term, lambda-10 R2 fit. This file changes only 30 existing TCPC
+# surface-tuning pins. It contains no component, signal, enable, or motion
+# command and is loaded only by the separate mode-26 diagnostic INI.
+
+setp headheadkins.charm.cos.x -0.020461248619773
+setp headheadkins.charm.cos.y 0.076365546297010
+setp headheadkins.charm.cos.z 0.017039535346885
+
+setp headheadkins.bharm-m.sin.x 0.035652942655408
+setp headheadkins.bharm-m.sin.y 0.066091390013983
+setp headheadkins.bharm-m.sin.z 0.404267882950607
+
+setp headheadkins.bharm-m.sin2.x -0.003197639673056
+setp headheadkins.bharm-m.sin2.y 0.014617797557285
+setp headheadkins.bharm-m.sin2.z -0.171184269575723
+
+setp headheadkins.bcross.sinb-sinc.x -0.076239608110223
+setp headheadkins.bcross.sinb-sinc.y 0.485265875790424
+setp headheadkins.bcross.sinb-sinc.z 0.114930150851087
+
+setp headheadkins.bcross.omcb-sin2c.x -0.041593901713095
+setp headheadkins.bcross.omcb-sin2c.y 0.218639612354774
+setp headheadkins.bcross.omcb-sin2c.z -0.146243852864937
+
+setp headheadkins.bcross.sinb-cos2c.x -0.027710790095965
+setp headheadkins.bcross.sinb-cos2c.y 0.069637931555957
+setp headheadkins.bcross.sinb-cos2c.z -0.003817324701821
+
+setp headheadkins.bmid.base.x 0.049306651723101
+setp headheadkins.bmid.base.y 0.071617640658233
+setp headheadkins.bmid.base.z -0.011117498522426
+
+setp headheadkins.bmid.cosc.x -0.094209329783791
+setp headheadkins.bmid.cosc.y 0.019592845357082
+setp headheadkins.bmid.cosc.z 0.003604714378862
+
+setp headheadkins.bmid.sinc.x -0.032916420628586
+setp headheadkins.bmid.sinc.y -0.129517106571506
+setp headheadkins.bmid.sinc.z 0.007589668116019
+
+setp headheadkins.bmid.cos2c.x -0.010555596639299
+setp headheadkins.bmid.cos2c.y -0.034914537038094
+setp headheadkins.bmid.cos2c.z -0.004599347008667

@@ -1,0 +1,5 @@
+%
+(Load-only target for deferred-close diagnostic. Do not Cycle Start.)
+(DEBUG, TCPC_LAZY_CLOSE_STAGE2 parsed)
+M2
+%

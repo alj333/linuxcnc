@@ -1,0 +1,125 @@
+(Shared live-state guard for the T3/T4 50 mm ring routines.)
+(Arguments: tool number, expected Z length, check #3032 flag, expected #3032.)
+
+o<tcpc_ring_live_guard> sub
+  #<guard_tool> = #1
+  #<guard_length> = #2
+  #<guard_check_cal> = #3
+  #<guard_cal> = #4
+
+  o<tcpc_ring_machine_on> if [#<_hal[halui.machine.is-on]> LT 0.5]
+    (abort, Ring cycle requires the machine enabled)
+  o<tcpc_ring_machine_on> endif
+  o<tcpc_ring_all_homed> if [[#<_hal[joint.0.homed]> + #<_hal[joint.1.homed]> + #<_hal[joint.2.homed]> + #<_hal[joint.3.homed]> + #<_hal[joint.4.homed]>] LT 4.5]
+    (abort, Ring cycle requires all five joints homed)
+  o<tcpc_ring_all_homed> endif
+  o<tcpc_ring_spindle_off> if [#<_hal[spindle.0.on]> GT 0.5]
+    (abort, Ring cycle requires the spindle stopped)
+  o<tcpc_ring_spindle_off> endif
+
+  o<tcpc_ring_tcpc_off> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+    (abort, Ring cycle requires TCPC off)
+  o<tcpc_ring_tcpc_off> endif
+  o<tcpc_ring_twp_clear> if [[#<_hal[headheadtwp.active]> + #<_hal[headheadtwp.motion_enabled]> + #<_hal[headheadtwp.valid]>] GT 0.5]
+    (abort, Ring cycle requires TWP off and undefined)
+  o<tcpc_ring_twp_clear> endif
+  o<tcpc_ring_ssi_valid> if [[#<_hal[b-ssi-invalid]> + #<_hal[c-ssi-invalid]>] GT 0.5]
+    (abort, Ring cycle requires valid B and C SSI feedback)
+  o<tcpc_ring_ssi_valid> endif
+
+  #<guard_b_cmd_error> = ABS[[[#<_hal[headheadtwp.current_joint_b]> + 540.0] MOD 360.0] - 180.0]
+  #<guard_b_fb_error> = ABS[[[#<_hal[joint.3.pos-fb]> + 540.0] MOD 360.0] - 180.0]
+  #<guard_b_ssi_error> = ABS[[[#<_hal[b-ssi-zeroed-position]> + 540.0] MOD 360.0] - 180.0]
+  #<guard_c_cmd_error> = ABS[[[#<_hal[headheadtwp.current_joint_c]> + 540.0] MOD 360.0] - 180.0]
+  #<guard_c_fb_error> = ABS[[[#<_hal[joint.4.pos-fb]> + 540.0] MOD 360.0] - 180.0]
+  #<guard_c_ssi_error> = ABS[[[#<_hal[c-ssi-zeroed-position]> + 540.0] MOD 360.0] - 180.0]
+  o<tcpc_ring_b_zero> if [[#<guard_b_cmd_error> GT 0.005] OR [#<guard_b_fb_error> GT 0.005] OR [#<guard_b_ssi_error> GT 0.005]]
+    (abort, Ring cycle requires B command feedback and SSI at B0)
+  o<tcpc_ring_b_zero> endif
+  o<tcpc_ring_c_zero> if [[#<guard_c_cmd_error> GT 0.005] OR [#<guard_c_fb_error> GT 0.005] OR [#<guard_c_ssi_error> GT 0.005]]
+    (abort, Ring cycle requires C command feedback and SSI at C0)
+  o<tcpc_ring_c_zero> endif
+
+  o<tcpc_ring_tool> if [ABS[#<_hal[iocontrol.0.tool-number]> - #<guard_tool>] GT 0.1]
+    (abort, Live tool changed during the ring cycle)
+  o<tcpc_ring_tool> endif
+  o<tcpc_ring_diameter_low> if [#<_hal[halui.tool.diameter]> LT 5.99]
+    (abort, Ring cycle requires a live 6 mm probe diameter)
+  o<tcpc_ring_diameter_low> endif
+  o<tcpc_ring_diameter_high> if [#<_hal[halui.tool.diameter]> GT 6.01]
+    (abort, Ring cycle requires a live 6 mm probe diameter)
+  o<tcpc_ring_diameter_high> endif
+  o<tcpc_ring_motion_tlo> if [ABS[#<_hal[motion.tooloffset.z]> - #<guard_length>] GT 0.002]
+    (abort, Live motion Z tool offset changed during the ring cycle)
+  o<tcpc_ring_motion_tlo> endif
+  o<tcpc_ring_halui_tlo> if [ABS[#<_hal[halui.tool.length_offset.z]> - #<guard_length>] GT 0.002]
+    (abort, Live HALUI Z tool offset changed during the ring cycle)
+  o<tcpc_ring_halui_tlo> endif
+  o<tcpc_ring_kins_tlo> if [ABS[#<_hal[headheadkins.active-tool-offset.z]> - #<guard_length>] GT 0.002]
+    (abort, Live kinematics Z tool offset changed during the ring cycle)
+  o<tcpc_ring_kins_tlo> endif
+  o<tcpc_ring_tlo_x> if [ABS[#<_hal[motion.tooloffset.x]>] GT 0.002]
+    (abort, Ring cycle requires zero active X tool offset)
+  o<tcpc_ring_tlo_x> endif
+  o<tcpc_ring_tlo_y> if [ABS[#<_hal[motion.tooloffset.y]>] GT 0.002]
+    (abort, Ring cycle requires zero active Y tool offset)
+  o<tcpc_ring_tlo_y> endif
+  o<tcpc_ring_tlo_abc> if [[ABS[#<_hal[motion.tooloffset.a]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.b]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.c]>] GT 0.002]]
+    (abort, Ring cycle requires zero active A B and C tool offsets)
+  o<tcpc_ring_tlo_abc> endif
+  o<tcpc_ring_tlo_uvw> if [[ABS[#<_hal[motion.tooloffset.u]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.v]>] GT 0.002] OR [ABS[#<_hal[motion.tooloffset.w]>] GT 0.002]]
+    (abort, Ring cycle requires zero active U V and W tool offsets)
+  o<tcpc_ring_tlo_uvw> endif
+
+  o<tcpc_ring_calibration> if [#<guard_check_cal> GT 0.5]
+    o<tcpc_ring_calibration_match> if [ABS[#3032 - #<guard_cal>] GT 0.0005]
+      (abort, Live #3032 changed from the selected frozen ring offset)
+    o<tcpc_ring_calibration_match> endif
+  o<tcpc_ring_calibration> endif
+
+  o<tcpc_ring_contract_tool> if [ABS[#3014 - #<guard_tool>] GT 0.0001]
+    (abort, Ring cycle Probe Basic tool contract changed)
+  o<tcpc_ring_contract_tool> endif
+  o<tcpc_ring_contract_feeds> if [[ABS[#3015 - 50.0] GT 0.0001] OR [ABS[#3016 - 100.0] GT 0.0001] OR [ABS[#3017 - 300.0] GT 0.0001]]
+    (abort, Ring cycle Probe Basic feed contract changed)
+  o<tcpc_ring_contract_feeds> endif
+  o<tcpc_ring_contract_distances_a> if [[ABS[#3018 - 35.0] GT 0.0001] OR [ABS[#3019 - 1.0] GT 0.0001] OR [ABS[#3020 - 15.0] GT 0.0001]]
+    (abort, Ring cycle Probe Basic distance contract changed)
+  o<tcpc_ring_contract_distances_a> endif
+  o<tcpc_ring_contract_distances_b> if [[ABS[#3021 - 2.0] GT 0.0001] OR [ABS[#3022] GT 0.0001] OR [ABS[#3023 - 10.0] GT 0.0001] OR [ABS[#3024 - 5.0] GT 0.0001]]
+    (abort, Ring cycle Probe Basic clearance contract changed)
+  o<tcpc_ring_contract_distances_b> endif
+  o<tcpc_ring_contract_mode> if [[ABS[#3025 - 50.001] GT 0.0001] OR [ABS[#3030 - 1.0] GT 0.0001] OR [ABS[#3033 - 50.001] GT 0.0001] OR [ABS[#3036] GT 0.0001]]
+    (abort, Ring cycle measurement-only or ring-diameter contract changed)
+  o<tcpc_ring_contract_mode> endif
+
+  o<tcpc_ring_g52_g92_enable> if [ABS[#5210] GT 0.0001]
+    (abort, Ring cycle requires G52 and G92 disabled)
+  o<tcpc_ring_g52_g92_enable> endif
+  o<tcpc_ring_g52_g92_xyz> if [[ABS[#5211] GT 0.0001] OR [ABS[#5212] GT 0.0001] OR [ABS[#5213] GT 0.0001]]
+    (abort, Ring cycle requires XYZ G52 and G92 offsets zero)
+  o<tcpc_ring_g52_g92_xyz> endif
+  o<tcpc_ring_g52_g92_abc> if [[ABS[#5214] GT 0.0001] OR [ABS[#5215] GT 0.0001] OR [ABS[#5216] GT 0.0001]]
+    (abort, Ring cycle requires ABC G52 and G92 offsets zero)
+  o<tcpc_ring_g52_g92_abc> endif
+  o<tcpc_ring_g52_g92_uvw> if [[ABS[#5217] GT 0.0001] OR [ABS[#5218] GT 0.0001] OR [ABS[#5219] GT 0.0001]]
+    (abort, Ring cycle requires UVW G52 and G92 offsets zero)
+  o<tcpc_ring_g52_g92_uvw> endif
+  o<tcpc_ring_wcs_index> if [[#5220 LT 0.5] OR [#5220 GT 9.5] OR [ABS[#5220 - FIX[#5220]] GT 0.000001]]
+    (abort, Ring cycle requires a valid integral active WCS index)
+  o<tcpc_ring_wcs_index> endif
+  o<tcpc_ring_wcs_rotary> if [[ABS[#[5205 + [20 * #5220]]] GT 0.0001] OR [ABS[#[5206 + [20 * #5220]]] GT 0.0001]]
+    (abort, Ring cycle requires active WCS B and C offsets zero)
+  o<tcpc_ring_wcs_rotary> endif
+  o<tcpc_ring_wcs_rotation> if [ABS[#[5210 + [20 * #5220]]] GT 0.0001]
+    (abort, Ring cycle requires zero active WCS XY rotation)
+  o<tcpc_ring_wcs_rotation> endif
+  o<tcpc_ring_probe_gates> if [[#<_hal[motion.digital-out-00]> GT 0.5] OR [#<_hal[motion.digital-out-01]> GT 0.5]]
+    (abort, Ring cycle requires both probe gates clear)
+  o<tcpc_ring_probe_gates> endif
+  o<tcpc_ring_probe_inputs> if [[#<_hal[t_probe-in]> GT 0.5] OR [#<_hal[probe-mux]> GT 0.5] OR [#<_hal[motion.probe-input]> GT 0.5]]
+    (abort, Ring cycle requires every probe input clear before motion)
+  o<tcpc_ring_probe_inputs> endif
+o<tcpc_ring_live_guard> endsub
+
+M2

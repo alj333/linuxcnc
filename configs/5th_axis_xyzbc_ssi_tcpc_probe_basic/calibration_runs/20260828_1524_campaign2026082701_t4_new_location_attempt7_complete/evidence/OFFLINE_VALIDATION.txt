@@ -1,0 +1,42 @@
+Attempt-7 populated-output completion validation
+================================================
+
+Command:
+python3 configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/validate_tcpc_length_aware_t4_new_location_2026082701_attempt7_complete.py --self-test
+
+Result:
+Attempt-7 completion validator self-test: PASS (5/5 mutations rejected)
+exit code: 0
+
+Command:
+python3 configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/validate_tcpc_length_aware_t4_new_location_2026082701_attempt7_complete.py
+
+Result:
+Attempt-7 completion validation: PASS - DATA INTEGRITY
+A7 contract: 78 rows, 25 closures, 624/624 traces
+composite contract: 101 rows, 28 closures, 808/808 traces
+composite equal-pose RMS/max: 0.146265/0.337105 mm
+filtered extras: 53; admitted gated edges: 624
+exit code: 0
+
+T4 new-location spatial comparison
+==================================
+
+Command:
+python3 configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/analyze_tcpc_length_aware_t4_new_location_2026082701_complete.py --self-test
+
+Result:
+T4 new-location spatial analyzer self-test: PASS
+exit code: 0
+
+Command:
+python3 configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/analyze_tcpc_length_aware_t4_new_location_2026082701_complete.py
+
+Result:
+T4 new-location spatial analysis: PASS
+location delta RMS/max: 0.155952 / 0.491649 mm
+X-vs-Y diameter change: -0.104692610 mm
+exit code: 0
+
+Both programs are filesystem-only. Neither imports LinuxCNC or HAL or has a
+controller interface.

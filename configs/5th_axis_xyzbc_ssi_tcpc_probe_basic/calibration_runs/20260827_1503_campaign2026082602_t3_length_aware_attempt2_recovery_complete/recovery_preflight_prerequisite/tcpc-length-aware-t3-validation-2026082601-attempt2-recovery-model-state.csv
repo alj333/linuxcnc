@@ -1,0 +1,1 @@
+schema_version,campaign_id,stage_mode,attempt_id,sample_seq,model_id,expected_model_id,configured,valid,fault_code,q,evaluated_b_deg,evaluated_c_deg,evaluated_length_mm,diff_offset_x_mm,diff_offset_y_mm,diff_offset_z_mm,diff_offset_norm_mm,empirical_offset_x_mm,empirical_offset_y_mm,empirical_offset_z_mm,empirical_offset_norm_mm

@@ -26,10 +26,30 @@ setp headheadkins.cal-b-to-tool.y 0.0
 setp headheadkins.cal-b-to-tool.z 0.0
 setp headheadkins.b-zero-offset 0.0
 setp headheadkins.c-zero-offset 0.0
+setp headheadkins.sim-bharm-enable 1
+setp headheadkins.length-model.id 2026082601
+setp headheadkins.ldiff.c-cos.x 0.014666078
+setp headheadkins.ldiff.c-cos.y -0.034936825
+setp headheadkins.ldiff.c-cos.z -0.000531832
+setp headheadkins.ldiff.c-sin.x 0.037331865
+setp headheadkins.ldiff.c-sin.y 0.007479807
+setp headheadkins.ldiff.c-sin.z 0.000596261
+setp headheadkins.ldiff.b-sin.x -0.009333530
+setp headheadkins.ldiff.b-sin.y -0.018596090
+setp headheadkins.ldiff.b-sin.z -0.055267212
+setp headheadkins.ldiff.sinb-sinc.x 0.022658483
+setp headheadkins.ldiff.sinb-sinc.y 0.036745231
+setp headheadkins.ldiff.sinb-sinc.z -0.024883253
+setp headheadkins.ldiff.sinb-cosc.x 0.126705142
+setp headheadkins.ldiff.sinb-cosc.y 0.001218059
+setp headheadkins.ldiff.sinb-cosc.z 0.017700599
 setp headheadkins.tcpc-enable 0
 setp headheadkins.tcpc-origin.x 0.0
 setp headheadkins.tcpc-origin.y 0.0
 setp headheadkins.tcpc-origin.z 0.0
+net active-tool-offset-x motion.tooloffset.x => headheadkins.active-tool-offset.x
+net active-tool-offset-y motion.tooloffset.y => headheadkins.active-tool-offset.y
+net active-tool-offset-z motion.tooloffset.z => headheadkins.active-tool-offset.z
 
 loadusr -Wn headheadtwp python3 ../../../configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/python/headhead_twp_state_safe.py
 
@@ -59,6 +79,11 @@ setp headheadtwp.cal_b_to_tool_z 0.0
 setp headheadtwp.b_zero_offset 0.0
 setp headheadtwp.c_zero_offset 0.0
 setp headheadtwp.requested_normal_rotation 0.0
+setp headheadtwp.use_external_tool_offset 1
+
+net headhead-kins-tool-offset-x headheadkins.tool-offset.x => headheadtwp.external_tool_offset_x
+net headhead-kins-tool-offset-y headheadkins.tool-offset.y => headheadtwp.external_tool_offset_y
+net headhead-kins-tool-offset-z headheadkins.tool-offset.z => headheadtwp.external_tool_offset_z
 
 net headhead-tcpc-enabled headheadtwp.tcpc_enabled => headheadkins.tcpc-enable
 net headhead-tcpc-origin-x headheadtwp.tcpc_origin_x => headheadkins.tcpc-origin.x

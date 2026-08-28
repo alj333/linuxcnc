@@ -1,0 +1,16 @@
+PASS: no blocker.
+
+The independent file-only audit re-ran the validator and verified exact
+campaign/mode/attempt identity, row ordering, closure mapping, pulse-counter
+arithmetic, travel correspondence, composite row mapping, and frozen metric
+gates.
+
+Recovery has 11 result/state/model rows, six closures, and 88/88 ordered
+contact/gap traces with no duplicate or missing sequence. All 88 G38 touches
+have direct raw/mux/gated deltas of 1/1/1; all 87 inter-transaction gaps are
+0/0/0. Four post-contact extra edges occurred across three contacts and none
+reached the gated input. Worst pass-center disagreement is 0.024217 mm. No bad
+accepted probe point was found.
+
+The result is a composite engineering pass, not a formal uninterrupted T3
+release.

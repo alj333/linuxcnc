@@ -1,8 +1,101 @@
 # 5th Axis XYZBC SSI TCPC Probe Basic Config
 
+Current calibration stage: length-aware model revision `2026082601` has passed
+both available physical probe endpoints at the reference sphere location. T4
+Attempt 2 is the formal uninterrupted `q=0` common-bank result. T3 is a
+composite engineering `q=1` pass: Attempt 1 supplies canonical rows `1..22`,
+and the separately identified Attempt-2 recovery supplies rows `23..31` after
+two continuity bridges passed at `0.005719` and `0.013314 mm`.
+
+The T3 equal-20-pose RMS/max is `0.103060/0.218333 mm`, compared with
+`0.251775/0.592990 mm` reconstructed without the length-aware correction.
+Positive B, negative B, and B0 all improve; the maximum individual-pose
+worsening is `0.008584 mm`. Recovery acquired exactly `11/11/11`
+result/state/model rows, six passing closures, and `88/88` successful guarded
+contact/gap transactions. Four delayed post-contact edges were logged and
+filtered; none reached the motion input. Full disposition and hashes are in
+`TCPC_LENGTH_AWARE_T3_ATTEMPT2_RECOVERY_CLOSEOUT_REPORT.md`.
+
+Attempt 1's rejected false W touch remains excluded. The T3 result spans a
+probe reseat and power cycle, so it is not a formal uninterrupted release; a
+fresh 31-row acquisition is required only if that stronger evidence class is
+later needed. The current physical accuracy evidence covers the probe bracket
+`128.606729..229.407000 mm`. Longer-tool accuracy remains extrapolation until
+the planned dial-gauge test near `425..430 mm`.
+
+A second-location T4 campaign is also complete. It identified a strong
+location/session-associated X-oriented indicated-span change and a broader
+Y-dominated high-B center field. That campaign is an axis-geometry diagnostic,
+not a calibration source: it did not change the model coefficients, B/C zeros,
+kinematics, HAL calibration, or tool table. An X-only/Y-only paired-position
+test is still required before attributing the effect to a specific rail or
+building an axis correction table.
+
+LinuxCNC was closed normally on `2026-08-28` after the completed campaigns.
+No LinuxCNC, Probe Basic, milltask, or RTAPI process and no
+`/tmp/linuxcnc.lock` remained at the closeout check. Do not assume homing,
+tool, TLO, G43.4, coordinate, or probe state at the next start.
+
+The complete read-only T3 composite evidence package is
+`calibration_runs/20260827_1503_campaign2026082602_t3_length_aware_attempt2_recovery_complete`.
+Its 186-entry `SHA256SUMS` hashes to
+`91296bbd468f5b5f67c0722c1142ce0a0edbf3bedd4bd4579aa6f53f68215bca`.
+
 This is the separate real-machine TCPC/TWP Probe Basic config. It is not the
 maintenance or setup config, and it remains a commissioning work config until
 the full TCPC/TWP task list is complete.
+
+## Default Cut-Test Launch - 2026-08-28 +07
+
+The shared TCPC launcher and LinuxCNC `LAST_CONFIG` now select the physically
+validated length-aware revision `2026082601` INI. Both desktop shortcuts use
+the shared launcher, so `5th Axis.desktop` and `TCPC Trim Work.desktop` select
+the same configuration without duplicating the INI path in the desktop files.
+
+This promotion is for controlled program cut testing. It does not release the
+commissioning config for unattended or general production use. The separate
+T4 new-location campaign remains an axis-geometry diagnostic only: none of its
+location-associated results changed the model coefficients, B/C zeros,
+kinematics, HAL calibration, or tool table.
+
+## Length-Aware Runtime Boundary - 2026-08-26
+
+The kinematics now has an opt-in, synchronous length-aware correction path.
+Its reviewed software domain is `100.000..430.000 mm`, with at most `0.002 mm`
+comparison tolerance at either endpoint. This includes every current tool
+(`114.677..411.810 mm`) and the recent historical `425.022 mm` tool. It uses
+the live effective Z tool offset, does not clamp at T3/T4, and rejects
+zero/nonfinite Z, unsupported non-Z tool offsets, an expanded domain or
+tolerance, a coefficient-set ID mismatch, nonfinite transforms, and correction
+norms beyond their audited caps.
+
+This path remains disabled in the production and legacy capture INIs. It is
+enabled only in the dedicated validation config
+`5th_axis_xyzbc_ssi_tcpc_probe_basic_length_model_validation_2026082601.ini`,
+which loads `tcpc_length_aware_candidate_2026082601.hal` as its final HALFILE.
+Neither file is released for production machining or general TCPC use. Any
+promoted configuration must specify both
+`lengthmodel=1 lengthmodelid=2026082601` on its `KINEMATICS` line and
+`LENGTH_MODEL_REQUIRED = 1` in `[TCPC]`, then load the exact matching overlay.
+That overlay is startup-only and must never be sourced or reloaded in a running
+LinuxCNC session. Every coefficient change requires a new model ID and a clean
+restart; the ID commit marker is not a live-tuning interface.
+The required flag makes a missing kinematics option fail closed at `G43.4`;
+the model ID makes a missing or wrong coefficient overlay invalid. Fault codes
+are: `0` OK, `1` configuration, `2` model ID, `3` nonfinite active offset,
+`4` unsupported active X/Y, `5` length range, `6` common surface disabled,
+`7` nonfinite correction, `8` differential norm, `9` total norm, and `10`
+nonfinite complete transform. Full numerical and physical-validation limits
+are in `TCPC_LENGTH_AWARE_MODEL_PLAN.md`.
+
+The frozen T3 recovery campaign `2026082602`, mode `34`, attempt `2` is
+complete. Its exact operator order remains in
+`TCPC_LENGTH_AWARE_T3_ATTEMPT2_RECOVERY_PLAN.md`. It carried forward the
+T4-proven rule that accepts at most two matching raw/mux extra edges around a
+successful contact only when exactly one gated edge reaches motion and the
+probe releases cleanly; all extras remain logged. T4 has passed the common bank
+at `q=0`, and the composite T3 result has passed the differential endpoint at
+`q=1`. The longer-tool dial-gauge endpoint remains a separate later gate.
 
 Current status:
 
@@ -21,9 +114,9 @@ Current status:
 - `G49.1` exits TCPC only when TWP is fully cancelled with `G69` and B/C are
   back at the `B0 C0` TCPC entry orientation; otherwise it aborts with an
   operator error
-- `M6` and `M61` are rejected while any spindle is active through
-  `TOOL_CHANGE_REJECT_SPINDLE_ON = 1`; tool/current-tool changes require an
-  explicit `M5` first, matching the old machine safety behavior
+- `M6` and `M61` are rejected while guarded TCPC or TWP is active and while any
+  spindle is active through `TOOL_CHANGE_REJECT_SPINDLE_ON = 1`; tool/current-
+  tool changes require `G49.1` TCPC exit and an explicit `M5` first
 - `headheadtwp.tcpc_enabled` gates `headheadkins.tcpc-enable`, and
   `headheadtwp.tcpc_origin_*` feeds `headheadkins.tcpc-origin.*`
 - the refined B-harmonic/B-cross fitted correction is now persistent in this
@@ -43,6 +136,247 @@ Current status:
   - detailed `TCPC STATUS` user tab showing state, angles, tool vector, tool
     offset, TCPC origin, TCPC entry B/C pins, direct B/C SSI absolute and
     zeroed positions, raw SSI counts, invalid flags, and joint command/feedback
+
+## Long/Short Probe Calibration Handoff - 2026-08-22 +07
+
+Current work is the separate owner-directed campaign `2026082202`: T3 short,
+then T4 long, on the fixed 30 mm sphere at B `0/+5/+15/+30 deg` and safe C45
+sectors. Its authoritative procedure is
+`TCPC_POSITIVE_B_C45_BASELINE_PLAN.md`; its data must not be appended to or
+analyzed as campaign `2026082201` modes 15-18. The 45-degree post runs
+base-to-sphere in `X+,Y-,Z+`. At nonzero B the new runners never descend to or
+probe C135/C315; those six canonical slots remain explicit unsafe gaps.
+
+T3 attempts 3, 4, and 5 are excluded partials ending at canonical sequences
+10, 3, and 2. Attempt 6 is an excluded zero-row electrical/probe-state fault:
+its one completed first pass was displaced `0.709 mm` from prior B0/C0 centers,
+pass 2 did not complete, and the campaign CSV did not change. Attempt 7 is the
+next required full restart, but it is barred until T3 is reseated and passes
+the no-motion electrical qualification.
+
+The prepared Attempt-7 HAL keeps the realtime G38-only motion probe path and
+the `10.0 s` post-contact quarantine. Later outside-G38 pulses create a
+monitor-only `0.5 s` event latch; they no longer request `halui.program.pause`.
+The runner samples that latch and raw signals, resets its separate `20.0 s`
+continuous-clear timer on every event, and hard-aborts if it cannot prove a
+clear interval within `60.0 s`. False pulses during G38 remain a hardware risk
+and are not hidden or debounced.
+
+Campaign `2026082201` completed the ring phase and S1/T3 Stages A and B. S1
+Stage C-low attempt 1 is retained as an excluded `13/20` partial after a
+post-contact probe-release guard abort. Prepared attempt 2 was superseded
+before any axis/probe motion or CSV row; its exact file is preserved, attempt
+ID 2 is retired, and any future mode-17 restart must use attempt 3. The active
+legacy runner is disarmed. T3 `#3032 = 0.117658 mm` and T4
+`#3032 = 0.154742 mm` remain frozen. No geometry, B/C zero, correction surface,
+backlash, or tool-table change has been made from the sphere results.
+The dedicated campaign-2026082202 T3 and T4 runners now restore their matching
+frozen value internally, after exact live-tool and TLO validation and before
+any probing. This is a reload of accepted calibration state, not a new
+qualification or offset calculation.
+
+The owner/operator confirms that the CNC is fully operational, that the 50 mm
+ring and 30 mm sphere are certified calibration tools, and that the ring has not
+moved. The steel frame, spindle wear, insertion position, Z-rail error,
+alignment, and possible B-zero error define the identification problem. A
+ring result under `0.010 mm` is very good here; it is not a global 10 um TCPC
+accuracy claim.
+
+At the 2026-08-22 handoff, the long probe was represented by the then-uncommitted
+T4/H4 tool-table row. That row is included in the 2026-08-28 calibration
+closeout commit.
+The historical S1-L-S2 procedure is:
+
+```text
+configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_LONG_SHORT_PROBE_CALIBRATION_PLAN.md
+```
+
+The current runtime checkpoint and operator order are in:
+
+```text
+configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_CALIBRATION_RESUME_STATE.md
+```
+
+Current tool identities are T3/H3 `128.606729 mm` and T4/H4 `229.407000 mm`,
+giving `100.800271 mm` of differential length. The base kinematics already
+rotates live `G43` tool length from a spindle-nose model; it is not a fixed T3
+tip model. The unresolved issue is that the persistent additive B/C correction
+was fitted and validated only with T3. Any angular or alignment error absorbed
+by that surface will not scale correctly for T4.
+
+At one fixed artifact height, the length difference also changes the Z-carriage
+position and physical probe insertion. The ring-center difference cannot by
+itself distinguish rail error, seating eccentricity, trigger anisotropy,
+tool/spindle tilt, or B-zero. The sphere B/C poses are the primary next evidence:
+they map the absolute effective center offset across C quadrants and balanced B
+signs, while joint XYZ logging records where each observation occurred.
+
+The current startup HAL deliberately remains frozen for the baseline. It uses
+the earlier persistent refined B/C-cross candidate, not the later diagnostic
+balanced-final short-probe candidate. Do not promote either candidate, change
+B/C zeros, or add a tool-axis tilt before collecting fresh paired evidence.
+
+At the historical 2026-08-21 pre-campaign checkpoint, the real configuration
+was launched only for load-only checks.
+The exact prepared versions of both ring wrappers and the paired runner were
+loaded one at a time through LinuxCNC `program_open`; all three loaded without
+an error-channel or UI parse error. LinuxCNC remained machine-off and
+motion-disabled with tool 0, all three live TLO views at zero, TCPC false,
+every TWP state false, both SSI-invalid signals false, an idle interpreter, and
+unchanged actual positions. No homing, jog, MDI, program start, or motion was
+performed. LinuxCNC was shut down afterward and the hardware/real-time stack
+unloaded. Probe Basic required forced termination during this scripted
+shutdown after it did not respond to Ctrl-C or SIGTERM. This is a
+configuration/file-load check, not a machine-motion or calibration result.
+
+An earlier preparation launch displayed the intermittent startup real-time
+delay warning already known to the owner/operator. It has not affected machine
+operation, and the final exact-tree shutdown reported zero latency excursions;
+record it as known startup context rather than a calibration blocker. Stop and
+investigate only if a latency event is accompanied by a control or motion
+fault. The configured `PROGRAM_PREFIX=/home/cnc5/mnt/cnc/5th axis` path was
+absent, so the UI used a fallback program location. Explicit selection of the
+reviewed files is acceptable; record their actual paths and hashes in the run
+manifest.
+
+The normal procedure qualifies T3 and T4 separately with
+`nc_files/calibration/50mm_ring_probe_qualify.ngc`. The wrapper derives and
+logs `#3032`, establishes a calculated wall start with protected moves, stops
+for candidate review, then freezes the candidate and attempts three automatic
+verification rounds. The first failed numeric gate is logged and stops at the
+measured center and top clearance without automatic repositioning. A passing
+set has exactly three passing rows; a failed set may contain only a completed
+prefix and is rejected. Selector `#727` reserves four IDs: qualification uses
+the base and verification uses base+1 through base+3; a partial retry advances
+the base by four. `50mm_ring_probe_verify.ngc` remains the standalone check for
+later installations or extra evidence and requires `#717` plus matching live
+`#3032`. Results append to `tcpc-long-short-ring-results.csv`. Freeze one offset
+for T3 and reuse it unchanged for S1 and S2; qualify and freeze a different
+value for T4/L. Do not reuse the historical T3 offset for T4.
+
+The ring contract is: each averaged diameter within `0.010 mm` of the stamped
+`50.001 mm`; three-row averaged-diameter range no more than `0.010 mm`; X and Y
+center ranges each no more than `0.010 mm`; and no false trip or frozen-state
+violation. Directional X/Y diameter behavior remains diagnostic and is not
+hidden by scalar `#3032`. The executed T4 program factually stopped on its old
+`0.005 mm` gate after logging all rows; post-run review accepted the complete
+set under the declared machine-capability rule without rewriting that history.
+
+The certified ring is stamped `50.001 mm`, and both guarded ring routines use
+that value. The sphere routines currently use `30.000 mm`. The operator has
+authorized diagnostic collection with the certified nominal 30 mm sphere, but
+each certificate ID, calibrated dimension, uncertainty, and reference
+temperature remains mandatory before final dataset/model acceptance. If the
+full sphere certificate value is materially different, the affected rows cannot
+support a calibration decision until the constants, limits, and need to rerun
+have been reviewed.
+
+The pinned ring stack treats non-contact `G38.3` positioning as protected
+motion. Any unexpected trip reverses that single-axis move to its captured
+start coordinate, synchronizes motion, and aborts instead of accepting a
+shortened move.
+
+The guarded runner is
+`nc_files/calibration/tcpc_b_angle_scaling_diagnostic.ngc`, paired modes
+`15` through `18`. Invalid or sentinel campaign, leg, stage, attempt, and
+independently ring-qualified probe-offset fields abort before motion; the file
+is armed only for the reviewed next stage. It checks
+live tool/TLO/diameter/correction/TCPC/TWP/SSI state, requires G52/G92 clear and
+active-WCS B/C offsets plus XY rotation zero, freezes the active WCS/offsets,
+and writes accepted rows to
+`tcpc-long-short-pair-results.csv` without mixing them into the historical
+single-length logs. Each accepted row includes absolute endpoint XYZ and joint
+0/1/2 motor command, feedback, and following error in addition to the sphere
+center and rotary state. Run T3 short-open, T4 long, then T3 short-close on the
+same sphere and warm state. Start at B0, then the proven trim envelope and
+B+/-10. Analyze the absolute effective center map and B0-referenced pose change
+before authorizing B+/-30. Start the tip only `4-5 mm` clear above the sphere;
+the guarded top search is `7 mm`. B+/-60 and B+/-90 are outside this first
+baseline.
+
+The ring wrappers and paired runner enforce an `M0` after their state guards
+and immediately before probing or paired-stage motion. Across every hold they
+reject selector changes; the ring wrappers also reject WCS/offset changes,
+reject actual-XYZ changes, rewrite the fixed measurement contract, and then
+revalidate live state before motion. The paired runner also snapshots and
+revalidates all motion constants.
+Every hold freezes actual XYZ, and the initial hold additionally requires the
+machine to remain physically at B0/C0 before the low-clearance first pose. It
+has a mandatory inspection `M0` in every leg: after Stage A's B0 quadrant group,
+after Stage B's B+5 group, and after the opening B0 quadrant group in modes 17
+and 18. Live state is checked again before subsequent motion. `#704 = 0` only
+means there is no extra stop before every individual pose. Restart LinuxCNC
+after compiled/remap/HAL/INI changes; the reviewed NGC-only revision does not
+require a restart and was load-checked in the live idle session.
+
+Every paired live guard begins with `M66 E0 L0` so queued retract or rotary
+motion finishes before HAL and coordinate state are sampled. A final
+synchronized guard after the last side retract verifies probe release before
+accepted endpoint and joint state are captured. Direct C SSI is physically
+opposite joint-C polarity, so its wrapped pose check compares `C_ssi + C_cmd`;
+B SSI remains same-polarity and compares `B_ssi - B_cmd`.
+
+Historical mode-17 attempt 1 showed that queue synchronization alone did not
+implement the HAL wireless-probe release contract. That disarmed runner uses a dedicated guard
+at all five post-contact locations: probe gates must be clear immediately, then
+raw and mux inputs must produce two consecutive clear samples `0.05 s` apart
+within a `1.0 s` post-retract timeout matching the configured HAL release-ignore
+duration used at that time. The prepared Attempt-7 baseline contract is the
+10-second quarantine, monitor-only event latch, and separate 20-second clear
+interval documented above.
+
+On `2026-08-22T12:53:42+07:00`, the exact revised qualifier, verifier, and paired
+runner were selected in the live idle LinuxCNC session without a message or any
+position/state change; `blank.ngc` was restored. This load-only preview exits at
+the preview guard and is not guarded-body execution. Static review separately
+confirmed the runner's 239-character maximum line, balanced O-words, and exact
+46-field logger/header mapping; the analyzer self-test passed.
+
+The first S1 Stage A invocation exposed a queued-motion synchronization error
+after a valid top contact; the second retained one valid B0/C0 row before a
+software-only C-SSI polarity rejection at C90. Both defects were corrected and
+attempt 3 completed all five accepted rows. Its center displacement relative to
+the opening/closing C0 mean reached `0.050691 mm` at C90, `0.069135 mm` at C180,
+and `0.028643 mm` at C270. Directional sphere diameters ranged from
+`30.126330` to `30.279693 mm`; that bias remains diagnostic and is not a claim
+of 10 um sphere-diameter accuracy. S1 Stage B then passed its prepared closure
+and production-envelope gates. A laser-cutter false trigger caused an external
+pause during row 9 while the machine was stationary before the next `G38.3`;
+the resumed live guard verified all probe inputs clear, and the operator
+confirmed there was no CNC or measurement interference. Keep the event as
+provenance and keep EMI sources inactive during remaining probing. S1 Stage
+C-low attempt 1 later logged canonical rows 1-13 and aborted before logging row
+14 when the immediate post-top-retract guard sampled the wireless probe during
+the HAL's designed release window. The raw, muxed, and motion inputs were clear
+immediately afterward. The partial is preserved and excluded from accepted
+analysis. The owner/operator explicitly waived the unexecuted post-abort T3
+ring attempt 10 because its incremental evidence is not justified by this
+machine's capability; there was no ring motion or new row, and attempt 9 remains
+the S1 installation reference. This waiver does not accept or splice the
+partial. Prepared mode-17 attempt 2 was load-checked, then superseded without
+axis/probe motion or a CSV row. It is preserved and retired; any future restart
+must use attempt 3 after separate review.
+
+Analyze an isolated, source-order campaign copy from an existing run directory
+with:
+
+```bash
+RUN_DIR="configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/calibration_runs/20260821_HHMM_T3_T4_T3"
+python3 configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/analyze_tcpc_long_short_pair.py \
+  "$RUN_DIR/tcpc-long-short-pair-campaign.csv" \
+  --output "$RUN_DIR/tcpc-long-short-pair-derived.csv"
+```
+
+Analyzer exit `0` means its logged-data acceptance gates passed, exit `1` means
+a live-state or acceptance gate failed, and exit `2` means the input, schema,
+sequence, or I/O was invalid. Even exit `0` validates only logged CSV structure, state,
+sequence, QA fields, linear-axis consistency, and paired calculations. The
+derived data reports absolute `L - bracketed-short` center offset separately
+from the B0-referenced pose-dependent difference. It cannot validate the mandatory
+manifest, ring/probe identity, file hashes, mechanics, temperature, artifact
+movement, or clearances, and it does not accept a calibration or release a
+tool for production. Ring and S1 Stage A sphere motion occurred in the recorded
+campaign; no machine-model fit or live calibration change has occurred.
 
 ## B/C SSI Homing and Zero Verification - 2026-05-07 +07
 
@@ -127,6 +461,8 @@ Production entry/exit behavior is now implemented in the real-machine remap:
 - ordinary tool-length changes (`G43`, `G43.1`, `G43.2`, and `G49`) are
   rejected while TCPC is active; apply `G43 Hn` before `G43.4`, and clear tool
   length with `G49` only after `G49.1`
+- `M6` and `M61` are rejected while the guarded TCPC state is active, before
+  physical/current tool state can change; exit with `G49.1` first
 - active `G43 Hn` length is included in the head-head kinematics as local tool
   length, so the same B-to-spindle-nose geometry can handle different tools
 - `G68.2` TWP entry is temporarily disabled in the real-machine config pending
@@ -166,9 +502,10 @@ Production-release items still open:
   should reproduce the previous short-probe TCPC fit
 - run the no-cut smoke program and one active-`G43 H3` sphere validation pass
 - current production guidance remains that tool changes/current-tool changes
-  happen outside TCPC; `M6`/`M61` now share the spindle-active lockout and TWP
-  already blocks tool/current-tool changes
-- repeat short/long probe validation when the long probe arrives
+  happen outside TCPC; guarded TCPC, TWP, and spindle-active lockouts now
+  enforce that state order
+- execute the reviewed T3/T4/T3 plan above after independent probe
+  qualification and collision-clearance dry runs
 
 Headless regression added:
 
@@ -179,10 +516,10 @@ rm -f sim.var
 ```
 
 This test verifies fail-safe startup, `G43.4` entry continuity, idempotent
-`G43.4`, ordinary `G49`/`G43.1` rejection while TCPC is active, rotary TCPC
-compensation, unsafe `G49.1` rejection away from entry B/C, continuous
-`G49.1` exit after returning to entry B/C, `G68.2` rejection while TCPC is off,
-and `G49.1` rejection while TWP is active.
+`G43.4`, `M6`/`M61` and ordinary `G49`/`G43.1` rejection while TCPC is active,
+rotary TCPC compensation, unsafe `G49.1` rejection away from entry B/C,
+continuous `G49.1` exit after returning to entry B/C, `G68.2` rejection while
+TCPC is off, and `G49.1` rejection while TWP is active.
 
 Machine no-cut smoke program:
 
@@ -1164,7 +1501,7 @@ Validation intent:
 - if high-B residuals do not reduce in the predicted direction, revert this
   half-step and prioritize mechanical/linear-axis alignment tests
 
-## Probe Gate Runtime Note - 2026-04-30
+## Historical Probe Gate Runtime Note - 2026-04-30
 
 The supervised probe-gate process is working well for the current TCPC probing:
 the active program enables `motion.digital-out-00` only during the actual
@@ -1185,6 +1522,13 @@ Future probe robustness task:
   battery/double pulse
 - keep real probe-hit safety active during every intentional `G38` move
 - treat this as a separate task from TCPC geometry fitting
+
+Implemented disposition on `2026-08-22`: campaign 2026082202 showed that a
+`1.0 s` ignore was insufficient. The current realtime gate admits probe input
+only for actual G38 motion, uses a `10.0 s` post-contact abnormal-monitor
+quarantine, stretches a later event for `0.5 s` without pausing the
+interpreter, and requires a separate `20.0 s` continuously clear proof before
+the next G38 in the dedicated Attempt-7 sphere runners.
 
 ## Half-Step Verification Result - 2026-04-30
 
@@ -1604,14 +1948,17 @@ These shadow the shared Probe Basic subroutines only in the TCPC config because
 the TCPC config's `[RS274NGC] SUBROUTINE_PATH` searches its local subroutine
 directory first. The shared SSI/3-axis config is unchanged.
 
-Behavior added for the TCPC-local toolsetter macros:
+Behavior added for the TCPC-local toolsetter macros (the `M64/M65` details in
+this historical list are now superseded by the real-time gate described below):
 
 - reject the toolsetter routines if TCPC is enabled
 - reject if TWP motion is active
 - reject unless B and C are within `0.05 deg` of zero
-- force the probe gate closed before setup and after probing with `M65 P0`
+- clear legacy motion digital output P0 before setup and after probing with
+  `M65 P0`
 - check the raw toolsetter input is clear before each probe stroke
-- open the probe gate only during the actual probing stroke with `M64 P0`
+- retain the historical `M64/M65 P0` sequence, although those commands no
+  longer authorize the physical probe gate
 - use `G38.3` plus explicit `#5070` checks so a no-contact event can close the
   probe gate before aborting
 - make the tool touch-off button compatible with the Probe Basic widget names
@@ -1856,18 +2203,19 @@ directly and do not explicitly open `motion.digital-out-00`, so the raw probe
 touch was seen by the abnormal-pulse monitor while the gated LinuxCNC
 `motion.probe-input` stayed closed.
 
-The TCPC HAL overlay now treats the TCPC config as the main machine config and
-opens the probe gate automatically whenever LinuxCNC reports active probing
-motion:
+The current TCPC HAL overlay authorizes the physical probe path only while the
+real-time motion controller reports active probing motion:
 
 - `motion.motion-type == 5` is converted through `tcpc_motion_type_float`
 - `tcpc_probe_motion_window` detects the probing-motion window
-- `tcpc_probe_gate_or` opens the gate when either a stock `G38` move is active
-  or the explicit `M64 P0` calibration gate is active
-- the explicit `M64/M65 P0` gate remains supported for calibration routines
-- `tcpc_probe_gate_ignore.width` was increased from `0.25 s` to `1.0 s` so
-  stock Probe Basic routines have time to retract off the contact point before
-  the abnormal-pulse monitor resumes
+- `tcpc_probe_motion_window.out` drives `and2.1` directly, so raw `probe-mux`
+  can reach `motion.probe-input` and the physical SSR only during that window
+- `motion.digital-out-00/01` do not authorize the physical probe gate or inhibit
+  its abnormal-pulse monitor; guarded routines require them clear, and retained
+  `M64/M65` commands only manipulate those unused legacy outputs
+- `tcpc_probe_gate_ignore.width` was historically increased from `0.25 s` to
+  `1.0 s`; campaign 2026082202 proved that value insufficient for this wireless
+  receiver, so the active/saved value is now `10.0 s`
 
 Probe Basic stores the probing UI values in settings widgets and mirrors them
 into numbered interpreter parameters with `touch_probe_param_update.ngc`. The
@@ -1881,7 +2229,8 @@ Expected behavior after restart:
 - original Probe Basic probing routines should again touch, record the point,
   retract, and continue their fast/slow sequence
 - probe false-pulse monitoring remains active outside actual probing moves and
-  the immediate post-touch release/retract window
+  the 10-second post-touch quarantine; the dedicated campaign runner then
+  proves 20 continuously clear seconds before its next G38
 - shared Probe Basic probing macros now validate the loaded probe with the
   live HAL `#<_hal[iocontrol.0.tool-number]>` value instead of `#5400`; this
   keeps the wrong-tool guard active while avoiding stale interpreter tool state
@@ -2005,3 +2354,20 @@ Follow-up:
   calibration G-code.
 - keep probing routines on the HAL/status tool source unless the interpreter
   current-tool model is made reliable again for this non-random toolchanger
+
+## 2026-08-24 Relocated-Sphere Campaign 2026082404
+
+The accepted campaign-03 anchor is retained at
+`X1024.957789 Y844.074417 Z-302.468115`. Before primary acquisition, the T4
+training grid was revised from 59 to 101 poses. New paired
+`B+/-5,+/-10,+/-15` blocks use `C0,45,90,180,225,270,0`; C135/C315 remain
+omitted known post-collision sectors. Existing `B+/-30,+/-45,+/-60,+/-90`
+blocks remain at C90 steps. T3 remains a 31-pose untouched holdout.
+
+Exact configured-limit replay passed 41,063 combined samples with
+`182.860993 mm` remaining worst linear margin. This does not qualify physical
+clearance. At `2026-08-24T23:42:38+07:00`, the operator explicitly accepted T4
+clearance for `B-5/-10/-15 C45/C225` with no interference issues. This is
+operator evidence rather than a replay-model result. The operator declined
+further fast envelope sweeps. The authoritative procedure is
+`TCPC_RELOCATED_SPHERE_CAMPAIGN_2026082404.md`.

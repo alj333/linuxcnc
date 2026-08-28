@@ -279,6 +279,44 @@ log("burst path twp_motion_origin=(%.6f, %.6f, %.6f) program_pose=%s" % (
 
 mdi("G69")
 mdi("G49.1")
-log("TWP active tool continuity reproducer complete")
+if bool(hal.get_value("headheadtwp.tcpc_enabled")) or bool(hal.get_value("headheadtwp.motion_enabled")):
+    fail("short-tool cleanup left TCPC/TWP active")
+
+mdi("G49")
+mdi("T2 M6")
+mdi("G43 H2")
+if math.fabs(hal.get_value("motion.tooloffset.z") - 229.407000) > 1e-6:
+    fail("long active tool offset did not apply: %s" % hal.get_value("motion.tooloffset.z"))
+if math.fabs(hal.get_value("headheadkins.active-tool-offset.z") - 229.407000) > 1e-6:
+    fail("long kinematics tool offset did not apply: %s" % hal.get_value("headheadkins.active-tool-offset.z"))
+log("long active tool length applied")
+
+mdi("G0 X%.6f Y%.6f Z%.6f B%.6f C%.6f" % START_POSE)
+long_start_program_pose = program_pose()
+long_start_joints = joint_pose()
+
+mdi("G43.4")
+long_after_tcpc_joints = joint_pose()
+assert_joint_continuity("long G43.4", long_start_joints, long_after_tcpc_joints)
+assert_close_tuple("long G43.4 program pose", program_pose(), long_start_program_pose)
+if not bool(hal.get_value("headheadtwp.tcpc_enabled")):
+    fail("long G43.4 did not enable TCPC")
+
+mdi("G68.2 B0 C0")
+long_after_twp_joints = joint_pose()
+assert_joint_continuity("long G68.2 B0 C0", long_after_tcpc_joints, long_after_twp_joints)
+assert_close_tuple("long G68.2 program pose", program_pose(), long_start_program_pose)
+if not bool(hal.get_value("headheadtwp.motion_enabled")):
+    fail("long G68.2 did not enable TWP motion")
+
+mdi("G69")
+mdi("G49.1")
+if bool(hal.get_value("headheadtwp.tcpc_enabled")) or bool(hal.get_value("headheadtwp.motion_enabled")):
+    fail("long-tool cleanup left TCPC/TWP active")
+mdi("G49")
+if math.fabs(hal.get_value("motion.tooloffset.z")) > 1e-6:
+    fail("long active tool offset did not clear: %s" % hal.get_value("motion.tooloffset.z"))
+
+log("TWP active short/long tool continuity reproducer complete")
 
 sys.exit(0)
