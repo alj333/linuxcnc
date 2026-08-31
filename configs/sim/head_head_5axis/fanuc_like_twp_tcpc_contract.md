@@ -118,9 +118,13 @@ Current `G68.2` semantics:
 
 Initial active-TWP command envelope:
 
-- supported motion: `G0`, `G1`, `G80`, and `G4` dwell
+- supported motion: `G0`, `G1`, non-faulting `G38.3`, `G80`, and `G4` dwell
 - fixed `B/C`; `A/B/C/U/V/W` axis words are rejected
-- arcs, probes, threading, canned cycles, and G53 are rejected
+- `G38.2`, `G38.4`, `G38.5`, arcs, threading, canned cycles, and G53 are
+  rejected
+- `G38.3` is reserved for reviewed, supervised probing routines with an
+  external fixed-B/C live-state guard; it must retract in the same active frame
+  before `G69`
 - coordinate-system selection, G52/G92, and coordinate-parameter writes are
   rejected
 - cutter compensation must remain off
@@ -155,7 +159,14 @@ Current limit-reject recovery expectation:
 Current abort/reset/home expectation:
 
 - program abort leaves active TWP and TCPC state unchanged until explicit cancel
-- estop / machine-off clears TWP and restores the default TCPC-on state
+- loss of the `headheadtwp` userspace process is not recoverable in place; its
+  HAL registration may remain stale while switchkins type 1 stays stationary
+- after state-component loss, do not continue or attempt `G69`: close LinuxCNC
+  completely and start a fresh session
+- the validated fresh start restores type 0, a ready one-hot world frame, TCPC
+  off/default, and clear TWP frame, origin, coordinate, and transaction state
+- estop / machine-off clears TWP and restores the configured default TCPC
+  state; the real-machine safe wrapper defaults TCPC off
 - re-home / unhome-home events clear TWP and preserve the current TCPC mode
 - with TCPC on and TWP off, manual `B/C` motion is allowed
 - after `G69`, manual `B/C` motion is allowed again before the next `G68.2`
@@ -165,12 +176,10 @@ Current release status:
 - the production-equivalent T3/T4 switchkins regression passed 8,323 sampled
   servo cycles across four entry/exit edges with no joint or physical-TCP
   transient beyond its `0.000005 mm/deg` thresholds
-- the synchronized workpath is enabled only by test INIs that explicitly set
-  `[TWP] ENABLE=1`
-- the real-machine INIs omit that opt-in, so `G68.2` remains fail-closed
-- userspace state-component loss while type 1 is active currently requires a
-  LinuxCNC restart; a watchdog or a validated restart-only recovery procedure
-  is required before real-machine TWP enablement
+- the default real-machine INIs omit `[TWP] ENABLE=1`, so their `G68.2` remains
+  fail-closed; one dedicated supervised sphere-validation INI opts in
+- restart-only recovery after userspace state-component loss is validated; an
+  in-place recovery remains intentionally unsupported
 
 Reason:
 

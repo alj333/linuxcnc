@@ -77,13 +77,15 @@ forward transform succeeds.
 `G69` uses a separate exit and clear transaction. The stored frame is retained
 until world kinematics has been confirmed, then it is cleared while G43.4 and
 the active tool length remain unchanged. Interpreter guards restrict the first
-TWP scope to fixed-B/C `G0/G1` XYZ motion plus `G4`; unsupported motion,
-coordinate changes, cutter compensation, tool changes, tool-offset changes,
-and program end before `G69` are rejected.
+TWP scope to fixed-B/C `G0/G1/G38.3` XYZ motion plus `G4`; `G38.2/G38.4/G38.5`,
+unsupported motion, coordinate changes, cutter compensation, tool changes,
+tool-offset changes, and program end before `G69` are rejected.
 
-The production HAL is wired for this synchronized handoff, but all real-machine
-INIs still omit `[TWP] ENABLE=1`. Therefore `G68.2` continues to return the
-production lockout message.
+The production HAL is wired for this synchronized handoff. The default and
+cut-test real-machine INIs still omit `[TWP] ENABLE=1`, so their `G68.2` remains
+locked. Only the dedicated supervised INI
+`5th_axis_xyzbc_ssi_tcpc_probe_basic_twp_probe_validation_2026083101.ini` opts
+in; its separate launcher is `launch_xyzbc_ssi_twp_probe_validation.sh`.
 
 Offline validation completed on 2026-08-31:
 
@@ -105,11 +107,36 @@ Offline validation completed on 2026-08-31:
 - active-plane guard checks rejected rotary/G53/WCS/parameter/arc/tool/TLO/end
   blocks and a closing `%` without changing TWP, TCPC, tool, model, joint, or
   physical-TCP state
+- an expanded runtime completed 18,184 servo samples while T3 and T4 each ran
+  active-TWP `G38.3` no-contact and simulated-contact paths; it verified early
+  stop, `#5061..#5069/#5070`, fixed B/C, plane displacement, retract closure,
+  and subsequent `G69`
+- the same runtime rejected `G38.2`, `G38.4`, and `G38.5` without changing
+  joints, TCP, TWP state, probe latch/status, or probe-result parameters
+- `tests/kinematics/head-head-twp-sphere-full-runtime/` ran the exact physical
+  stage-1 program in AUTO at `B+5 C0` with T4, G43.4, a nonzero G54, and a
+  fixed simulated 30 mm sphere; all 24 raw/mux/gated contacts, six pass rows,
+  one accepted result row, the local-Z preflight/closure, final G69/world
+  state, fixed B/C, preserved model/tool state, and final safe lift passed
+- that full-body fixture backs up the production CSV targets and verified their
+  byte-for-byte restoration after LinuxCNC and its loggers had fully exited
+- `tests/kinematics/head-head-twp-component-loss-restart/` killed only the
+  active `headheadtwp` owner process, confirmed type 1 and every joint/TCP
+  remained stationary, then proved a wholly fresh launch restored ready world
+  type 0 with TCPC off and all TWP/frame/transaction state clear
+- abnormal userspace exit can leave stale registered HAL values until teardown;
+  therefore component loss is restart-only and must never be resumed in place
 
-Do not add the real-machine INI opt-in until both remaining gates are complete:
+Do not add TWP to the default real-machine INI. The dedicated opt-in remains a
+commissioning-only path until the remaining physical gate is complete:
 
-- userspace state-component loss/restart recovery validation or an RT watchdog
-- supervised no-tool, no-cut entry/direction/exit test at safe clearance
+- supervised physical entry/direction/probe/exit validation at the sphere
+
+The physical stage-1 routine is `twp_sphere_probe_stage1_t4.ngc`; its exact
+B0-first operator and recovery sequence is in
+`TWP_SPHERE_STAGE1_T4_PLAN_2026083101.md`. It reconstructs physical probe-tip
+centers by restoring the active canonical T4 offset before comparing the world
+and tilted coordinate frames. It changes no calibration coefficient or WCS.
 
 The existing G43.4 length-aware calibration revision `2026082601` is frozen;
 this TWP work does not alter its coefficients or the default cut-test

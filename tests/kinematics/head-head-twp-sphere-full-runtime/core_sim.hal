@@ -1,0 +1,164 @@
+# Full-body runtime fixture for the production TWP sphere program. Joint
+# feedback is ideal, but the geometry, length model, switchkins remaps, G38-only
+# probe gate, post-contact ignore, and sticky edge counter are production paths.
+
+loadrt [KINS]KINEMATICS
+loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+loadrt and2 count=5
+loadrt not count=4
+loadrt or2 count=1
+loadrt oneshot names=tcpc_probe_gate_ignore,tcpc_probe_fault_pause
+loadrt conv_s32_float names=tcpc_motion_type_float
+loadrt wcomp names=tcpc_probe_motion_window
+loadrt counter num_chan=3
+
+addf motion-command-handler servo-thread
+addf motion-controller servo-thread
+
+net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb
+net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb
+net Zpos joint.2.motor-pos-cmd => joint.2.motor-pos-fb
+net Bpos joint.3.motor-pos-cmd => joint.3.motor-pos-fb
+net Cpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb
+
+setp headheadkins.nominal-c-to-b.x 0.010934
+setp headheadkins.nominal-c-to-b.y 0.0
+setp headheadkins.nominal-c-to-b.z -270.0
+setp headheadkins.nominal-b-to-tool.x -0.668710
+setp headheadkins.nominal-b-to-tool.y -26.721365
+setp headheadkins.nominal-b-to-tool.z -180.373272
+setp headheadkins.cal-c-to-b.x 0.035886006
+setp headheadkins.cal-c-to-b.y 0.009526306
+setp headheadkins.cal-c-to-b.z 0.0
+setp headheadkins.cal-b-to-tool.x 0.0
+setp headheadkins.cal-b-to-tool.y 0.0
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.0
+setp headheadkins.c-zero-offset -0.024500
+
+net active-tool-offset-x motion.tooloffset.x => headheadkins.active-tool-offset.x
+net active-tool-offset-y motion.tooloffset.y => headheadkins.active-tool-offset.y
+net active-tool-offset-z motion.tooloffset.z => headheadkins.active-tool-offset.z
+
+# Apply the exact commissioned 2026082601 common/differential coefficient bank.
+source ../../../configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc_length_aware_candidate_2026082601.hal
+
+loadusr -Wn headheadtwp python3 ./headhead_twp_state_tcpc_off.py
+setp headheadtwp.use_external_tool_offset 1
+net headhead-kins-tool-offset-x headheadkins.tool-offset.x => headheadtwp.external_tool_offset_x
+net headhead-kins-tool-offset-y headheadkins.tool-offset.y => headheadtwp.external_tool_offset_y
+net headhead-kins-tool-offset-z headheadkins.tool-offset.z => headheadtwp.external_tool_offset_z
+net Xpos => headheadtwp.current_joint_x
+net Ypos => headheadtwp.current_joint_y
+net Zpos => headheadtwp.current_joint_z
+net Bpos => headheadtwp.current_joint_b
+net Cpos => headheadtwp.current_joint_c
+net headhead-joint-0-homed joint.0.homed => headheadtwp.joint_0_homed
+net headhead-joint-1-homed joint.1.homed => headheadtwp.joint_1_homed
+net headhead-joint-2-homed joint.2.homed => headheadtwp.joint_2_homed
+net headhead-joint-3-homed joint.3.homed => headheadtwp.joint_3_homed
+net headhead-joint-4-homed joint.4.homed => headheadtwp.joint_4_homed
+
+setp headheadtwp.nominal_c_to_b_x 0.010934
+setp headheadtwp.nominal_c_to_b_y 0.0
+setp headheadtwp.nominal_c_to_b_z -270.0
+setp headheadtwp.nominal_b_to_tool_x -0.668710
+setp headheadtwp.nominal_b_to_tool_y -26.721365
+setp headheadtwp.nominal_b_to_tool_z -180.373272
+setp headheadtwp.cal_c_to_b_x 0.035886006
+setp headheadtwp.cal_c_to_b_y 0.009526306
+setp headheadtwp.cal_c_to_b_z 0.0
+setp headheadtwp.cal_b_to_tool_x 0.0
+setp headheadtwp.cal_b_to_tool_y 0.0
+setp headheadtwp.cal_b_to_tool_z 0.815000
+setp headheadtwp.b_zero_offset 0.0
+setp headheadtwp.c_zero_offset -0.024500
+setp headheadtwp.requested_normal_rotation 0.0
+
+net headhead-tcpc-enabled headheadtwp.tcpc_enabled => headheadkins.tcpc-enable
+net headhead-tcpc-origin-x headheadtwp.tcpc_origin_x => headheadkins.tcpc-origin.x
+net headhead-tcpc-origin-y headheadtwp.tcpc_origin_y => headheadkins.tcpc-origin.y
+net headhead-tcpc-origin-z headheadtwp.tcpc_origin_z => headheadkins.tcpc-origin.z
+setp headheadkins.twp-mode 0
+net headhead-twp-kinematics-type headheadtwp.kinematics_type => motion.switchkins-type
+net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
+net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c
+net headhead-twp-normal-rotation headheadtwp.twp_normal_rotation => headheadkins.twp-normal-rotation
+
+net estop-loop iocontrol.0.user-enable-out iocontrol.0.emc-enable-in => headheadtwp.machine_is_enabled
+net tool-prep-loop iocontrol.0.tool-prepare iocontrol.0.tool-prepared
+net tool-change-loop iocontrol.0.tool-change iocontrol.0.tool-changed
+
+# A Python test changes only and2.0.in0. Its output stands in for the physical
+# receiver; the downstream mux and G38 gate are the same topology as production.
+setp and2.0.in0 false
+setp and2.0.in1 true
+net t_probe-in <= and2.0.out => or2.0.in0
+setp or2.0.in1 false
+net probe-mux <= or2.0.out => and2.1.in0
+setp tcpc_probe_motion_window.min 4.5
+setp tcpc_probe_motion_window.max 5.5
+net tcpc-motion-type <= motion.motion-type => tcpc_motion_type_float.in
+net tcpc-motion-type-float <= tcpc_motion_type_float.out => tcpc_probe_motion_window.in
+net tcpc-probe-gate-enable <= tcpc_probe_motion_window.out => and2.1.in1
+net tcpc-probe-gated <= and2.1.out => motion.probe-input
+
+# Keep the production falling-edge ignore behavior but shorten its test-only
+# duration so 24 valid contacts do not add four minutes to this regression.
+setp tcpc_probe_gate_ignore.width 0.05
+setp tcpc_probe_gate_ignore.rising false
+setp tcpc_probe_gate_ignore.falling true
+setp tcpc_probe_gate_ignore.retriggerable true
+setp tcpc_probe_fault_pause.width 0.05
+setp tcpc_probe_fault_pause.rising true
+setp tcpc_probe_fault_pause.falling false
+setp tcpc_probe_fault_pause.retriggerable true
+net tcpc-probe-gate-enable => tcpc_probe_gate_ignore.in
+net tcpc-probe-ignore-active <= tcpc_probe_gate_ignore.out => not.2.in
+net tcpc-probe-ignore-inactive <= not.2.out => and2.3.in1
+setp not.3.in false
+net tcpc-probe-monitor-active <= not.3.out => and2.4.in1
+net tcpc-probe-gate-enable => not.1.in
+net tcpc-probe-gate-closed <= not.1.out => and2.2.in1
+net t_probe-in => and2.2.in0
+net tcpc-probe-closed-raw <= and2.2.out => and2.3.in0
+net tcpc-probe-not-ignored <= and2.3.out => and2.4.in0
+net tcpc-probe-abnormal-level <= and2.4.out => tcpc_probe_fault_pause.in
+net tcpc-probe-fault-pause <= tcpc_probe_fault_pause.out
+
+net t_probe-in => counter.0.phase-A
+net probe-mux => counter.1.phase-A
+net tcpc-probe-gated => counter.2.phase-A
+setp counter.0.phase-Z false
+setp counter.1.phase-Z false
+setp counter.2.phase-Z false
+setp counter.0.index-enable false
+setp counter.1.index-enable false
+setp counter.2.index-enable false
+setp counter.0.reset false
+setp counter.1.reset false
+setp counter.2.reset false
+setp counter.0.position-scale 1.0
+setp counter.1.position-scale 1.0
+setp counter.2.position-scale 1.0
+
+addf and2.0 servo-thread
+addf or2.0 servo-thread
+addf tcpc_motion_type_float servo-thread
+addf tcpc_probe_motion_window servo-thread
+addf and2.1 servo-thread
+addf counter.update-counters servo-thread
+addf counter.capture-position servo-thread
+addf tcpc_probe_gate_ignore servo-thread
+addf not.1 servo-thread
+addf and2.2 servo-thread
+addf not.2 servo-thread
+addf and2.3 servo-thread
+addf not.3 servo-thread
+addf and2.4 servo-thread
+addf tcpc_probe_fault_pause servo-thread
+
+# These named live signals mirror the real SSI validity inputs. No writer means
+# their fail-high invalid state remains false in the ideal-feedback simulation.
+newsig b-ssi-invalid bit
+newsig c-ssi-invalid bit

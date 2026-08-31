@@ -111,9 +111,10 @@ int Interp::guard_headhead_twp_block(block_pointer block,
           && block->motion_to_be != -1
           && block->motion_to_be != G_0
           && block->motion_to_be != G_1
+          && block->motion_to_be != G_38_3
           && block->motion_to_be != G_80
           && block->motion_to_be != headhead_g69_cancel),
-         (_("Only G0, G1, G80, and G69 are supported while TWP is active")));
+         (_("Only G0, G1, G38.3, G80, and G69 are supported while TWP is active")));
     CHKS((TODO(STEP_MOTION)
           && !g69_pending
           && (block->a_flag || block->b_flag || block->c_flag
@@ -3910,9 +3911,10 @@ int Interp::convert_motion(int motion,   //!< g_code for a line, arc, canned cyc
   CHKS((headhead_synchronized_twp_is_active()
         && motion != G_0
         && motion != G_1
+        && motion != G_38_3
         && motion != G_80
         && motion != headhead_g69_cancel),
-       (_("Only G0, G1, G80, and G69 are supported while TWP is active")));
+       (_("Only G0, G1, G38.3, G80, and G69 are supported while TWP is active")));
 
   int ai = block->a_flag && (-1 != settings->a_indexer_jnum);
   int bi = block->b_flag && (-1 != settings->b_indexer_jnum);

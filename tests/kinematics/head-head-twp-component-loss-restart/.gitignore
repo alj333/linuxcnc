@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+sim.var
+sim.var.bak
+.component-loss-stage1.ok
+!checkresult

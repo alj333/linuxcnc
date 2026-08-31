@@ -326,15 +326,24 @@ for a successful world forward transform. Only after that confirmation does it
 clear the stored frame. This ordering prevents live TWP or TCPC state from
 being erased underneath an active type-1 transform.
 
+Loss of the `headheadtwp` userspace process is a restart-only fault. The HAL
+registration and last values can remain stale while the latched type-1
+kinematics stays stationary, so neither continued motion nor an in-place `G69`
+is an accepted recovery. A full LinuxCNC teardown and fresh launch restores
+ready world type 0 with all TWP frame and transaction state clear.
+
 The earlier HAL commands and `G88.5` transformed-motion path remain useful as
 legacy simulation tools. They are not the production workpath.
 
 Initial synchronized-TWP scope is intentionally narrow:
 
-- linear `G0/G1` XYZ motion and `G4` dwell
+- linear `G0/G1` XYZ motion, non-faulting `G38.3`, and `G4` dwell
 - fixed reached `B/C` for the life of the frame
-- no arcs, probing, canned cycles, cutter compensation, WCS changes, G52/G92,
-  tool selection/change, tool-offset changes, or program end before `G69`
+- no `G38.2/G38.4/G38.5`, arcs, canned cycles, cutter compensation, WCS
+  changes, G52/G92, tool selection/change, tool-offset changes, or program end
+  before `G69`
+- `G38.3` is limited to reviewed, supervised fixed-B/C routines and must return
+  to a known clear point in the active frame before `G69`
 - fail-closed length-model and state-transition checks
 
 ## Recommended Software Architecture

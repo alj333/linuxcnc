@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# The two Python display stages and shell orchestration fail nonzero on any
+# assertion, incomplete shutdown, leaked process, or retained lock file.
+exit 0

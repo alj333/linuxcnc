@@ -30,6 +30,13 @@ SAMPLE_LINEAR_TOL = 5e-6
 SAMPLE_ROTARY_TOL = 5e-6
 PLANE_VECTOR_TOL = 2e-4
 MODEL_TOL = 2e-6
+PROBE_NO_CONTACT_TRAVEL = 0.400000
+PROBE_CONTACT_PATH = 4.000000
+PROBE_CONTACT_TRIGGER = 1.250000
+PROBE_PARAMETER_TOL = 2e-6
+PROBE_ABSOLUTE_X_TOL = 5e-5
+PROBE_STOP_TOL = 1e-2
+PROBE_PARAMETERS = (5070,) + tuple(range(5061, 5070))
 
 # Fields after the tagged sample number.
 JX, JY, JZ, JB, JC = range(5)
@@ -207,6 +214,45 @@ def mdi_expect_rejected(command, expected_text):
     return text
 
 
+def mdi_parameter_values(tag, parameters):
+    drain_errors(errors)
+    controller.mode(linuxcnc.MODE_MDI)
+    controller.wait_complete()
+    words = " ".join("#%d" % parameter for parameter in parameters)
+    controller.mdi("(DEBUG,%s %%.9f%s)" % (tag, words))
+    controller.wait_complete()
+
+    values = None
+    deadline = time.monotonic() + TIMEOUT
+    while time.monotonic() < deadline:
+        status.poll()
+        error = errors.poll()
+        if error is not None:
+            code, text = error
+            if code in (linuxcnc.NML_ERROR, linuxcnc.OPERATOR_ERROR):
+                fail("LinuxCNC error %s while reading probe parameters" % (error,))
+            if tag in text:
+                fields = text.split(tag, 1)[1].strip().split()
+                try:
+                    values = tuple(float(field) for field in fields)
+                except ValueError as exc:
+                    fail("cannot parse %s probe parameters from %r: %s" % (tag, text, exc))
+                if len(values) != len(parameters):
+                    fail(
+                        "%s returned %d probe parameters, expected %d: %r"
+                        % (tag, len(values), len(parameters), text)
+                    )
+        if (
+            values is not None
+            and status.interp_state == linuxcnc.INTERP_IDLE
+            and status.exec_state == linuxcnc.EXEC_DONE
+            and status.inpos
+        ):
+            return values
+        time.sleep(0.01)
+    fail("timeout reading probe parameters for %s" % tag)
+
+
 def auto_expect_rejected(expected_text):
     drain_errors(errors)
     controller.mode(linuxcnc.MODE_AUTO)
@@ -239,6 +285,14 @@ def underscore_vector(prefix):
 
 def vector_sub(a, b):
     return tuple(a[index] - b[index] for index in range(3))
+
+
+def vector_dot(a, b):
+    return sum(a[index] * b[index] for index in range(3))
+
+
+def vector_scale(vector, scale):
+    return tuple(value * scale for value in vector)
 
 
 def physical_tcp():
@@ -354,6 +408,9 @@ def active_guard_snapshot():
         "twp_r": hal_float("headheadtwp.twp_normal_rotation"),
         "model_q": hal_float("headheadkins.length-model.q"),
         "model_fault": int(hal.get_value("headheadkins.length-model.fault-code")),
+        "probe_tripped": bool(status.probe_tripped),
+        "probe_val": int(status.probe_val),
+        "probed_position": tuple(status.probed_position),
     }
 
 
@@ -375,6 +432,7 @@ def assert_active_guard_unchanged(label, before):
         "canonical_tool_offset",
         "tcpc_origin",
         "g5x_offset",
+        "probed_position",
     ):
         assert_vector(
             "%s %s" % (label, field.replace("_", " ")),
@@ -390,6 +448,8 @@ def assert_active_guard_unchanged(label, before):
         "state_code",
         "transaction_fault",
         "model_fault",
+        "probe_tripped",
+        "probe_val",
     ):
         if after[field] != before[field]:
             fail(
@@ -433,7 +493,22 @@ def exercise_active_guards(case):
         (
             "arc motion",
             "G2 X0 Y0 I1 J0",
-            "Only G0, G1, G80, and G69 are supported while TWP is active",
+            "Only G0, G1, G38.3, G80, and G69 are supported while TWP is active",
+        ),
+        (
+            "error-on-no-contact probe",
+            "G38.2 X1",
+            "Only G0, G1, G38.3, G80, and G69 are supported while TWP is active",
+        ),
+        (
+            "error-on-no-release probe",
+            "G38.4 X1",
+            "Only G0, G1, G38.3, G80, and G69 are supported while TWP is active",
+        ),
+        (
+            "no-error release probe",
+            "G38.5 X1",
+            "Only G0, G1, G38.3, G80, and G69 are supported while TWP is active",
         ),
         (
             "tool selection",
@@ -452,13 +527,217 @@ def exercise_active_guards(case):
         ),
     )
     for guard_name, command, expected_text in rejected:
+        probe_guard = guard_name in (
+            "error-on-no-contact probe",
+            "error-on-no-release probe",
+            "no-error release probe",
+        )
+        parameter_tag = "%s_%s" % (
+            case["name"].replace("-", "_"),
+            guard_name.replace("-", "_").replace(" ", "_"),
+        )
+        before_probe_parameters = None
+        if probe_guard:
+            before_probe_parameters = mdi_parameter_values(
+                "TWP_REJECT_BEFORE_%s" % parameter_tag,
+                PROBE_PARAMETERS,
+            )
         before = active_guard_snapshot()
         mdi_expect_rejected(command, expected_text)
         assert_active_guard_unchanged(
             "%s rejected %s" % (case["name"], guard_name),
             before,
         )
+        if probe_guard:
+            after_probe_parameters = mdi_parameter_values(
+                "TWP_REJECT_AFTER_%s" % parameter_tag,
+                PROBE_PARAMETERS,
+            )
+            assert_vector(
+                "%s rejected %s probe parameters"
+                % (case["name"], guard_name),
+                after_probe_parameters,
+                before_probe_parameters,
+                1e-9,
+            )
     log("%s passed %d active-TWP fail-closed command guards" % (case["name"], len(rejected)))
+
+
+def run_triggered_probe(case, expected_plane_x, local_start):
+    name = case["name"]
+    start_tcp = physical_tcp()
+    start_joints = joint_pose()
+    probe_input_set = False
+
+    drain_errors(errors)
+    hal.set_p("motion.probe-input", "0")
+    controller.mode(linuxcnc.MODE_MDI)
+    controller.wait_complete()
+    controller.mdi("G38.3 X%.6f F60.0" % PROBE_CONTACT_PATH)
+
+    started = False
+    deadline = time.monotonic() + TIMEOUT
+    try:
+        while time.monotonic() < deadline:
+            status.poll()
+            check_errors(errors)
+            probing = status.probing or status.motion_type == linuxcnc.MOTION_TYPE_PROBING
+            started = started or probing
+            displacement = vector_sub(physical_tcp(), start_tcp)
+            travel = vector_dot(displacement, expected_plane_x)
+            if started and not probe_input_set and travel >= PROBE_CONTACT_TRIGGER:
+                hal.set_p("motion.probe-input", "1")
+                probe_input_set = True
+            if (
+                started
+                and status.interp_state == linuxcnc.INTERP_IDLE
+                and status.exec_state == linuxcnc.EXEC_DONE
+                and status.inpos
+            ):
+                break
+            time.sleep(0.002)
+        else:
+            fail("%s timed out during triggered G38.3" % name)
+    finally:
+        hal.set_p("motion.probe-input", "0")
+
+    if not started:
+        fail("%s G38.3 never entered probing motion" % name)
+    if not probe_input_set:
+        fail("%s G38.3 reached its endpoint before the simulated contact" % name)
+    status.poll()
+    if not status.probe_tripped:
+        fail("%s G38.3 did not latch the simulated probe contact" % name)
+
+    stopped_tcp = physical_tcp()
+    displacement = vector_sub(stopped_tcp, start_tcp)
+    physical_travel = vector_dot(displacement, expected_plane_x)
+    perpendicular = vector_sub(displacement, vector_scale(expected_plane_x, physical_travel))
+    if not (
+        PROBE_CONTACT_TRIGGER - PROBE_STOP_TOL
+        <= physical_travel
+        < PROBE_CONTACT_PATH - PROBE_STOP_TOL
+    ):
+        fail(
+            "%s triggered G38.3 did not stop early: travel=%.9f path=%.9f"
+            % (name, physical_travel, PROBE_CONTACT_PATH)
+        )
+    assert_vector(
+        name + " triggered probe plane residual",
+        perpendicular,
+        (0.0, 0.0, 0.0),
+        PLANE_VECTOR_TOL,
+    )
+    assert_scalar(name + " triggered probe B hold", joint_pose()[3], start_joints[3], DIRECT_ROTARY_TOL)
+    assert_scalar(name + " triggered probe C hold", joint_pose()[4], start_joints[4], DIRECT_ROTARY_TOL)
+
+    result = mdi_parameter_values(
+        "TWP_G383_CONTACT_%s" % name,
+        PROBE_PARAMETERS,
+    )
+    assert_scalar(name + " contact #5070", result[0], 1.0, 1e-12)
+    local_travel = result[1] - local_start[0]
+    assert_scalar(
+        name + " contact #5061 travel",
+        local_travel,
+        physical_travel,
+        PROBE_STOP_TOL,
+    )
+    assert_scalar(name + " contact #5062", result[2], local_start[1], PROBE_PARAMETER_TOL)
+    assert_scalar(name + " contact #5063", result[3], local_start[2], PROBE_PARAMETER_TOL)
+    assert_scalar(name + " contact #5064", result[4], 0.0, PROBE_PARAMETER_TOL)
+    assert_scalar(name + " contact #5065 B", result[5], case["b"], DIRECT_ROTARY_TOL)
+    assert_scalar(
+        name + " contact #5066 C",
+        result[6],
+        case["reached_c"],
+        DIRECT_ROTARY_TOL,
+    )
+    assert_vector(
+        name + " contact #5067-#5069",
+        result[7:10],
+        (0.0, 0.0, 0.0),
+        PROBE_PARAMETER_TOL,
+    )
+
+    mdi("G1 X%.12f" % -physical_travel)
+    assert_vector(
+        name + " triggered probe retract closure",
+        physical_tcp(),
+        start_tcp,
+        PLANE_VECTOR_TOL,
+    )
+    assert_scalar(name + " triggered retract B hold", joint_pose()[3], start_joints[3], DIRECT_ROTARY_TOL)
+    assert_scalar(name + " triggered retract C hold", joint_pose()[4], start_joints[4], DIRECT_ROTARY_TOL)
+    return physical_travel
+
+
+def exercise_active_g383(case, expected_plane_x):
+    name = case["name"]
+    hal.set_p("motion.probe-input", "0")
+    start_tcp = physical_tcp()
+    start_joints = joint_pose()
+    local_start = mdi_parameter_values(
+        "TWP_G383_START_%s" % name,
+        tuple(range(5420, 5429)),
+    )
+
+    mdi("G91")
+    mdi("G38.3 X%.6f F60.0" % PROBE_NO_CONTACT_TRAVEL)
+    status.poll()
+    if status.probe_tripped:
+        fail("%s no-contact G38.3 unexpectedly latched a contact" % name)
+    no_contact_tcp = physical_tcp()
+    assert_vector(
+        name + " no-contact probe world displacement",
+        vector_sub(no_contact_tcp, start_tcp),
+        vector_scale(expected_plane_x, PROBE_NO_CONTACT_TRAVEL),
+        PLANE_VECTOR_TOL,
+    )
+    assert_scalar(name + " no-contact probe B hold", joint_pose()[3], start_joints[3], DIRECT_ROTARY_TOL)
+    assert_scalar(name + " no-contact probe C hold", joint_pose()[4], start_joints[4], DIRECT_ROTARY_TOL)
+
+    result = mdi_parameter_values(
+        "TWP_G383_NO_CONTACT_%s" % name,
+        PROBE_PARAMETERS,
+    )
+    assert_scalar(name + " no-contact #5070", result[0], 0.0, 1e-12)
+    expected_no_contact = list(local_start)
+    expected_no_contact[0] += PROBE_NO_CONTACT_TRAVEL
+    assert_scalar(
+        name + " no-contact absolute #5061",
+        result[1],
+        expected_no_contact[0],
+        PROBE_ABSOLUTE_X_TOL,
+    )
+    assert_vector(
+        name + " no-contact #5062-#5069",
+        result[2:10],
+        tuple(expected_no_contact[1:]),
+        PROBE_PARAMETER_TOL,
+    )
+    assert_scalar(
+        name + " no-contact #5063 active length",
+        result[3],
+        -case["length"],
+        PROBE_PARAMETER_TOL,
+    )
+    assert_scalar(name + " no-contact #5065 B", result[5], case["b"], DIRECT_ROTARY_TOL)
+    assert_scalar(
+        name + " no-contact #5066 C",
+        result[6],
+        case["reached_c"],
+        DIRECT_ROTARY_TOL,
+    )
+
+    mdi("G1 X%.6f" % -PROBE_NO_CONTACT_TRAVEL)
+    assert_vector(name + " no-contact probe retract closure", physical_tcp(), start_tcp, PLANE_VECTOR_TOL)
+    contact_travel = run_triggered_probe(case, expected_plane_x, local_start)
+    mdi("G90")
+    log(
+        "%s passed active-TWP G38.3: no-contact %.3f mm, contact stop %.6f mm"
+        % (name, PROBE_NO_CONTACT_TRAVEL, contact_travel)
+    )
 
 
 def exercise_percent_terminator_guard(case):
@@ -855,6 +1134,7 @@ def run_case(case):
         expected_plane_x,
         DIRECT_LINEAR_TOL,
     )
+    exercise_active_g383(case, expected_plane_x)
     local_start_tcp = physical_tcp()
     mdi("G91")
     mdi("G1 X1.000000 F60.0")
