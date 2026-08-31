@@ -1,14 +1,16 @@
 # Head-head TWP switchkins continuity
 
-This headless fixture opts into the production `G68.2`/`G69` remap with a
+This headless fixture opts into the production `G68.2`/`G53.1`/`G69` remap with a
 test-only `[TWP] ENABLE = 1`. It imports the production remap and directly
 sources the commissioned `2026082601` length-model overlay instead of copying
 either implementation into the test.
 
-The test performs stationary switchkins entry and exit for:
+For each tool, `G68.2` first defines a frame while world kinematics and public
+TCPC remain off. `G53.1` then performs the stationary switchkins entry, and
+`G69` exits and clears the frame. The test covers:
 
-* T3 (`L=128.606729`, `q=1`) at reached and requested `B30 C90`, with
-  nonzero normal rotation `R17`.
+* T3 (`L=128.606729`, `q=1`) at reached `B30 C90`, defined with Fusion-style
+  rotating-`ZXZ` `X/Y/Z/I/J/K` words and nonzero normal rotation `R17`.
 * T4 (`L=229.407000`, `q=0`) at reached `B-30 C-350`, requested as the
   equivalent `B-30 C10` to verify continuous C-branch latching.
 

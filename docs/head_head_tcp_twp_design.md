@@ -27,14 +27,17 @@ Current branch status:
 - synchronized TWP is implemented as switchkins type 1 in the same module
 - type 1 reuses the complete TCPC/tool-length evaluation and adds only the
   reciprocal tilted program-frame transform
-- guarded `G68.2`/`G69` remaps and interpreter restrictions are implemented
-  for offline commissioning
-- a production-equivalent T3/T4 test passed 8,323 consecutive servo samples
-  across four stationary type switches, including nonzero G54, `R17`, and a
-  wrapped C assertion
+- guarded `G68.2`/`G53.1`/`G69` remaps and interpreter restrictions are
+  implemented for offline commissioning
+- a production-equivalent T3/T4 test passed 18,931 consecutive servo samples
+  across four stationary type switches, including nonzero G54, Fusion rotating
+  `ZXZ` I/J/K input, `R17`, and a wrapped C assertion, with public TCPC off
+- the exact stage-1 T4 sphere program passed a full 24-contact AUTO simulation;
+  WORLD closure was `0.000726 mm` and transformed TWP error was `0.000776 mm`
+- component-loss/restart and all 15 legacy TCPC/TWP behavior scenarios pass
 - the real-machine INIs do not set `[TWP] ENABLE=1`; production TWP therefore
-  remains locked until the remaining recovery and supervised machine checks
-  are complete
+  remains locked; only the dedicated commissioning INI permits the first
+  supervised physical sphere check
 
 ## Machine Topology
 
@@ -298,26 +301,32 @@ Recommended first operator interface:
 The production-facing implementation uses two switchkins types exported by
 the same `headheadkins` component:
 
-- type 0: normal world-programming frame with the commissioned G43.4 TCPC math
-- type 1: tilted program frame around that same TCPC math
+- type 0: normal world-programming frame; `G43.4` optionally enables TCPC
+- type 1: the separate tilted-work-plane frame with public TCPC disabled
 
 Both types call the same active-tool snapshot and the same
 `evaluate_tool_offset_world()` function. This includes the complete nominal
 geometry, fitted common correction, tool-length differential correction,
-coefficient-set ID checks, length-domain checks, and TCPC origin handling.
-There is no second TWP calibration or reduced tool model.
+coefficient-set ID checks, length-domain checks, and tool-reference handling.
+There is no second TWP calibration or reduced tool model. Type 1 captures the
+same calibrated tool-offset reference internally without asserting the public
+`G43.4` TCPC state.
 
-At a stationary `G68.2` transition, type 1 latches:
+`G68.2` defines the frame but leaves type 0 selected. It accepts Fusion/Fanuc
+`X/Y/Z/I/J/K` using rotating `ZXZ` Euler angles, as well as the commissioning
+`B/C/R` assertion form. B/C must already have reached the matching orientation.
+`G53.1` then performs the stationary type-1 handoff and latches:
 
 - the exact reached `B/C` values, including the continuous C branch
 - optional plane-normal rotation `R`
-- active G5X translation
-- TCPC origin
-- current world TCP as the tilted-frame anchor
+- the coordinate layer produced by rotating about the requested work-frame
+  `X/Y/Z` pivot
+- an internal calibrated tool-offset reference
+- the current world point as the tilted-frame anchor
 
 The first successful type-1 forward transform asserts a frame-ready pin. The
-local coordinate corresponding to the unchanged TCP is the active G5X
-coordinate, so changing kinematics type does not request joint motion. Normal
+local coordinate at activation is the fully transformed coordinate about that
+pivot, so changing kinematics type does not request joint motion. Normal
 `G0/G1 X/Y/Z` blocks then map through the latched plane basis while `B/C` stay
 fixed.
 
@@ -454,11 +463,12 @@ Minimum acceptance tests for the new kinematics stack:
 7. rotary limits are enforced correctly
 8. simulation visual pose matches expected physical pose
 9. posted Fusion 360 5-axis test programs run correctly in simulation
-10. every servo cycle across G68.2/G69 entry and exit is free of joint-command
+10. every servo cycle across G53.1/G69 entry and exit is free of joint-command
     and physical-TCP transients for both calibrated probe lengths
 11. equivalent wrapped C assertions preserve the reached continuous branch
 12. the commissioned length-model ID, evaluated length, correction blend, and
-    TCPC origin remain unchanged across the frame switch
+    internal TWP tool reference remain valid across the frame switch while
+    public TCPC stays off
 
 Current visual acceptance aids:
 

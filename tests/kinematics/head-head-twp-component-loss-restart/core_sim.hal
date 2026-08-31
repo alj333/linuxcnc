@@ -82,6 +82,7 @@ net headhead-tcpc-origin-z headheadtwp.tcpc_origin_z => headheadkins.tcpc-origin
 # The legacy TWP input remains hard-off. Only the synchronized switchkins path
 # can select the tilted work-plane kinematics in this fixture.
 setp headheadkins.twp-mode 0
+net headhead-twp-motion-enabled headheadtwp.motion_enabled => headheadkins.synchronized-twp-enable
 net headhead-twp-kinematics-type headheadtwp.kinematics_type => motion.switchkins-type
 net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
 net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c

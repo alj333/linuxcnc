@@ -7,8 +7,9 @@ commissioned `2026082601` length model, and opts into `G68.2` only inside this
 test fixture.
 
 The shell driver starts LinuxCNC twice. In stage one it homes and enables the
-simulated XYZBC machine, loads T4 with `G43 H4`, enables `G43.4`, reaches fixed
-`B5 C0`, and enters `G68.2`. It then identifies and sends `SIGKILL` only to the
+simulated XYZBC machine, loads T4 with `G43 H4`, verifies the separate TCPC
+mode, leaves TCPC off, reaches fixed `B5 C0`, defines TWP with `G68.2`, and
+activates it with `G53.1`. It then identifies and sends `SIGKILL` only to the
 Python process that owns the `headheadtwp` HAL component. The process must
 disappear. HAL may remove the pins immediately or retain their stale registration
 until teardown after this abnormal exit; in either case no owner process may

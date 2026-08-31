@@ -3,7 +3,7 @@
 
 (Operator setup:)
 (1. Use the dedicated TWP sphere validation INI only.)
-(2. Install T4. Apply M61 Q4, G43 H4, then G43.4 at B0 C0.)
+(2. Install T4. Apply M61 Q4 and G43 H4. TCPC G43.4 must be off.)
 (3. Use B0 C0 for the first run. Later runs may use B+5 C0 or B-5 C0.)
 (4. Position the probe 3-5 mm above the accessible sphere surface, on the)
 (    spindle/probe axis. The sphere-to-post direction is X- Y+ Z-.)
@@ -11,7 +11,7 @@
 (6. Keep the run supervised. After Stop/Abort while TWP may be active, do not)
 (    jog or restart from line. At standstill run G69 and verify world mode; if)
 (    G69 or state health is unavailable, restart cleanly, home, and re-establish.)
-(7. The program leaves TCPC on, TWP off, B/C unchanged, and Z lifted 25 mm.)
+(7. The program leaves TCPC and TWP off, B/C unchanged, and Z lifted 25 mm.)
 
 (The program performs WORLD/TWP/WORLD at one fixed B/C pose. Each phase is)
 (two four-contact sphere measurements: W, sign-aware upper U, -V, and +V.)
@@ -127,9 +127,9 @@ o<twp_s1_live_guard> sub
     o<twp_s1_cancel_if_active> call
     (abort, TWP sphere validation requires zero T4 X and Y tool offsets)
   o<twp_s1_guard_tool_xy> endif
-  o<twp_s1_guard_tcpc> if [#<_hal[headheadtwp.tcpc_enabled]> LT 0.5]
+  o<twp_s1_guard_tcpc> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
     o<twp_s1_cancel_if_active> call
-    (abort, TWP sphere validation requires G43.4 TCPC active)
+    (abort, TWP sphere validation requires separate TWP mode with G43.4 off)
   o<twp_s1_guard_tcpc> endif
   o<twp_s1_guard_model_config> if [#<_hal[headheadkins.length-model.configured]> LT 0.5]
     o<twp_s1_cancel_if_active> call
@@ -204,6 +204,14 @@ o<twp_s1_live_guard> sub
       o<twp_s1_cancel_if_active> call
       (abort, TWP sphere validation found incomplete active TWP state)
     o<twp_s1_guard_twp_state> endif
+    o<twp_s1_guard_twp_authorized> if [#<_hal[headheadkins.synchronized-twp-enable]> LT 0.5]
+      o<twp_s1_cancel_if_active> call
+      (abort, TWP sphere validation found kinematics authorization clear)
+    o<twp_s1_guard_twp_authorized> endif
+    o<twp_s1_guard_twp_transaction> if [#<_hal[headheadtwp.synchronized_frame]> LT 0.5]
+      o<twp_s1_cancel_if_active> call
+      (abort, TWP sphere validation found synchronized frame provenance clear)
+    o<twp_s1_guard_twp_transaction> endif
   o<twp_s1_guard_expect_world> endif
   o<twp_s1_guard_frame_ready> if [#<_hal[headheadkins.kinstype-frame-ready]> LT 0.5]
     o<twp_s1_cancel_if_active> call
@@ -570,20 +578,25 @@ o<twp_s1_hold_c> endif
 #<_twp_s1_wcs_x> = [#<_abs_x> - #<_x> - #<_hal[motion.tooloffset.x]>]
 #<_twp_s1_wcs_y> = [#<_abs_y> - #<_y> - #<_hal[motion.tooloffset.y]>]
 #<_twp_s1_wcs_z> = [#<_abs_z> - #<_z> - #<_hal[motion.tooloffset.z]>]
+#<_twp_s1_eval_x> = #<_hal[headheadkins.tool-offset.x]>
+#<_twp_s1_eval_y> = #<_hal[headheadkins.tool-offset.y]>
+#<_twp_s1_eval_z> = #<_hal[headheadkins.tool-offset.z]>
 #<_twp_s1_counter_start> = #<_hal[counter.2.position]>
 
 (A1: world-frame opening center.)
 #<_twp_s1_phase> = 1.0
 o<twp_s1_measure_pair> call [0.0]
-#<_twp_s1_a1_x> = [#<_twp_s1_measure_center_x> + #<_twp_s1_wcs_x>]
-#<_twp_s1_a1_y> = [#<_twp_s1_measure_center_y> + #<_twp_s1_wcs_y>]
-#<_twp_s1_a1_z> = [#<_twp_s1_measure_center_z> + #<_twp_s1_wcs_z> + #<_twp_s1_tool_length>]
+#<_twp_s1_a1_x> = [#<_twp_s1_measure_center_x> + #<_twp_s1_wcs_x> + #<_twp_s1_eval_x>]
+#<_twp_s1_a1_y> = [#<_twp_s1_measure_center_y> + #<_twp_s1_wcs_y> + #<_twp_s1_eval_y>]
+#<_twp_s1_a1_z> = [#<_twp_s1_measure_center_z> + #<_twp_s1_wcs_z>]
+#<_twp_s1_a1_z> = [#<_twp_s1_a1_z> + #<_twp_s1_tool_length> + #<_twp_s1_eval_z>]
 #<_twp_s1_a1_pair> = #<_twp_s1_pair_delta>
 #<_twp_s1_a1_diam> = #<_twp_s1_measure_vdiam>
 #<_twp_s1_a1_residual> = #<_twp_s1_measure_residual>
 
 (B: same physical sphere measured in the synchronized tilted frame.)
 G68.2 R0
+G53.1
 o<twp_s1_live_guard> call [1.0]
 #<_twp_s1_origin_x> = #<_hal[headheadkins.twp-captured-origin.x]>
 #<_twp_s1_origin_y> = #<_hal[headheadkins.twp-captured-origin.y]>
@@ -591,18 +604,9 @@ o<twp_s1_live_guard> call [1.0]
 #<_twp_s1_offset_x> = #<_hal[headheadkins.twp-coordinate-offset.x]>
 #<_twp_s1_offset_y> = #<_hal[headheadkins.twp-coordinate-offset.y]>
 #<_twp_s1_offset_z> = #<_hal[headheadkins.twp-coordinate-offset.z]>
-o<twp_s1_offset_x_guard> if [ABS[#<_twp_s1_offset_x> - #<_twp_s1_wcs_x>] GT 0.001]
-  o<twp_s1_cancel_if_active> call
-  (abort, TWP captured X coordinate layer differs from the active WCS)
-o<twp_s1_offset_x_guard> endif
-o<twp_s1_offset_y_guard> if [ABS[#<_twp_s1_offset_y> - #<_twp_s1_wcs_y>] GT 0.001]
-  o<twp_s1_cancel_if_active> call
-  (abort, TWP captured Y coordinate layer differs from the active WCS)
-o<twp_s1_offset_y_guard> endif
-o<twp_s1_offset_z_guard> if [ABS[#<_twp_s1_offset_z> - #<_twp_s1_wcs_z>] GT 0.001]
-  o<twp_s1_cancel_if_active> call
-  (abort, TWP captured Z coordinate layer differs from the active WCS)
-o<twp_s1_offset_z_guard> endif
+#<origin_dx> = [#<_twp_s1_origin_x> - #<_twp_s1_wcs_x>]
+#<origin_dy> = [#<_twp_s1_origin_y> - #<_twp_s1_wcs_y>]
+#<origin_dz> = [#<_twp_s1_origin_z> - #<_twp_s1_wcs_z>]
 (R0 TWP axes from the authoritative kinematics frame. Tool W points toward)
 (the sphere, so plane Z is its negative.)
 #<_twp_s1_px_x> = #<_hal[headheadkins.tool-frame-u.x]>
@@ -614,6 +618,27 @@ o<twp_s1_offset_z_guard> endif
 #<_twp_s1_pz_x> = [-#<_hal[headheadkins.tool-frame-w.x]>]
 #<_twp_s1_pz_y> = [-#<_hal[headheadkins.tool-frame-w.y]>]
 #<_twp_s1_pz_z> = [-#<_hal[headheadkins.tool-frame-w.z]>]
+#<expected_offset_x> = [#<_twp_s1_wcs_x> + [#<origin_dx> * #<_twp_s1_px_x>]]
+#<expected_offset_x> = [#<expected_offset_x> + [#<origin_dy> * #<_twp_s1_px_y>]]
+#<expected_offset_x> = [#<expected_offset_x> + [#<origin_dz> * #<_twp_s1_px_z>]]
+#<expected_offset_y> = [#<_twp_s1_wcs_y> + [#<origin_dx> * #<_twp_s1_py_x>]]
+#<expected_offset_y> = [#<expected_offset_y> + [#<origin_dy> * #<_twp_s1_py_y>]]
+#<expected_offset_y> = [#<expected_offset_y> + [#<origin_dz> * #<_twp_s1_py_z>]]
+#<expected_offset_z> = [#<_twp_s1_wcs_z> + [#<origin_dx> * #<_twp_s1_pz_x>]]
+#<expected_offset_z> = [#<expected_offset_z> + [#<origin_dy> * #<_twp_s1_pz_y>]]
+#<expected_offset_z> = [#<expected_offset_z> + [#<origin_dz> * #<_twp_s1_pz_z>]]
+o<twp_s1_offset_x_guard> if [ABS[#<_twp_s1_offset_x> - #<expected_offset_x>] GT 0.001]
+  o<twp_s1_cancel_if_active> call
+  (abort, TWP captured X coordinate layer is inconsistent with G68.2)
+o<twp_s1_offset_x_guard> endif
+o<twp_s1_offset_y_guard> if [ABS[#<_twp_s1_offset_y> - #<expected_offset_y>] GT 0.001]
+  o<twp_s1_cancel_if_active> call
+  (abort, TWP captured Y coordinate layer is inconsistent with G68.2)
+o<twp_s1_offset_y_guard> endif
+o<twp_s1_offset_z_guard> if [ABS[#<_twp_s1_offset_z> - #<expected_offset_z>] GT 0.001]
+  o<twp_s1_cancel_if_active> call
+  (abort, TWP captured Z coordinate layer is inconsistent with G68.2)
+o<twp_s1_offset_z_guard> endif
 
 (Reversible local +Z preflight. Correct TWP motion moves one millimetre away)
 (from the sphere. Even a reversed mapping remains inside the initial clearance.)
@@ -662,10 +687,11 @@ o<twp_s1_measure_pair> call [1.0]
 #<_twp_s1_b_diam> = #<_twp_s1_measure_vdiam>
 #<_twp_s1_b_residual> = #<_twp_s1_measure_residual>
 (Probe results have G5X and the canonical tool offset removed by emccanon.)
-(Restore T4 along local Z, then rotate about the captured physical TCP origin.)
-#<local_dx> = #<_twp_s1_b_local_x>
-#<local_dy> = #<_twp_s1_b_local_y>
-#<local_dz> = [#<_twp_s1_b_local_z> + #<_twp_s1_tool_length>]
+(Restore both, remove the captured local coordinate layer, then transform.)
+#<local_dx> = [#<_twp_s1_b_local_x> + #<_twp_s1_wcs_x> - #<_twp_s1_offset_x>]
+#<local_dy> = [#<_twp_s1_b_local_y> + #<_twp_s1_wcs_y> - #<_twp_s1_offset_y>]
+#<local_dz> = [#<_twp_s1_b_local_z> + #<_twp_s1_wcs_z>]
+#<local_dz> = [#<local_dz> + #<_twp_s1_tool_length> - #<_twp_s1_offset_z>]
 #<_twp_s1_b_world_x> = [#<_twp_s1_origin_x> + [#<local_dx> * #<_twp_s1_px_x>]]
 #<_twp_s1_b_world_x> = [#<_twp_s1_b_world_x> + [#<local_dy> * #<_twp_s1_py_x>]]
 #<_twp_s1_b_world_x> = [#<_twp_s1_b_world_x> + [#<local_dz> * #<_twp_s1_pz_x>]]
@@ -675,6 +701,9 @@ o<twp_s1_measure_pair> call [1.0]
 #<_twp_s1_b_world_z> = [#<_twp_s1_origin_z> + [#<local_dx> * #<_twp_s1_px_z>]]
 #<_twp_s1_b_world_z> = [#<_twp_s1_b_world_z> + [#<local_dy> * #<_twp_s1_py_z>]]
 #<_twp_s1_b_world_z> = [#<_twp_s1_b_world_z> + [#<local_dz> * #<_twp_s1_pz_z>]]
+#<_twp_s1_b_world_x> = [#<_twp_s1_b_world_x> + #<_twp_s1_eval_x>]
+#<_twp_s1_b_world_y> = [#<_twp_s1_b_world_y> + #<_twp_s1_eval_y>]
+#<_twp_s1_b_world_z> = [#<_twp_s1_b_world_z> + #<_twp_s1_eval_z>]
 
 G69
 o<twp_s1_live_guard> call [0.0]
@@ -682,9 +711,10 @@ o<twp_s1_live_guard> call [0.0]
 (A2: world-frame closing center.)
 #<_twp_s1_phase> = 3.0
 o<twp_s1_measure_pair> call [0.0]
-#<_twp_s1_a2_x> = [#<_twp_s1_measure_center_x> + #<_twp_s1_wcs_x>]
-#<_twp_s1_a2_y> = [#<_twp_s1_measure_center_y> + #<_twp_s1_wcs_y>]
-#<_twp_s1_a2_z> = [#<_twp_s1_measure_center_z> + #<_twp_s1_wcs_z> + #<_twp_s1_tool_length>]
+#<_twp_s1_a2_x> = [#<_twp_s1_measure_center_x> + #<_twp_s1_wcs_x> + #<_twp_s1_eval_x>]
+#<_twp_s1_a2_y> = [#<_twp_s1_measure_center_y> + #<_twp_s1_wcs_y> + #<_twp_s1_eval_y>]
+#<_twp_s1_a2_z> = [#<_twp_s1_measure_center_z> + #<_twp_s1_wcs_z>]
+#<_twp_s1_a2_z> = [#<_twp_s1_a2_z> + #<_twp_s1_tool_length> + #<_twp_s1_eval_z>]
 #<_twp_s1_a2_pair> = #<_twp_s1_pair_delta>
 #<_twp_s1_a2_diam> = #<_twp_s1_measure_vdiam>
 #<_twp_s1_a2_residual> = #<_twp_s1_measure_residual>

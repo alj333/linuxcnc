@@ -5092,3 +5092,37 @@ Future work split:
   - compare residual change per added probe length
   - use that to separate tool-length-dependent alignment errors from
     machine-fixed B/C harmonic errors
+
+## Update (2026-08-31, separate synchronized TWP contract)
+
+- Retained commissioned length-aware calibration revision `2026082601`
+  unchanged. No fitted coefficient, B/C zero, tool-table entry, or default
+  cut-test selection changed.
+- Separated the public modes:
+  - `G43.4` remains TCPC.
+  - `G68.2` defines TWP without enabling public TCPC or selecting type 1.
+  - `G53.1` performs the stationary switchkins type-1 activation.
+  - `G69` returns to world type 0 and clears the frame.
+- Added Fusion/Fanuc `G68.2 X Y Z I J K` support using the local Fanuc post's
+  rotating `ZXZ` Euler convention. The reached-pose `B/C/R` commissioning form
+  remains supported; neither form commands B/C motion.
+- Type 1 uses the same complete length-aware tool model as G43.4 through an
+  internal calibrated tool reference. A separate synchronized authorization
+  pin and TCPC-off requirement prevent stale frame data from selecting type 1.
+- The first physical routine remains
+  `nc_files/calibration/twp_sphere_probe_stage1_t4.ngc`, using T4/H4 with
+  ordinary G43 active and public G43.4 off. It has one initial M0 and a guarded
+  WORLD/TWP/WORLD comparison.
+- Clean-shutdown offline revalidation passed:
+  - rebuild and Python/static/coordinate-math checks
+  - switchkins continuity: 18,931 samples, four stationary edges, T3 Fusion
+    I/J/K and T4 wrapped-C cases, contact/no-contact probing, and fail-closed
+    guards
+  - component loss held pose stationary; fresh restart returned type 0 clear
+  - exact sphere AUTO program: 24 contacts, six passes, `0.000726 mm` WORLD
+    closure, `0.000776 mm` TWP error, clean G69, and byte-identical CSV restore
+  - all 15 older TCPC/TWP behavior scenarios passed by process status
+- These results are headless simulation only. The dedicated
+  `5th_axis_xyzbc_ssi_tcpc_probe_basic_twp_probe_validation_2026083101.ini`
+  remains supervised commissioning work; the default cut-test config remains
+  TWP-locked.

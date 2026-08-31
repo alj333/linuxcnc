@@ -120,6 +120,7 @@ struct haldata {
     hal_float_t *tcpc_origin_y;
     hal_float_t *tcpc_origin_z;
     hal_bit_t *twp_mode;
+    hal_bit_t *synchronized_twp_enable;
     hal_float_t *twp_motion_origin_x;
     hal_float_t *twp_motion_origin_y;
     hal_float_t *twp_motion_origin_z;
@@ -1551,6 +1552,9 @@ static int init_geometry_pins(void)
     if (result < 0) return result;
     result = new_hal_bit_pin(&haldata->twp_mode, HAL_IN, "twp-mode");
     if (result < 0) return result;
+    result = new_hal_bit_pin(&haldata->synchronized_twp_enable,
+                             HAL_IN, "synchronized-twp-enable");
+    if (result < 0) return result;
     result = new_hal_float_pin(&haldata->twp_motion_origin_x, HAL_IN, "twp-motion-origin.x");
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->twp_motion_origin_y, HAL_IN, "twp-motion-origin.y");
@@ -1697,6 +1701,7 @@ static int init_geometry_pins(void)
     *haldata->tcpc_origin_y = 0.0;
     *haldata->tcpc_origin_z = 0.0;
     *haldata->twp_mode = 0;
+    *haldata->synchronized_twp_enable = 0;
     *haldata->twp_motion_origin_x = 0.0;
     *haldata->twp_motion_origin_y = 0.0;
     *haldata->twp_motion_origin_z = 0.0;
@@ -1766,7 +1771,8 @@ int kinematicsSwitch(int new_switchkins_type)
     }
     if (new_switchkins_type == 1
         && (haldata == NULL
-            || !pinb(haldata->tcpc_enable)
+            || pinb(haldata->tcpc_enable)
+            || !pinb(haldata->synchronized_twp_enable)
             || !synchronized_twp_inputs_are_finite()
             || (lengthmodel && !pinb(haldata->length_model_valid)))) {
         return -1;

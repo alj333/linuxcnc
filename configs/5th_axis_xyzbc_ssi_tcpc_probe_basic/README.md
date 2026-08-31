@@ -58,88 +58,75 @@ T4 new-location campaign remains an axis-geometry diagnostic only: none of its
 location-associated results changed the model coefficients, B/C zeros,
 kinematics, HAL calibration, or tool table.
 
-## Offline TWP Shared Workpath - 2026-08-31 +07
+## Separate TWP Shared Workpath - 2026-08-31 +07
 
-The new synchronized `G68.2` path uses the exact commissioned G43.4
-kinematics. `headheadkins` now exposes world and tilted switchkins types, but
-both types call the same active-tool snapshot and
-`evaluate_tool_offset_world()` implementation. The TWP type adds only an outer
-coordinate-frame transform. It does not have separate pivot geometry,
-coefficients, tool-length interpolation, or TCPC-origin math.
+`G43.4` TCPC and `G68.2` TWP are separate public modes. The commissioned
+length-aware geometry revision remains shared internally; there is no second
+TWP coefficient set or reduced tool model. The guarded TWP sequence is:
 
-The frame switch latches the reached B/C pose, optional R rotation, active G5X
-translation, TCPC origin, and current world TCP. B/C words on `G68.2` are
-pose assertions; they do not command rotary motion. The exact live C branch is
-retained, so an assertion such as `C10` at a reached `C-350` cannot cause a
-360-degree branch change. A frame-ready output is asserted only after the new
-forward transform succeeds.
+1. Apply the ordinary positive `G43 H` tool length with `G43.4` off.
+2. Preposition B/C to the required orientation while TWP is clear.
+3. `G68.2` defines the frame and leaves world switchkins type 0 selected.
+4. `G53.1` performs a stationary handoff to tilted switchkins type 1.
+5. Fixed-B/C local XYZ motion runs with public TCPC still off.
+6. `G69` returns to world type 0 and then clears the stored frame.
 
-`G69` uses a separate exit and clear transaction. The stored frame is retained
-until world kinematics has been confirmed, then it is cleared while G43.4 and
-the active tool length remain unchanged. Interpreter guards restrict the first
-TWP scope to fixed-B/C `G0/G1/G38.3` XYZ motion plus `G4`; `G38.2/G38.4/G38.5`,
-unsupported motion, coordinate changes, cutter compensation, tool changes,
-tool-offset changes, and program end before `G69` are rejected.
+Fusion/Fanuc `G68.2 X Y Z I J K` input is accepted using the post's rotating
+`ZXZ` Euler convention. `X/Y/Z` define the pivot in the active work frame.
+The commissioning `B/C/R` form remains available as a reached-pose assertion.
+Neither form commands rotary motion in this first implementation. The exact
+live C branch is retained, so an equivalent assertion such as `C10` at reached
+`C-350` cannot introduce a 360-degree move.
 
-The production HAL is wired for this synchronized handoff. The default and
-cut-test real-machine INIs still omit `[TWP] ENABLE=1`, so their `G68.2` remains
-locked. Only the dedicated supervised INI
+Type 1 calls the same active-tool snapshot and
+`evaluate_tool_offset_world()` implementation as TCPC. It captures that
+calibrated tool reference internally without setting
+`headheadtwp.tcpc_enabled`. A dedicated
+`headheadkins.synchronized-twp-enable` input and the TCPC-off condition
+authorize the type-1 switch; finite stale frame parameters alone are not
+sufficient.
+
+`G69` uses separate exit and clear transactions. Interpreter guards restrict
+the first scope to fixed-B/C `G0/G1/G38.3` XYZ motion plus `G4` dwell.
+Unsupported probing, arcs, coordinate changes, cutter compensation, rotary
+words, tool or offset changes, and program end before `G69` are rejected.
+
+The default cut-test INI still omits `[TWP] ENABLE=1`, so TWP remains locked
+there. Only the dedicated supervised INI
 `5th_axis_xyzbc_ssi_tcpc_probe_basic_twp_probe_validation_2026083101.ini` opts
-in; its separate launcher is `launch_xyzbc_ssi_twp_probe_validation.sh`.
+in; its launcher is `launch_xyzbc_ssi_twp_probe_validation.sh`.
 
-Offline validation completed on 2026-08-31:
+The physical stage-1 routine is `twp_sphere_probe_stage1_t4.ngc`. It runs a
+WORLD/TWP/WORLD comparison, explicitly issues `G68.2` then `G53.1`, and
+reconstructs the tilted result through the captured pivot/coordinate layer.
+Its B0-first operator and recovery sequence is in
+`TWP_SPHERE_STAGE1_T4_PLAN_2026083101.md`.
 
-- `tests/kinematics/head-head-twp-switchkins-continuity/` imports the production
-  remap, sources the commissioned `2026082601` overlay, and enables TWP only in
-  its test INI
-- T3 at `B30 C90 R17` and T4 at reached `B-30 C-350 R0` both completed
-  stationary entry, reversible local-X motion, and stationary exit
-- T4 asserted the equivalent `C10` on `G68.2` and retained the live `C-350`
-  branch
-- a nonzero G54 translation exercised the coordinate-layer transfer
-- the final run captured 8,323 consecutive servo records across four switch
-  edges; no sampled joint
-  or physical-TCP span exceeded the `0.000005 mm/deg` test thresholds
-- the model remained valid with ID `2026082601`, T3/T4 evaluated lengths and
-  `q=1/0`, and a stable TCPC origin throughout each active frame
-- the existing G43.4 entry/exit regression and all 14 legacy head-head TWP
-  behavior regressions also passed
-- active-plane guard checks rejected rotary/G53/WCS/parameter/arc/tool/TLO/end
-  blocks and a closing `%` without changing TWP, TCPC, tool, model, joint, or
-  physical-TCP state
-- an expanded runtime completed 18,184 servo samples while T3 and T4 each ran
-  active-TWP `G38.3` no-contact and simulated-contact paths; it verified early
-  stop, `#5061..#5069/#5070`, fixed B/C, plane displacement, retract closure,
-  and subsequent `G69`
-- the same runtime rejected `G38.2`, `G38.4`, and `G38.5` without changing
-  joints, TCP, TWP state, probe latch/status, or probe-result parameters
-- `tests/kinematics/head-head-twp-sphere-full-runtime/` ran the exact physical
-  stage-1 program in AUTO at `B+5 C0` with T4, G43.4, a nonzero G54, and a
-  fixed simulated 30 mm sphere; all 24 raw/mux/gated contacts, six pass rows,
-  one accepted result row, the local-Z preflight/closure, final G69/world
-  state, fixed B/C, preserved model/tool state, and final safe lift passed
-- that full-body fixture backs up the production CSV targets and verified their
-  byte-for-byte restoration after LinuxCNC and its loggers had fully exited
-- `tests/kinematics/head-head-twp-component-loss-restart/` killed only the
-  active `headheadtwp` owner process, confirmed type 1 and every joint/TCP
-  remained stationary, then proved a wholly fresh launch restored ready world
-  type 0 with TCPC off and all TWP/frame/transaction state clear
-- abnormal userspace exit can leave stale registered HAL values until teardown;
-  therefore component loss is restart-only and must never be resumed in place
+Revalidation completed after a clean controller shutdown on 2026-08-31:
 
-Do not add TWP to the default real-machine INI. The dedicated opt-in remains a
-commissioning-only path until the remaining physical gate is complete:
+- Python compilation, static G-code structure, independent coordinate math,
+  and the rebuilt interpreter/kinematics pass.
+- The switchkins runtime completed 18,931 servo samples across four stationary
+  edges. It covered T3 with Fusion `ZXZ` I/J/K input at `B30 C90 R17`, T4 at
+  reached `C-350` asserted as `C10`, defined-only motion rejection, 11 active
+  fail-closed guards per tool, and `G38.3` contact/no-contact paths. Public
+  TCPC remained off and no joint/TCP continuity fault was detected.
+- The component-loss runtime held the active type-1 pose stationary after the
+  state owner was killed; a wholly fresh start restored world type 0 with all
+  synchronized frame state clear.
+- The exact physical sphere program completed in AUTO with 24 contacts and six
+  pass rows. Simulated WORLD closure was `0.000726 mm`, transformed TWP error
+  was `0.000776 mm`, the reversible 1 mm preflight closed to zero, `G69`
+  restored world state, and both CSV files were restored byte-for-byte.
+- All 15 existing head-head TCPC/TWP behavior scenarios also completed with
+  successful process status, preserving the older diagnostics interface and
+  its fail-closed tooling, reset, limit, and recovery behavior.
 
-- supervised physical entry/direction/probe/exit validation at the sphere
+These are offline/headless results only. No physical TWP move has yet been
+released; the dedicated INI remains a supervised commissioning path.
 
-The physical stage-1 routine is `twp_sphere_probe_stage1_t4.ngc`; its exact
-B0-first operator and recovery sequence is in
-`TWP_SPHERE_STAGE1_T4_PLAN_2026083101.md`. It reconstructs physical probe-tip
-centers by restoring the active canonical T4 offset before comparing the world
-and tilted coordinate frames. It changes no calibration coefficient or WCS.
-
-The existing G43.4 length-aware calibration revision `2026082601` is frozen;
-this TWP work does not alter its coefficients or the default cut-test
+The existing calibration revision `2026082601` is frozen. This TWP work changes
+no fitted coefficient, B/C zero, tool-table entry, or default cut-test
 configuration.
 
 ## Length-Aware Runtime Boundary - 2026-08-26

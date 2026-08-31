@@ -20,13 +20,14 @@ The normal cut-test launcher remains TWP-locked. Use only:
 1. Confirm the laser and spindle inverter are isolated/off and the sphere is
    secure. Keep the machine supervised throughout the run.
 2. Start the dedicated TWP validation launcher and home all five joints.
-3. Install T4 in its repeatable orientation. In world mode apply `M61 Q4`,
-   `G43 H4`, and `G43.4` at `B0 C0`.
+3. Install T4 in its repeatable orientation. In world mode apply `M61 Q4` and
+   `G43 H4` at `B0 C0`. Confirm `G43.4` TCPC is off.
 4. Keep the first run at `B0 C0`. Position the probe 3-5 mm above the accessible
    sphere surface along the probe axis. The sphere-to-post direction is
    `X- Y+ Z-`.
-5. Load the stage-1 program. At its single initial `M0`, recheck T4/H4/G43.4,
-   clearance, quiet probe inputs, spindle off, and laser off; then resume.
+5. Load the stage-1 program. At its single initial `M0`, recheck T4/H4,
+   `G43.4` off, clearance, quiet probe inputs, spindle off, and laser off;
+   then resume.
 6. Do not jog, change offsets, change tools, or issue MDI commands during the
    run.
 
@@ -78,5 +79,21 @@ LinuxCNC completely and use the clean-restart procedure below.
 If LinuxCNC task/state health is lost, if the TWP state component disappears,
 or if the displayed state is uncertain: stop motion, close LinuxCNC completely,
 confirm all LinuxCNC processes have exited, relaunch the dedicated INI, home,
-reapply T4/H4/G43.4, reposition above the sphere, and start the full program
-again. A clean restart must begin in world kinematics with TWP clear.
+reapply T4/H4 with `G43.4` off, reposition above the sphere, and start the full
+program again. A clean restart must begin in world kinematics with TWP clear.
+
+## TWP Command Contract
+
+`G43.4` and TWP are separate modes. The stage-1 program uses this sequence:
+
+1. `G68.2` defines the tilted coordinate frame while world kinematics remains
+   active.
+2. `G53.1` activates the already defined frame through a stationary switchkins
+   handoff. It does not enable the public TCPC state.
+3. Fixed-B/C local XYZ motion and probing run in the tilted frame.
+4. `G69` returns to world kinematics and clears the frame.
+
+The implementation evaluates the same commissioned length-aware geometry used
+by `G43.4` internally. It does not maintain a second TWP calibration. Fusion
+`G68.2 X Y Z I J K` input uses rotating `ZXZ` Euler angles; the first release
+expects the post to preposition B/C before `G68.2`/`G53.1`.

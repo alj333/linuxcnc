@@ -16,6 +16,7 @@ PASSES = CONFIG / "twp-sphere-stage1-t4-passes.csv"
 RESULTS = CONFIG / "twp-sphere-stage1-t4-results.csv"
 
 TOOL_LENGTH = 229.407
+TOOL_OFFSET = (-36.280125, -26.685194, -677.346675)
 ENVELOPE = 17.845258
 TOP_RADIUS = 22.845258
 SIDE_RADIUS = 21.845258
@@ -103,13 +104,20 @@ def reconstructed_center(points, w_axis, u_axis, v_axis, u_sign):
     )
 
 
-def local_program_point(world_point, origin, axes):
-    delta = sub(world_point, origin)
+def coordinate_layer_at_entry(wcs, captured_origin, axes):
+    delta = sub(captured_origin, wcs)
+    return tuple(wcs[index] + dot(delta, axes[index]) for index in range(3))
+
+
+def local_program_point(physical_point, wcs, axes):
+    joint_point = sub(physical_point, TOOL_OFFSET)
+    delta = sub(joint_point, wcs)
     return (dot(delta, axes[0]), dot(delta, axes[1]), dot(delta, axes[2]) - TOOL_LENGTH)
 
 
-def world_program_point(world_point, wcs):
-    return sub(sub(world_point, wcs), (0.0, 0.0, TOOL_LENGTH))
+def world_program_point(physical_point, wcs):
+    joint_point = sub(physical_point, TOOL_OFFSET)
+    return sub(sub(joint_point, wcs), (0.0, 0.0, TOOL_LENGTH))
 
 
 def validate_coordinate_math():
@@ -133,11 +141,18 @@ def validate_coordinate_math():
         contacts = sphere_contacts(sphere_center, w_axis, u_axis, v_axis, u_sign)
         world_points = tuple(world_program_point(point, wcs) for point in contacts)
         world_raw_center = reconstructed_center(world_points, w_axis, u_axis, v_axis, u_sign)
-        world_physical_center = add(add(world_raw_center, wcs), (0.0, 0.0, TOOL_LENGTH))
+        world_physical_center = add(
+            add(add(world_raw_center, wcs), (0.0, 0.0, TOOL_LENGTH)),
+            TOOL_OFFSET,
+        )
         assert_vector("B%g world physical center" % b_deg, world_physical_center, sphere_center)
 
-        origin = sub(sphere_center, scale(w_axis, TOP_RADIUS))
-        local_points = tuple(local_program_point(point, origin, axes) for point in contacts)
+        captured_origin = sub(
+            sub(sphere_center, scale(w_axis, TOP_RADIUS)),
+            TOOL_OFFSET,
+        )
+        coordinate_layer = coordinate_layer_at_entry(wcs, captured_origin, axes)
+        local_points = tuple(local_program_point(point, wcs, axes) for point in contacts)
         local_center = reconstructed_center(
             local_points,
             (0.0, 0.0, -1.0),
@@ -145,28 +160,30 @@ def validate_coordinate_math():
             (0.0, 1.0, 0.0),
             u_sign,
         )
-        restored_local = (local_center[0], local_center[1], local_center[2] + TOOL_LENGTH)
-        twp_physical_center = add(
-            origin,
+        restored_local = (
+            local_center[0] + wcs[0] - coordinate_layer[0],
+            local_center[1] + wcs[1] - coordinate_layer[1],
+            local_center[2] + wcs[2] + TOOL_LENGTH - coordinate_layer[2],
+        )
+        twp_joint_center = add(
+            captured_origin,
             add(
                 add(scale(plane_x, restored_local[0]), scale(plane_y, restored_local[1])),
                 scale(plane_z, restored_local[2]),
             ),
         )
+        twp_physical_center = add(twp_joint_center, TOOL_OFFSET)
         assert_vector("B%g transformed TWP center" % b_deg, twp_physical_center, sphere_center)
         assert_vector("B%g WORLD/TWP agreement" % b_deg, twp_physical_center, world_physical_center)
 
         uncorrected = add(
-            origin,
+            captured_origin,
             add(
                 add(scale(plane_x, local_center[0]), scale(plane_y, local_center[1])),
                 scale(plane_z, local_center[2]),
             ),
         )
-        require(
-            norm(sub(uncorrected, sphere_center)) > 200.0,
-            "B%g missing-tool-offset transform was not detectably wrong" % b_deg,
-        )
+        require(norm(sub(uncorrected, sphere_center)) > 10.0, "B%g incomplete TWP coordinate reconstruction was not detectably wrong" % b_deg)
 
 
 def executable_lines(text):
@@ -198,11 +215,14 @@ def validate_program_static():
     require(set(re.findall(r"\bG38\.\d\b", code)) == {"G38.3"}, "active probe envelope is not G38.3-only")
     require(len(re.findall(r"\bG38\.3\b", code)) == 1, "probe subroutine must contain one G38.3 block")
     require(len(re.findall(r"\bG68\.2\b", code)) == 1, "main path must enter TWP exactly once")
+    require(len(re.findall(r"\bG53\.1\b", code)) == 1, "main path must activate TWP exactly once")
     require(len(re.findall(r"\bG69\b", code)) == 2, "program must have main and abort-cleanup G69 paths")
+    require(not re.search(r"\bG43\.4\b", code), "TWP program must not enable the separate TCPC mode")
     require(len(re.findall(r"\bM0\b", code)) == 1, "program must have exactly one initial operator hold")
     require("#<_abs_z> - #<_z> - #<_hal[motion.tooloffset.z]>" in text, "G5X recovery does not remove NP_ABS tool Z")
-    require("#<local_dz> = [#<_twp_s1_b_local_z> + #<_twp_s1_tool_length>]" in text, "TWP transform does not restore local T4 length")
-    require(text.count("+ #<_twp_s1_tool_length>]\n") >= 3, "physical center reconstruction is missing a T4 restore")
+    require("#<local_dz> + #<_twp_s1_tool_length> - #<_twp_s1_offset_z>" in text, "TWP transform does not restore local T4 length and coordinate layer")
+    require(text.count("+ #<_twp_s1_tool_length> + #<_twp_s1_eval_z>]\n") >= 2, "WORLD center reconstruction is missing T4 length/geometry restoration")
+    require(text.count("+ #<_twp_s1_eval_x>]\n") >= 3, "physical center reconstruction is missing evaluated X tool geometry")
     require("#5220 - FIX[#5220]" in text, "live guard does not validate the active WCS index")
     require(all("ABS[#%d]" % index in text for index in range(5210, 5220)), "live guard does not reject every G52/G92 layer")
     require("#[5204 + [20 * #5220]]" in text, "live guard does not reject active WCS rotary offsets")
@@ -247,6 +267,9 @@ def validate_launch_boundary():
     launcher = LAUNCHER.read_text(encoding="ascii")
     default_launcher = DEFAULT_LAUNCHER.read_text(encoding="ascii")
     require(re.search(r"(?ms)^\[TWP\]\s*^ENABLE\s*=\s*1\s*$", ini), "dedicated INI does not opt in to TWP")
+    require(re.search(r"(?m)^EULER_CONVENTION\s*=\s*ZXZ_R\s*$", ini), "dedicated INI does not pin Fusion's rotating ZXZ convention")
+    require(re.search(r"(?m)^REMAP\s*=\s*G68\.2\s+modalgroup=1\s+argspec=xyzijkbcr\s+py=enable_twp_mode\s*$", ini), "dedicated INI does not accept the Fusion G68.2 word set")
+    require(re.search(r"(?m)^REMAP\s*=\s*G53\.1\s+modalgroup=1\s+py=activate_twp_mode\s*$", ini), "dedicated INI does not map G53.1 activation")
     require("lengthmodel=1 lengthmodelid=2026082601" in ini, "dedicated INI does not pin the length model")
     require(str(PROGRAM) in ini, "dedicated INI does not open the reviewed sphere program")
     require(INI.name in launcher, "dedicated launcher does not select the dedicated INI")

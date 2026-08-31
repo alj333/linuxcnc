@@ -69,9 +69,8 @@ def joint_pose():
 def physical_tcp():
     joints = joint_pose()
     tool_offset = dot_vector("headheadkins.tool-offset")
-    tcpc_origin = dot_vector("headheadkins.tcpc-origin")
     return tuple(
-        joints[axis] + tool_offset[axis] - tcpc_origin[axis]
+        joints[axis] + tool_offset[axis]
         for axis in range(3)
     )
 
@@ -200,6 +199,8 @@ def assert_world_mode(label):
         0.0,
         ZERO_TOL,
     )
+    if hal_bool("headheadkins.synchronized-twp-enable"):
+        fail("%s retained synchronized TWP authorization" % label)
 
 
 def assert_twp_mode(label):
@@ -213,6 +214,10 @@ def assert_twp_mode(label):
         1.0,
         ZERO_TOL,
     )
+    if not hal_bool("headheadkins.synchronized-twp-enable"):
+        fail("%s lacks synchronized TWP authorization" % label)
+    if hal_bool("headheadkins.tcpc-enable"):
+        fail("%s unexpectedly enabled the separate TCPC mode" % label)
 
 
 def state_component_pids():
@@ -300,23 +305,21 @@ def assert_stationary(label, duration, expected_joints=None, expected_tcp=None):
 
 def assert_active_state():
     assert_twp_mode("stage-one active TWP")
-    for pin in ("valid", "active", "motion_enabled", "tcpc_enabled"):
+    for pin in ("valid", "active", "motion_enabled"):
         if not hal_bool("headheadtwp.%s" % pin):
             fail("stage-one active TWP left headheadtwp.%s false" % pin)
+    if hal_bool("headheadtwp.tcpc_enabled"):
+        fail("stage-one active TWP unexpectedly enabled public TCPC mode")
     if hal_int("headheadtwp.state_code") != 3:
         fail("stage-one TWP state code is not ACTIVE")
     if hal_int("headheadtwp.transaction_fault") != 0:
         fail("stage-one TWP transaction has a fault")
-    if not hal_bool("headheadkins.tcpc-enable"):
-        fail("stage-one kinematics TCPC input is not enabled")
+    if hal_bool("headheadkins.tcpc-enable"):
+        fail("stage-one TWP leaked into the kinematics TCPC input")
     assert_scalar("stage-one reached B", joint_pose()[3], ACTIVE_BC[0], ROTARY_TOL)
     assert_scalar("stage-one reached C", joint_pose()[4], ACTIVE_BC[1], ROTARY_TOL)
-    assert_vector(
-        "stage-one retained G54 coordinate layer",
-        dot_vector("headheadkins.twp-coordinate-offset"),
-        G54_OFFSET,
-        LINEAR_TOL,
-    )
+    if not all(math.isfinite(value) for value in dot_vector("headheadkins.twp-coordinate-offset")):
+        fail("stage-one TWP coordinate layer is nonfinite")
     assert_vector(
         "stage-one state/kinematics captured origin agreement",
         dot_vector("headheadkins.twp-captured-origin"),
@@ -355,14 +358,22 @@ def run_loss_stage():
     before_tcpc = joint_pose()
     mdi("G43.4")
     assert_vector("stage-one G43.4 continuity", joint_pose(), before_tcpc, LINEAR_TOL)
+    mdi("G49.1")
+    assert_vector("stage-one G49.1 continuity", joint_pose(), before_tcpc, LINEAR_TOL)
+    if hal_bool("headheadtwp.tcpc_enabled"):
+        fail("stage-one G49.1 did not leave TCPC off")
     mdi("G0 B%.6f C%.6f" % ACTIVE_BC)
 
     before_entry_joints = joint_pose()
     before_entry_tcp = physical_tcp()
     mdi("G68.2 B%.6f C%.6f R0" % ACTIVE_BC)
+    assert_world_mode("stage-one defined TWP")
+    if not hal_bool("headheadtwp.valid") or hal_bool("headheadtwp.active"):
+        fail("stage-one G68.2 did not leave TWP defined but inactive")
+    mdi("G53.1")
     assert_active_state()
-    assert_vector("stage-one G68.2 joints", joint_pose(), before_entry_joints, LINEAR_TOL)
-    assert_vector("stage-one G68.2 physical TCP", physical_tcp(), before_entry_tcp, LINEAR_TOL)
+    assert_vector("stage-one G53.1 joints", joint_pose(), before_entry_joints, LINEAR_TOL)
+    assert_vector("stage-one G53.1 physical TCP", physical_tcp(), before_entry_tcp, LINEAR_TOL)
     assert_stationary("stage-one pre-loss pose", 0.25)
 
     component_pid = require_single_state_component("stage-one pre-loss")
@@ -388,8 +399,8 @@ def run_loss_stage():
     # synchronized kinematics frame must stay type 1 and physically still until
     # the whole controller is restarted.
     assert_twp_mode("stage-one post-loss retained TWP")
-    if not hal_bool("headheadkins.tcpc-enable"):
-        fail("stage-one post-loss TCPC signal did not retain its active value")
+    if hal_bool("headheadkins.tcpc-enable"):
+        fail("stage-one post-loss unexpectedly enabled the TCPC signal")
     assert_vector(
         "stage-one post-loss captured origin",
         dot_vector("headheadkins.twp-captured-origin"),
@@ -428,6 +439,7 @@ def assert_fresh_state(label):
         "valid",
         "active",
         "motion_enabled",
+        "synchronized_frame",
         "tcpc_enabled",
     ):
         if hal_bool("headheadtwp.%s" % pin):

@@ -15,18 +15,21 @@ STATE_DEFINED = 2
 STATE_ACTIVE = 3
 
 TRANSACTION_NONE = 0
-TRANSACTION_ENTER_TWP = 1
-TRANSACTION_EXIT_TWP = 2
-TRANSACTION_CLEAR_TWP = 3
+TRANSACTION_DEFINE_TWP = 1
+TRANSACTION_ENTER_TWP = 2
+TRANSACTION_EXIT_TWP = 3
+TRANSACTION_CLEAR_TWP = 4
 
 TRANSACTION_OK = 0
 TRANSACTION_UNKNOWN_COMMAND = 1
-TRANSACTION_TCPC_REQUIRED = 2
-TRANSACTION_TWP_ALREADY_ACTIVE = 3
-TRANSACTION_TWP_STILL_ACTIVE = 4
-TRANSACTION_POSE_MISMATCH = 5
-TRANSACTION_PARAMETER_NONFINITE = 6
-TRANSACTION_MACHINE_NOT_READY = 7
+TRANSACTION_TCPC_MUST_BE_OFF = 2
+TRANSACTION_TWP_ALREADY_DEFINED = 3
+TRANSACTION_TWP_NOT_DEFINED = 4
+TRANSACTION_TWP_ALREADY_ACTIVE = 5
+TRANSACTION_TWP_STILL_ACTIVE = 6
+TRANSACTION_POSE_MISMATCH = 7
+TRANSACTION_PARAMETER_NONFINITE = 8
+TRANSACTION_MACHINE_NOT_READY = 9
 
 TWP_POSE_MATCH_TOL_DEG = 0.001
 
@@ -100,6 +103,7 @@ class HeadHeadTwpState:
         self.twp_bc = (0.0, 0.0)
         self.normal_rotation = 0.0
         self.motion_enabled = False
+        self.synchronized_frame = False
         # Sim configs keep the historical TCPC-on default. Real-machine test
         # configs can start fail-safe with HEADHEAD_TWP_DEFAULT_TCPC=0.
         self.default_tcpc_enabled = default_tcpc_enabled()
@@ -195,6 +199,7 @@ class HeadHeadTwpState:
         self._pin_bit_out("valid")
         self._pin_bit_out("active")
         self._pin_bit_out("motion_enabled")
+        self._pin_bit_out("synchronized_frame")
         self._pin_bit_out("tcpc_enabled")
         self._pin_bit_out("tcpc_tool_length_guard")
         self._pin_float_out("kinematics_type")
@@ -258,7 +263,7 @@ class HeadHeadTwpState:
 
     def _current_tcp_pose(self):
         current_tool_xyz, current_bc = self._current_tool_pose()
-        if self.tcpc_enabled:
+        if self.tcpc_enabled or self.motion_enabled:
             return vec_sub(current_tool_xyz, self.tcpc_origin), current_bc
         x, y, z, _, _ = self._current_joint_pose()
         return (x, y, z), current_bc
@@ -306,6 +311,7 @@ class HeadHeadTwpState:
         self.twp_bc = (0.0, 0.0)
         self.normal_rotation = 0.0
         self.motion_enabled = False
+        self.synchronized_frame = False
         self.comp["active"] = False
 
     def _clear_for_machine_reset(self):
@@ -322,7 +328,7 @@ class HeadHeadTwpState:
 
         command = int(self.comp["transaction_command"])
         fault = TRANSACTION_OK
-        if command == TRANSACTION_ENTER_TWP:
+        if command == TRANSACTION_DEFINE_TWP:
             requested_b = self._get("requested_b_angle")
             requested_c = self._get("requested_c_angle")
             requested_r = self._get("requested_normal_rotation")
@@ -331,10 +337,10 @@ class HeadHeadTwpState:
             )
             if not machine_ready:
                 fault = TRANSACTION_MACHINE_NOT_READY
-            elif not self.tcpc_enabled:
-                fault = TRANSACTION_TCPC_REQUIRED
-            elif self.motion_enabled or bool(self.comp["active"]):
-                fault = TRANSACTION_TWP_ALREADY_ACTIVE
+            elif self.tcpc_enabled:
+                fault = TRANSACTION_TCPC_MUST_BE_OFF
+            elif self.origin_defined or self.orientation_defined:
+                fault = TRANSACTION_TWP_ALREADY_DEFINED
             elif not all(
                 math.isfinite(value)
                 for value in (*current_tcp_xyz, *current_bc, requested_b, requested_c, requested_r)
@@ -352,6 +358,34 @@ class HeadHeadTwpState:
                 self.normal_rotation = requested_r
                 self.origin_defined = True
                 self.orientation_defined = True
+                self.synchronized_frame = True
+                self.comp["active"] = False
+                self.motion_enabled = False
+        elif command == TRANSACTION_ENTER_TWP:
+            machine_ready = bool(self.comp["machine_is_enabled"]) and all(
+                bool(self.comp[f"joint_{joint}_homed"]) for joint in range(5)
+            )
+            if not machine_ready:
+                fault = TRANSACTION_MACHINE_NOT_READY
+            elif self.tcpc_enabled:
+                fault = TRANSACTION_TCPC_MUST_BE_OFF
+            elif not self.origin_defined or not self.orientation_defined:
+                fault = TRANSACTION_TWP_NOT_DEFINED
+            elif self.motion_enabled or bool(self.comp["active"]):
+                fault = TRANSACTION_TWP_ALREADY_ACTIVE
+            elif not all(math.isfinite(value) for value in (*current_tcp_xyz, *current_bc)):
+                fault = TRANSACTION_PARAMETER_NONFINITE
+            elif (
+                abs(self.twp_bc[0] - current_bc[0]) > TWP_POSE_MATCH_TOL_DEG
+                or abs(angle_delta_deg(self.twp_bc[1], current_bc[1]))
+                > TWP_POSE_MATCH_TOL_DEG
+            ):
+                fault = TRANSACTION_POSE_MISMATCH
+            else:
+                # TWP is a separate public mode from G43.4 TCPC. It captures
+                # the same calibrated tool-offset reference for the internal
+                # kinematics calculation without setting tcpc_enabled.
+                self.tcpc_origin = self._tool_offset_world(current_bc[0], current_bc[1])
                 self.comp["active"] = True
                 self.motion_enabled = True
         elif command == TRANSACTION_EXIT_TWP:
@@ -365,6 +399,8 @@ class HeadHeadTwpState:
                 fault = TRANSACTION_TWP_STILL_ACTIVE
             else:
                 self._clear_state()
+                if not self.tcpc_enabled:
+                    self.tcpc_origin = (0.0, 0.0, 0.0)
         else:
             fault = TRANSACTION_UNKNOWN_COMMAND
 
@@ -394,10 +430,10 @@ class HeadHeadTwpState:
         current_tcp_xyz, _ = self._current_tcp_pose()
 
         if self._rising_edge("cmd_enable_tcpc"):
-            if not self.tcpc_enabled:
+            if not self.tcpc_enabled and not (self.origin_defined or self.orientation_defined):
                 self.tcpc_origin = self._tool_offset_world(current_bc[0], current_bc[1])
                 self.tcpc_entry_bc = current_bc
-            self.tcpc_enabled = True
+                self.tcpc_enabled = True
 
         if self._rising_edge("cmd_disable_tcpc"):
             self.tcpc_enabled = False
@@ -492,6 +528,7 @@ class HeadHeadTwpState:
         self.comp["orientation_defined"] = self.orientation_defined
         self.comp["valid"] = self.origin_defined and self.orientation_defined
         self.comp["motion_enabled"] = self.motion_enabled
+        self.comp["synchronized_frame"] = self.synchronized_frame
         self.comp["tcpc_enabled"] = self.tcpc_enabled
         self.comp["tcpc_tool_length_guard"] = self.tcpc_tool_length_guard
         self.comp["kinematics_type"] = 1.0 if self.motion_enabled else 0.0

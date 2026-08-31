@@ -34,7 +34,7 @@ PROBE_NO_CONTACT_TRAVEL = 0.400000
 PROBE_CONTACT_PATH = 4.000000
 PROBE_CONTACT_TRIGGER = 1.250000
 PROBE_PARAMETER_TOL = 2e-6
-PROBE_ABSOLUTE_X_TOL = 5e-5
+PROBE_ABSOLUTE_X_TOL = PLANE_VECTOR_TOL
 PROBE_STOP_TOL = 1e-2
 PROBE_PARAMETERS = (5070,) + tuple(range(5061, 5070))
 
@@ -64,6 +64,7 @@ CASES = (
         "requested_c": 90.0,
         "r": 17.0,
         "q": 1.0,
+        "use_ijk": True,
     },
     {
         "name": "T4-C-wrap",
@@ -74,6 +75,7 @@ CASES = (
         "requested_c": 10.0,
         "r": 0.0,
         "q": 0.0,
+        "use_ijk": False,
     },
 )
 
@@ -298,8 +300,7 @@ def vector_scale(vector, scale):
 def physical_tcp():
     joints = joint_pose()
     tool_offset = dot_vector("headheadkins.tool-offset")
-    tcpc_origin = underscore_vector("headheadtwp.tcpc_origin")
-    return tuple(joints[index] + tool_offset[index] - tcpc_origin[index] for index in range(3))
+    return tuple(joints[index] + tool_offset[index] for index in range(3))
 
 
 def assert_scalar(label, actual, expected, tolerance):
@@ -333,6 +334,8 @@ def assert_world_mode(label):
         fail("%s left TWP kinematics selected" % label)
     if not hal_bool("headheadkins.kinstype-frame-ready"):
         fail("%s world kinematics frame is not ready" % label)
+    if hal_bool("headheadkins.synchronized-twp-enable"):
+        fail("%s left the synchronized TWP authorization asserted" % label)
 
 
 def assert_twp_mode(label):
@@ -342,6 +345,10 @@ def assert_twp_mode(label):
         fail("%s did not select TWP kinematics" % label)
     if not hal_bool("headheadkins.kinstype-frame-ready"):
         fail("%s TWP kinematics frame is not ready" % label)
+    if not hal_bool("headheadkins.synchronized-twp-enable"):
+        fail("%s entered TWP without synchronized authorization" % label)
+    if hal_bool("headheadkins.tcpc-enable"):
+        fail("%s entered TWP with the separate TCPC mode enabled" % label)
 
 
 def assert_model(case):
@@ -462,9 +469,10 @@ def assert_active_guard_unchanged(label, before):
         hal_bool("headheadtwp.valid")
         and hal_bool("headheadtwp.active")
         and hal_bool("headheadtwp.motion_enabled")
-        and hal_bool("headheadtwp.tcpc_enabled")
+        and hal_bool("headheadtwp.synchronized_frame")
+        and not hal_bool("headheadtwp.tcpc_enabled")
     ):
-        fail("%s did not preserve active TWP/TCPC state" % label)
+        fail("%s did not preserve distinct active TWP state" % label)
 
 
 def exercise_active_guards(case):
@@ -716,12 +724,9 @@ def exercise_active_g383(case, expected_plane_x):
         tuple(expected_no_contact[1:]),
         PROBE_PARAMETER_TOL,
     )
-    assert_scalar(
-        name + " no-contact #5063 active length",
-        result[3],
-        -case["length"],
-        PROBE_PARAMETER_TOL,
-    )
+    # A pivoted G68.2 frame rotates the complete coordinate layer, so local Z
+    # is not generally the negative tool length. The vector check above ties
+    # #5063 to the independently captured active-frame start coordinate.
     assert_scalar(name + " no-contact #5065 B", result[5], case["b"], DIRECT_ROTARY_TOL)
     assert_scalar(
         name + " no-contact #5066 C",
@@ -764,6 +769,24 @@ def independent_plane_x(b_degrees, c_degrees, r_degrees):
         math.cos(r) * stored_x[axis] + math.sin(r) * stored_y[axis]
         for axis in range(3)
     )
+
+
+def independent_plane_axes(b_degrees, c_degrees, r_degrees):
+    b = math.radians(b_degrees + B_ZERO_OFFSET)
+    c = math.radians(c_degrees + C_ZERO_OFFSET)
+    r = math.radians(r_degrees)
+    stored_x = (math.cos(c) * math.cos(b), math.sin(c) * math.cos(b), -math.sin(b))
+    stored_y = (-math.sin(c), math.cos(c), 0.0)
+    stored_z = (math.cos(c) * math.sin(b), math.sin(c) * math.sin(b), math.cos(b))
+    plane_x = tuple(
+        math.cos(r) * stored_x[axis] + math.sin(r) * stored_y[axis]
+        for axis in range(3)
+    )
+    plane_y = tuple(
+        -math.sin(r) * stored_x[axis] + math.cos(r) * stored_y[axis]
+        for axis in range(3)
+    )
+    return plane_x, plane_y, stored_z
 
 
 def start_sampler():
@@ -870,7 +893,7 @@ def bit_value(record, field, label):
 def physical_tcp_sample(record):
     values = record[1]
     return tuple(
-        values[JX + axis] + values[TOOL_X + axis] - values[ORIGIN_X + axis]
+        values[JX + axis] + values[TOOL_X + axis]
         for axis in range(3)
     )
 
@@ -1051,6 +1074,10 @@ def run_case(case):
     assert_joint_continuity(name + " G43.4", pre_tcpc_joints, joint_pose())
     if not hal_bool("headheadtwp.tcpc_enabled"):
         fail("%s G43.4 did not enable TCPC" % name)
+    mdi("G49.1")
+    assert_joint_continuity(name + " G49.1", pre_tcpc_joints, joint_pose())
+    if hal_bool("headheadtwp.tcpc_enabled"):
+        fail("%s G49.1 did not leave TCPC off" % name)
 
     mdi("G0 B%.6f C%.6f" % (case["b"], case["reached_c"]))
     assert_model(case)
@@ -1059,43 +1086,122 @@ def run_case(case):
 
     before_joints = joint_pose()
     before_tcp = physical_tcp()
-    ack_before = int(hal.get_value("headheadtwp.transaction_ack"))
+    ack_before_define = int(hal.get_value("headheadtwp.transaction_ack"))
     set_sampling(True)
-    mdi(
-        "G68.2 B%.6f C%.6f R%.6f"
-        % (case["b"], case["requested_c"], case["r"])
-    )
+    if case["use_ijk"]:
+        # Rz(C) Ry(B) Rz(R) = Rz(C+90) Rx(B) Rz(R-90), which is
+        # Fusion's rotating ZXZ representation of this reached B/C plane.
+        mdi(
+            "G68.2 X0 Y0 Z0 I%.6f J%.6f K%.6f"
+            % (
+                case["reached_c"] + C_ZERO_OFFSET + 90.0,
+                case["b"] + B_ZERO_OFFSET,
+                case["r"] - 90.0,
+            )
+        )
+    else:
+        mdi(
+            "G68.2 B%.6f C%.6f R%.6f"
+            % (case["b"], case["requested_c"], case["r"])
+        )
     time.sleep(0.025)
 
-    assert_twp_mode(name + " G68.2")
+    assert_world_mode(name + " G68.2 definition")
     assert_joint_continuity(name + " G68.2", before_joints, joint_pose())
     assert_vector(name + " G68.2 physical TCP", physical_tcp(), before_tcp, DIRECT_LINEAR_TOL)
-    if int(hal.get_value("headheadtwp.transaction_ack")) <= ack_before:
-        fail("%s G68.2 did not advance the state transaction" % name)
+    ack_after_define = int(hal.get_value("headheadtwp.transaction_ack"))
+    if ack_after_define <= ack_before_define:
+        fail("%s G68.2 did not advance the definition transaction" % name)
+    if not (
+        hal_bool("headheadtwp.valid")
+        and not hal_bool("headheadtwp.active")
+        and not hal_bool("headheadtwp.motion_enabled")
+        and hal_bool("headheadtwp.synchronized_frame")
+        and not hal_bool("headheadtwp.tcpc_enabled")
+    ):
+        fail("%s G68.2 did not leave a distinct defined-only TWP state" % name)
+
+    defined_joints = joint_pose()
+    defined_tcp = physical_tcp()
+    mdi_expect_rejected(
+        "G1 X0 F60",
+        "Only G53.1 or G69 is allowed after G68.2 defines TWP",
+    )
+    assert_world_mode(name + " defined-only motion rejection")
+    assert_joint_continuity(
+        name + " defined-only motion rejection",
+        defined_joints,
+        joint_pose(),
+    )
+    assert_vector(
+        name + " defined-only physical TCP",
+        physical_tcp(),
+        defined_tcp,
+        DIRECT_LINEAR_TOL,
+    )
+    if not (
+        hal_bool("headheadtwp.valid")
+        and hal_bool("headheadtwp.synchronized_frame")
+        and not hal_bool("headheadtwp.active")
+        and not hal_bool("headheadtwp.motion_enabled")
+    ):
+        fail("%s defined-only motion rejection changed TWP state" % name)
+
+    before_activate_joints = joint_pose()
+    before_activate_tcp = physical_tcp()
+    mdi("G53.1")
+    time.sleep(0.025)
+    assert_twp_mode(name + " G53.1")
+    assert_joint_continuity(name + " G53.1", before_activate_joints, joint_pose())
+    assert_vector(
+        name + " G53.1 physical TCP",
+        physical_tcp(),
+        before_activate_tcp,
+        DIRECT_LINEAR_TOL,
+    )
+    if int(hal.get_value("headheadtwp.transaction_ack")) <= ack_after_define:
+        fail("%s G53.1 did not advance the activation transaction" % name)
     if not (
         hal_bool("headheadtwp.valid")
         and hal_bool("headheadtwp.active")
         and hal_bool("headheadtwp.motion_enabled")
-        and hal_bool("headheadtwp.tcpc_enabled")
+        and hal_bool("headheadtwp.synchronized_frame")
+        and not hal_bool("headheadtwp.tcpc_enabled")
     ):
-        fail("%s G68.2 state postcondition is incomplete" % name)
+        fail("%s G53.1 state postcondition is incomplete" % name)
 
     assert_vector(
         name + " TWP state origin",
         underscore_vector("headheadtwp.twp_origin"),
-        before_tcp,
+        before_joints[:3],
         DIRECT_LINEAR_TOL,
     )
     assert_vector(
         name + " kinematics captured origin",
         dot_vector("headheadkins.twp-captured-origin"),
-        before_tcp,
+        before_joints[:3],
         DIRECT_LINEAR_TOL,
+    )
+    plane_axes = independent_plane_axes(
+        case["b"],
+        case["reached_c"],
+        case["r"],
+    )
+    world_delta = tuple(before_joints[axis] - G54_OFFSET[axis] for axis in range(3))
+    expected_coordinate_offset = tuple(
+        G54_OFFSET[axis] + vector_dot(world_delta, plane_axes[axis])
+        for axis in range(3)
     )
     assert_vector(
         name + " G54 coordinate layer",
         dot_vector("headheadkins.twp-coordinate-offset"),
-        G54_OFFSET,
+        expected_coordinate_offset,
+        DIRECT_LINEAR_TOL,
+    )
+    assert_vector(
+        name + " private TWP compensation reference",
+        underscore_vector("headheadtwp.tcpc_origin"),
+        dot_vector("headheadkins.tool-offset"),
         DIRECT_LINEAR_TOL,
     )
     assert_scalar(
@@ -1123,11 +1229,7 @@ def run_case(case):
         exercise_percent_terminator_guard(case)
     exercise_active_guards(case)
 
-    expected_plane_x = independent_plane_x(
-        case["b"],
-        case["reached_c"],
-        case["r"],
-    )
+    expected_plane_x = plane_axes[0]
     assert_vector(
         name + " state plane X",
         underscore_vector("headheadtwp.plane_x"),
@@ -1167,10 +1269,11 @@ def run_case(case):
         hal_bool("headheadtwp.valid")
         or hal_bool("headheadtwp.active")
         or hal_bool("headheadtwp.motion_enabled")
+        or hal_bool("headheadtwp.synchronized_frame")
     ):
         fail("%s G69 did not clear TWP state" % name)
-    if not hal_bool("headheadtwp.tcpc_enabled"):
-        fail("%s G69 did not preserve TCPC" % name)
+    if hal_bool("headheadtwp.tcpc_enabled"):
+        fail("%s G69 unexpectedly enabled TCPC" % name)
     assert_vector(
         name + " cleared TWP coordinate layer",
         dot_vector("headheadkins.twp-coordinate-offset"),

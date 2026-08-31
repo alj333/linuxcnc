@@ -77,15 +77,22 @@ static bool headhead_synchronized_twp_is_active()
     return hal_bit_pin_is_true("headheadkins.kinstype-is-twp");
 }
 
+static bool headhead_synchronized_twp_is_defined_or_active()
+{
+    return hal_bit_pin_is_true("headheadtwp.synchronized_frame")
+        || headhead_synchronized_twp_is_active();
+}
+
 int Interp::guard_headhead_twp_block(block_pointer block,
                                      setup_pointer settings)
 {
+    const int headhead_g531_activate = 531;
     const int headhead_g69_cancel = 690;
     const bool g69_pending = TODO(STEP_MOTION)
         && block->g_modes[GM_MOTION] == headhead_g69_cancel
         && block->motion_to_be == headhead_g69_cancel;
 
-    if (!headhead_synchronized_twp_is_active()) {
+    if (!headhead_synchronized_twp_is_defined_or_active()) {
         return INTERP_OK;
     }
 
@@ -107,6 +114,24 @@ int Interp::guard_headhead_twp_block(block_pointer block,
     CHKS((TODO(STEP_G92_IS_APPLIED)
           && block->g_modes[GM_G92_IS_APPLIED] != -1),
          (_("Cannot change G52/G92 axis offsets while TWP is active")));
+    CHKS((TODO(STEP_MGROUP4)
+          && !g69_pending
+          && (block->m_modes[4] == 2
+              || block->m_modes[4] == 30
+              || block->m_modes[4] == 99)),
+         (_("Cancel TWP with G69 before ending or restarting a program")));
+    CHKS((TODO(STEP_M_7) && block->m_modes[7] == 72),
+         (_("Cannot restore an M70/M73 context while TWP is active")));
+
+    if (!headhead_synchronized_twp_is_active()) {
+        CHKS((TODO(STEP_MOTION)
+              && block->motion_to_be != -1
+              && block->motion_to_be != headhead_g531_activate
+              && block->motion_to_be != headhead_g69_cancel),
+             (_("Only G53.1 or G69 is allowed after G68.2 defines TWP")));
+        return INTERP_OK;
+    }
+
     CHKS((TODO(STEP_MOTION)
           && block->motion_to_be != -1
           && block->motion_to_be != G_0
@@ -120,14 +145,6 @@ int Interp::guard_headhead_twp_block(block_pointer block,
           && (block->a_flag || block->b_flag || block->c_flag
               || block->u_flag || block->v_flag || block->w_flag)),
          (_("Only XYZ linear-axis words are supported while TWP is active")));
-    CHKS((TODO(STEP_MGROUP4)
-          && !g69_pending
-          && (block->m_modes[4] == 2
-              || block->m_modes[4] == 30
-              || block->m_modes[4] == 99)),
-         (_("Cancel TWP with G69 before ending or restarting a program")));
-    CHKS((TODO(STEP_M_7) && block->m_modes[7] == 72),
-         (_("Cannot restore an M70/M73 context while TWP is active")));
     return INTERP_OK;
 }
 
@@ -135,7 +152,7 @@ int Interp::guard_headhead_twp_parameters(setup_pointer settings)
 {
     int occurrence;
 
-    if (!headhead_synchronized_twp_is_active()) {
+    if (!headhead_synchronized_twp_is_defined_or_active()) {
         return INTERP_OK;
     }
     for (occurrence = 0;
@@ -151,7 +168,7 @@ int Interp::guard_headhead_twp_parameters(setup_pointer settings)
 
 int Interp::guard_headhead_twp_program_end()
 {
-    CHKS((headhead_synchronized_twp_is_active()),
+    CHKS((headhead_synchronized_twp_is_defined_or_active()),
          (_("Cancel TWP with G69 before ending the program")));
     return INTERP_OK;
 }
@@ -1187,7 +1204,7 @@ int Interp::convert_axis_offsets(int g_code,     //!< g_code being executed (mus
 {
   double *pars;                 /* short name for settings->parameters            */
 
-  CHKS((headhead_synchronized_twp_is_active()),
+  CHKS((headhead_synchronized_twp_is_defined_or_active()),
        (_("Cannot change G52/G92 axis offsets while TWP is active")));
   CHKS((settings->cutter_comp_side),      /* not "== true" */
       NCE_CANNOT_CHANGE_AXIS_OFFSETS_WITH_CUTTER_RADIUS_COMP);
@@ -1917,7 +1934,7 @@ int Interp::convert_coordinate_system(int g_code,        //!< g_code called (mus
     ERS(NCE_BUG_CODE_NOT_IN_RANGE_G54_TO_G593);
   }
 
-  CHKS((headhead_synchronized_twp_is_active()
+  CHKS((headhead_synchronized_twp_is_defined_or_active()
         && origin != settings->origin_index),
        (_("Cannot change coordinate systems while TWP is active")));
 
@@ -3204,7 +3221,7 @@ int Interp::restore_settings(setup_pointer settings,
 			    int from_level)    //!< call level of context to restore from
 {
 
-    CHKS((headhead_synchronized_twp_is_active()),
+    CHKS((headhead_synchronized_twp_is_defined_or_active()),
          (_("Cannot restore an M70/M73 context while TWP is active")));
     CHKS((from_level < settings->call_level),
 	 (_("BUG: cannot restore from a lower call level (%d) to a higher call level (%d)")),from_level,settings->call_level);

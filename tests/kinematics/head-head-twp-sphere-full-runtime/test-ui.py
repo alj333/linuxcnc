@@ -94,9 +94,8 @@ def joint_pose():
 def physical_tcp():
     joints = joint_pose()
     evaluated_tool = dot_vector("headheadkins.tool-offset")
-    tcpc_origin = underscore_vector("headheadtwp.tcpc_origin")
     return tuple(
-        joints[axis] + evaluated_tool[axis] - tcpc_origin[axis]
+        joints[axis] + evaluated_tool[axis]
         for axis in range(3)
     )
 
@@ -269,17 +268,20 @@ def assert_world_final():
         fail("final state still selects TWP kinematics")
     if not bool(hal.get_value("headheadkins.kinstype-frame-ready")):
         fail("final world kinematics frame is not ready")
+    if bool(hal.get_value("headheadkins.synchronized-twp-enable")):
+        fail("final state retained synchronized TWP authorization")
     for pin in (
         "headheadtwp.valid",
         "headheadtwp.active",
         "headheadtwp.motion_enabled",
+        "headheadtwp.synchronized_frame",
         "headheadtwp.origin_defined",
         "headheadtwp.orientation_defined",
     ):
         if bool(hal.get_value(pin)):
             fail("final G69 did not clear %s" % pin)
-    if not bool(hal.get_value("headheadtwp.tcpc_enabled")):
-        fail("final G69 did not preserve G43.4 TCPC")
+    if bool(hal.get_value("headheadtwp.tcpc_enabled")):
+        fail("final G69 unexpectedly enabled TCPC")
 
 
 def validate_logs(pass_baseline, result_baseline, sphere_center):
@@ -575,7 +577,6 @@ def main():
 
     mdi("M61 Q4")
     mdi("G43 H4")
-    mdi("G43.4")
     mdi("G0 B5 C0")
     mdi("G0 X%.6f Y%.6f Z%.6f" % START_WORK)
     assert_model_and_tool("setup")
