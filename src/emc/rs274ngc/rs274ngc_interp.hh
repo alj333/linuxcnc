@@ -317,6 +317,9 @@ public:
  int convert_dwell(setup_pointer settings, double time);
  int convert_feed_mode(int g_code, setup_pointer settings);
  int convert_feed_rate(block_pointer block, setup_pointer settings);
+ int guard_headhead_twp_block(block_pointer block, setup_pointer settings);
+ int guard_headhead_twp_parameters(setup_pointer settings);
+ int guard_headhead_twp_program_end();
     int convert_g(block_pointer block, setup_pointer settings);
  int convert_home(int move, block_pointer block,
                         setup_pointer settings);

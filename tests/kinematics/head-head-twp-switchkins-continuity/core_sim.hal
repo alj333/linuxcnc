@@ -1,0 +1,125 @@
+# Headless production-remap/switchkins continuity regression. This uses the
+# commissioned geometry and length model with simulated joint feedback only.
+
+loadrt [KINS]KINEMATICS
+loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+loadrt sampler depth=8192 cfg=ffffffffffffbbubfbsfb
+
+addf motion-command-handler servo-thread
+addf motion-controller servo-thread
+# Capture after motion-controller so each record represents the completed
+# servo-cycle kinematics state rather than its inputs from the prior cycle.
+addf sampler.0 servo-thread
+setp sampler.0.enable 0
+
+net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb
+net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb
+net Zpos joint.2.motor-pos-cmd => joint.2.motor-pos-fb
+net Bpos joint.3.motor-pos-cmd => joint.3.motor-pos-fb
+net Cpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb
+
+# Commissioned spindle-nose geometry. The active G43 length is supplied through
+# motion.tooloffset and evaluated by the length-aware kinematics model.
+setp headheadkins.nominal-c-to-b.x 0.010934
+setp headheadkins.nominal-c-to-b.y 0.0
+setp headheadkins.nominal-c-to-b.z -270.0
+setp headheadkins.nominal-b-to-tool.x -0.668710
+setp headheadkins.nominal-b-to-tool.y -26.721365
+setp headheadkins.nominal-b-to-tool.z -180.373272
+setp headheadkins.cal-c-to-b.x 0.035886006
+setp headheadkins.cal-c-to-b.y 0.009526306
+setp headheadkins.cal-c-to-b.z 0.0
+setp headheadkins.cal-b-to-tool.x 0.0
+setp headheadkins.cal-b-to-tool.y 0.0
+setp headheadkins.cal-b-to-tool.z 0.815000
+setp headheadkins.b-zero-offset 0.0
+setp headheadkins.c-zero-offset -0.024500
+
+net active-tool-offset-x motion.tooloffset.x => headheadkins.active-tool-offset.x
+net active-tool-offset-y motion.tooloffset.y => headheadkins.active-tool-offset.y
+net active-tool-offset-z motion.tooloffset.z => headheadkins.active-tool-offset.z
+
+# Reuse the commissioned startup overlay verbatim. It invalidates the model,
+# writes every common/differential bank, then commits model ID 2026082601 last.
+source ../../../configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/tcpc_length_aware_candidate_2026082601.hal
+
+loadusr -Wn headheadtwp python3 ./headhead_twp_state_tcpc_off.py
+
+setp headheadtwp.use_external_tool_offset 1
+net headhead-kins-tool-offset-x headheadkins.tool-offset.x => headheadtwp.external_tool_offset_x
+net headhead-kins-tool-offset-y headheadkins.tool-offset.y => headheadtwp.external_tool_offset_y
+net headhead-kins-tool-offset-z headheadkins.tool-offset.z => headheadtwp.external_tool_offset_z
+
+net Xpos => headheadtwp.current_joint_x
+net Ypos => headheadtwp.current_joint_y
+net Zpos => headheadtwp.current_joint_z
+net Bpos => headheadtwp.current_joint_b
+net Cpos => headheadtwp.current_joint_c
+net headhead-joint-0-homed joint.0.homed => headheadtwp.joint_0_homed
+net headhead-joint-1-homed joint.1.homed => headheadtwp.joint_1_homed
+net headhead-joint-2-homed joint.2.homed => headheadtwp.joint_2_homed
+net headhead-joint-3-homed joint.3.homed => headheadtwp.joint_3_homed
+net headhead-joint-4-homed joint.4.homed => headheadtwp.joint_4_homed
+
+# State-component fallback geometry matches the kinematics geometry. Its live
+# tool offset comes from headheadkins so the same length model is used twice
+# neither by copy nor by approximation.
+setp headheadtwp.nominal_c_to_b_x 0.010934
+setp headheadtwp.nominal_c_to_b_y 0.0
+setp headheadtwp.nominal_c_to_b_z -270.0
+setp headheadtwp.nominal_b_to_tool_x -0.668710
+setp headheadtwp.nominal_b_to_tool_y -26.721365
+setp headheadtwp.nominal_b_to_tool_z -180.373272
+setp headheadtwp.cal_c_to_b_x 0.035886006
+setp headheadtwp.cal_c_to_b_y 0.009526306
+setp headheadtwp.cal_c_to_b_z 0.0
+setp headheadtwp.cal_b_to_tool_x 0.0
+setp headheadtwp.cal_b_to_tool_y 0.0
+setp headheadtwp.cal_b_to_tool_z 0.815000
+setp headheadtwp.b_zero_offset 0.0
+setp headheadtwp.c_zero_offset -0.024500
+setp headheadtwp.requested_normal_rotation 0.0
+
+net headhead-tcpc-enabled headheadtwp.tcpc_enabled => headheadkins.tcpc-enable
+net headhead-tcpc-origin-x headheadtwp.tcpc_origin_x => headheadkins.tcpc-origin.x
+net headhead-tcpc-origin-y headheadtwp.tcpc_origin_y => headheadkins.tcpc-origin.y
+net headhead-tcpc-origin-z headheadtwp.tcpc_origin_z => headheadkins.tcpc-origin.z
+
+# The legacy TWP input remains hard-off. Only the synchronized switchkins path
+# can select the tilted work-plane kinematics in this fixture.
+setp headheadkins.twp-mode 0
+net headhead-twp-kinematics-type headheadtwp.kinematics_type => motion.switchkins-type
+net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
+net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c
+net headhead-twp-normal-rotation headheadtwp.twp_normal_rotation => headheadkins.twp-normal-rotation
+
+net estop-loop iocontrol.0.user-enable-out iocontrol.0.emc-enable-in => headheadtwp.machine_is_enabled
+net tool-prep-loop iocontrol.0.tool-prepare iocontrol.0.tool-prepared
+net tool-change-loop iocontrol.0.tool-change iocontrol.0.tool-changed
+
+# Per-servo sample schema (21 is HAL_STREAM_MAX_PINS):
+#   0..4 joint commands; 5..7 evaluated tool offset; 8..10 TCPC origin;
+#   11 requested switch type; 12 world; 13 TWP; 14 transaction ack;
+#   15 kinematics frame-ready; 16 q; 17 model valid; 18 fault;
+#   19 evaluated length; 20 motion in-position.
+net Xpos => sampler.0.pin.0
+net Ypos => sampler.0.pin.1
+net Zpos => sampler.0.pin.2
+net Bpos => sampler.0.pin.3
+net Cpos => sampler.0.pin.4
+net headhead-kins-tool-offset-x => sampler.0.pin.5
+net headhead-kins-tool-offset-y => sampler.0.pin.6
+net headhead-kins-tool-offset-z => sampler.0.pin.7
+net headhead-tcpc-origin-x => sampler.0.pin.8
+net headhead-tcpc-origin-y => sampler.0.pin.9
+net headhead-tcpc-origin-z => sampler.0.pin.10
+net headhead-twp-kinematics-type => sampler.0.pin.11
+net headhead-kins-is-world headheadkins.kinstype-is-world => sampler.0.pin.12
+net headhead-kins-is-twp headheadkins.kinstype-is-twp => sampler.0.pin.13
+net headhead-twp-transaction-ack headheadtwp.transaction_ack => sampler.0.pin.14
+net headhead-kins-frame-ready headheadkins.kinstype-frame-ready => sampler.0.pin.15
+net headhead-length-model-q headheadkins.length-model.q => sampler.0.pin.16
+net headhead-length-model-valid headheadkins.length-model.valid => sampler.0.pin.17
+net headhead-length-model-fault headheadkins.length-model.fault-code => sampler.0.pin.18
+net headhead-tool-offset-eval-length headheadkins.tool-offset-eval.length => sampler.0.pin.19
+net headhead-motion-in-position motion.in-position => sampler.0.pin.20

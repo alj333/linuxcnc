@@ -1,14 +1,8 @@
-"""Real-machine TCPC/TWP production remap entry points.
+"""Fail-closed TCPC/TWP remaps for the calibrated head-head machine."""
 
-The implementation is shared with the validated head-head simulation remaps.
-This wrapper adds real-machine entry/exit checks around the shared TCPC/TWP
-motion implementation.
-"""
-
-import importlib.util
 import math
 import os
-from pathlib import Path
+import time
 
 import hal
 import linuxcnc
@@ -17,7 +11,13 @@ from interpreter import INTERP_ERROR, INTERP_EXECUTE_FINISH, INTERP_OK
 
 ROTARY_ENTRY_TOL_DEG = 0.01
 TCPC_ENTRY_ZERO_TOL_DEG = 0.005
-REAL_MACHINE_TWP_ENABLED = False
+TWP_POSE_MATCH_TOL_DEG = 0.001
+TWP_TRANSITION_LINEAR_TOL_MM = 0.002
+TWP_TRANSITION_ROTARY_TOL_DEG = 0.001
+TWP_TRANSACTION_TIMEOUT_SEC = 2.0
+TWP_TRANSACTION_ENTER = 1
+TWP_TRANSACTION_EXIT = 2
+TWP_TRANSACTION_CLEAR = 3
 TOOL_XY_TOL_MM = 1e-6
 TOOL_OTHER_AXIS_TOL = 1e-9
 LENGTH_REFERENCE_MM = 229.407000
@@ -28,13 +28,6 @@ LENGTH_MAX_TOLERANCE_MM = 0.002
 LENGTH_MAX_DIFF_NORM_MM = 0.400
 LENGTH_MAX_TOTAL_NORM_MM = 1.350
 LENGTH_CONFIG_TOL = 1e-9
-
-_SIM_REMAP = (
-    Path("/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/python/remap.py")
-)
-_SPEC = importlib.util.spec_from_file_location("_head_head_sim_remap", _SIM_REMAP)
-_MODULE = importlib.util.module_from_spec(_SPEC)
-_SPEC.loader.exec_module(_MODULE)
 
 
 def _ini_flag(section, key):
@@ -49,6 +42,7 @@ def _ini_flag(section, key):
 
 
 LENGTH_MODEL_REQUIRED = _ini_flag("TCPC", "LENGTH_MODEL_REQUIRED")
+TWP_ENABLED = _ini_flag("TWP", "ENABLE")
 
 
 def _set_error(self, message):
@@ -58,6 +52,86 @@ def _set_error(self, message):
 
 def _hal(name):
     return hal.get_value(name)
+
+
+def _pulse_bit(name):
+    hal.set_p(name, "1")
+    time.sleep(0.1)
+    hal.set_p(name, "0")
+
+
+def _wait_until(predicate, timeout=TWP_TRANSACTION_TIMEOUT_SEC):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return bool(predicate())
+
+
+def _twp_transaction(command):
+    request = int(_hal("headheadtwp.transaction_request"))
+    ack = int(_hal("headheadtwp.transaction_ack"))
+    sequence = (max(request, ack) + 1) & 0xFFFFFFFF
+    if sequence == 0:
+        sequence = 1
+
+    hal.set_p("headheadtwp.transaction_command", str(command))
+    hal.set_p("headheadtwp.transaction_request", str(sequence))
+    if not _wait_until(
+        lambda: int(_hal("headheadtwp.transaction_ack")) == sequence
+    ):
+        return "TWP state transaction timed out"
+
+    fault = int(_hal("headheadtwp.transaction_fault"))
+    if fault != 0:
+        return "TWP state transaction was rejected (fault %d)" % fault
+    return None
+
+
+def _joint_command_pose():
+    return tuple(float(_hal("joint.%d.motor-pos-cmd" % joint)) for joint in range(5))
+
+
+def _transition_continuity_error(before, after):
+    linear_delta = max(abs(after[index] - before[index]) for index in range(3))
+    rotary_delta = max(abs(after[index] - before[index]) for index in range(3, 5))
+    if (
+        linear_delta > TWP_TRANSITION_LINEAR_TOL_MM
+        or rotary_delta > TWP_TRANSITION_ROTARY_TOL_DEG
+    ):
+        return (
+            "kinematics handoff changed joint commands "
+            "(linear %.6f mm, rotary %.6f deg)" % (linear_delta, rotary_delta)
+        )
+    return None
+
+
+def _status_snapshot():
+    status = linuxcnc.stat()
+    status.poll()
+    return status
+
+
+def _twp_coordinate_state(self):
+    if _g92_g52_offsets_active(self):
+        return None, "clear G52/G92 offsets before entering TWP"
+    if bool(self.cutter_comp_side):
+        return None, "cancel cutter compensation with G40 before entering TWP"
+
+    status = _status_snapshot()
+    g5x = tuple(float(value) for value in status.g5x_offset)
+    g92 = tuple(float(value) for value in status.g92_offset)
+    values = g5x + g92 + (float(status.rotation_xy),)
+    if not all(math.isfinite(value) for value in values):
+        return None, "active coordinate offsets are nonfinite"
+    if any(abs(value) > 1e-6 for value in g92):
+        return None, "clear G52/G92 offsets before entering TWP"
+    if abs(float(status.rotation_xy)) > 1e-6:
+        return None, "G5X XY rotation is not supported in TWP"
+    if any(abs(g5x[index]) > 1e-6 for index in range(3, 9)):
+        return None, "rotary/AUX G5X offsets are not supported in TWP"
+    return g5x[:3], None
 
 
 def _length_model_configured():
@@ -193,13 +267,49 @@ def _twp_defined_or_active():
     )
 
 
+def _twp_kinematics_is_world():
+    return bool(_hal("headheadkins.kinstype-is-world")) and not bool(
+        _hal("headheadkins.kinstype-is-twp")
+    ) and bool(_hal("headheadkins.kinstype-frame-ready"))
+
+
+def _twp_kinematics_is_active():
+    return bool(_hal("headheadkins.kinstype-is-twp")) and not bool(
+        _hal("headheadkins.kinstype-is-world")
+    ) and bool(_hal("headheadkins.kinstype-frame-ready"))
+
+
+def _motion_is_in_position():
+    return bool(_hal("motion.in-position"))
+
+
+def _clear_twp_coordinate_offset():
+    for axis in ("x", "y", "z"):
+        hal.set_p("headheadkins.twp-coordinate-offset.%s" % axis, "0")
+
+
+def _return_to_world_and_clear(self):
+    transaction_error = _twp_transaction(TWP_TRANSACTION_EXIT)
+    if transaction_error is not None:
+        return transaction_error
+    if not _wait_until(_twp_kinematics_is_world):
+        return "kinematics did not return to world mode; TWP frame was preserved"
+
+    self.execute("M66 E0 L0")
+    yield INTERP_EXECUTE_FINISH
+
+    clear_error = _twp_transaction(TWP_TRANSACTION_CLEAR)
+    if clear_error is not None:
+        return clear_error
+    _clear_twp_coordinate_offset()
+    return None
+
+
 def _angle_delta_deg(current, reference):
-    delta = current - reference
-    while delta > 180.0:
-        delta -= 360.0
-    while delta < -180.0:
-        delta += 360.0
-    return delta
+    if not math.isfinite(current) or not math.isfinite(reference):
+        return math.nan
+    delta = math.remainder(current, 360.0) - math.remainder(reference, 360.0)
+    return math.remainder(delta, 360.0)
 
 
 def _at_tcpc_entry_orientation():
@@ -273,7 +383,7 @@ def enable_tcpc_mode(self, **words):
         yield _set_error(self, "G43.4 rejected: clear G52/G92 offsets before entering TCPC")
         return
 
-    _MODULE._pulse_bit("headheadtwp.cmd_enable_tcpc")
+    _pulse_bit("headheadtwp.cmd_enable_tcpc")
     yield INTERP_EXECUTE_FINISH
     if not bool(_hal("headheadtwp.tcpc_enabled")):
         yield _set_error(self, "G43.4 failed: TCPC state component did not enable")
@@ -300,7 +410,7 @@ def disable_tcpc_mode(self, **words):
         yield _set_error(self, _entry_orientation_message())
         return
 
-    _MODULE._pulse_bit("headheadtwp.cmd_disable_tcpc")
+    _pulse_bit("headheadtwp.cmd_disable_tcpc")
     yield INTERP_EXECUTE_FINISH
     if bool(_hal("headheadtwp.tcpc_enabled")):
         yield _set_error(self, "G49.1 failed: TCPC state component did not disable")
@@ -311,15 +421,158 @@ def disable_tcpc_mode(self, **words):
 def enable_twp_mode(self, **words):
     yield INTERP_EXECUTE_FINISH
 
-    if not REAL_MACHINE_TWP_ENABLED:
+    if not TWP_ENABLED:
         yield _set_error(
             self,
             "G68.2 rejected: real-machine TWP entry is disabled pending "
-            "entry-continuity validation",
+            "recovery and supervised machine validation",
         )
         return
 
-    yield from _MODULE.enable_twp_mode(self, **words)
+    ready_error = _machine_ready_error()
+    if ready_error is not None:
+        yield _set_error(self, "G68.2 rejected: %s" % ready_error)
+        return
+    if not _motion_is_in_position():
+        yield _set_error(self, "G68.2 rejected: machine motion is not in position")
+        return
+    if not bool(_hal("headheadtwp.tcpc_enabled")):
+        yield _set_error(self, "G68.2 rejected: enable TCPC with G43.4 first")
+        return
+    if _twp_defined_or_active() or not _twp_kinematics_is_world():
+        yield _set_error(self, "G68.2 rejected: TWP is already defined or active")
+        return
+
+    length_error = _length_model_entry_error(self)
+    if length_error is not None:
+        yield _set_error(self, "G68.2 rejected: %s" % length_error)
+        return
+
+    coordinate_offset, coordinate_error = _twp_coordinate_state(self)
+    if coordinate_error is not None:
+        yield _set_error(self, "G68.2 rejected: %s" % coordinate_error)
+        return
+
+    has_b = "b" in words
+    has_c = "c" in words
+    if has_b != has_c:
+        yield _set_error(self, "G68.2 requires both B and C words, or neither")
+        return
+
+    current_b = float(_hal("headheadtwp.current_joint_b"))
+    current_c = float(_hal("headheadtwp.current_joint_c"))
+    requested_b = float(words["b"]) if has_b else current_b
+    requested_c = float(words["c"]) if has_c else current_c
+    normal_rotation = float(words["r"]) if "r" in words else 0.0
+    if not all(
+        math.isfinite(value)
+        for value in (
+            current_b,
+            current_c,
+            requested_b,
+            requested_c,
+            normal_rotation,
+            *coordinate_offset,
+        )
+    ):
+        yield _set_error(self, "G68.2 rejected: TWP parameters are nonfinite")
+        return
+    if (
+        abs(requested_b - current_b) > TWP_POSE_MATCH_TOL_DEG
+        or abs(_angle_delta_deg(requested_c, current_c)) > TWP_POSE_MATCH_TOL_DEG
+    ):
+        yield _set_error(
+            self,
+            "G68.2 rejected: requested B/C must match the reached pose "
+            "(requested B%.6f C%.6f, current B%.6f C%.6f)"
+            % (requested_b, requested_c, current_b, current_c),
+        )
+        return
+
+    # B/C words are assertions for the already reached pose. Latch the live
+    # continuous branch so equivalent C words cannot introduce a 360-degree
+    # rotary command on the first TWP move.
+    hal.set_p("headheadtwp.requested_b_angle", "%.17g" % current_b)
+    hal.set_p("headheadtwp.requested_c_angle", "%.17g" % current_c)
+    hal.set_p("headheadtwp.requested_normal_rotation", "%.17g" % normal_rotation)
+    for axis, value in zip(("x", "y", "z"), coordinate_offset):
+        hal.set_p("headheadkins.twp-coordinate-offset.%s" % axis, "%.17g" % value)
+
+    before = _joint_command_pose()
+    transaction_error = _twp_transaction(TWP_TRANSACTION_ENTER)
+    if transaction_error is not None:
+        yield _set_error(self, "G68.2 failed: %s" % transaction_error)
+        return
+    if not _wait_until(_twp_kinematics_is_active):
+        rollback_error = yield from _return_to_world_and_clear(self)
+        detail = "kinematics did not enter TWP mode"
+        if rollback_error is not None:
+            detail += "; rollback failed: %s" % rollback_error
+        yield _set_error(self, "G68.2 failed: %s" % detail)
+        return
+
+    self.execute("M66 E0 L0")
+    yield INTERP_EXECUTE_FINISH
+    after = _joint_command_pose()
+    continuity_error = _transition_continuity_error(before, after)
+    captured_origin = tuple(
+        float(_hal("headheadkins.twp-captured-origin.%s" % axis))
+        for axis in ("x", "y", "z")
+    )
+    state_valid = (
+        bool(_hal("headheadtwp.valid"))
+        and bool(_hal("headheadtwp.active"))
+        and bool(_hal("headheadtwp.motion_enabled"))
+        and bool(_hal("headheadtwp.tcpc_enabled"))
+        and _twp_kinematics_is_active()
+    )
+    if continuity_error is not None or not all(map(math.isfinite, captured_origin)) or not state_valid:
+        rollback_error = yield from _return_to_world_and_clear(self)
+        detail = continuity_error or "TWP entry postcondition failed"
+        if rollback_error is not None:
+            detail += "; rollback failed: %s" % rollback_error
+        yield _set_error(self, "G68.2 failed: %s" % detail)
+        return
+
+    yield INTERP_OK
 
 
-disable_twp_mode = _MODULE.disable_twp_mode
+def disable_twp_mode(self, **words):
+    del words
+    yield INTERP_EXECUTE_FINISH
+
+    has_state = _twp_defined_or_active()
+    is_world = _twp_kinematics_is_world()
+    if not has_state and is_world:
+        _clear_twp_coordinate_offset()
+        yield INTERP_OK
+        return
+
+    ready_error = _machine_ready_error()
+    if ready_error is not None:
+        yield _set_error(self, "G69 rejected: %s" % ready_error)
+        return
+    if not _motion_is_in_position():
+        yield _set_error(self, "G69 rejected: machine motion is not in position")
+        return
+
+    before = _joint_command_pose()
+    transaction_error = yield from _return_to_world_and_clear(self)
+    if transaction_error is not None:
+        yield _set_error(self, "G69 failed: %s" % transaction_error)
+        return
+    after = _joint_command_pose()
+    continuity_error = _transition_continuity_error(before, after)
+
+    state_clear = not _twp_defined_or_active() and _twp_kinematics_is_world()
+    if continuity_error is not None:
+        yield _set_error(self, "G69 failed: %s" % continuity_error)
+        return
+    if not state_clear:
+        yield _set_error(self, "G69 failed: TWP state did not clear")
+        return
+    if not bool(_hal("headheadtwp.tcpc_enabled")):
+        yield _set_error(self, "G69 failed: TCPC state was not preserved")
+        return
+
+    yield INTERP_OK

@@ -58,6 +58,63 @@ T4 new-location campaign remains an axis-geometry diagnostic only: none of its
 location-associated results changed the model coefficients, B/C zeros,
 kinematics, HAL calibration, or tool table.
 
+## Offline TWP Shared Workpath - 2026-08-31 +07
+
+The new synchronized `G68.2` path uses the exact commissioned G43.4
+kinematics. `headheadkins` now exposes world and tilted switchkins types, but
+both types call the same active-tool snapshot and
+`evaluate_tool_offset_world()` implementation. The TWP type adds only an outer
+coordinate-frame transform. It does not have separate pivot geometry,
+coefficients, tool-length interpolation, or TCPC-origin math.
+
+The frame switch latches the reached B/C pose, optional R rotation, active G5X
+translation, TCPC origin, and current world TCP. B/C words on `G68.2` are
+pose assertions; they do not command rotary motion. The exact live C branch is
+retained, so an assertion such as `C10` at a reached `C-350` cannot cause a
+360-degree branch change. A frame-ready output is asserted only after the new
+forward transform succeeds.
+
+`G69` uses a separate exit and clear transaction. The stored frame is retained
+until world kinematics has been confirmed, then it is cleared while G43.4 and
+the active tool length remain unchanged. Interpreter guards restrict the first
+TWP scope to fixed-B/C `G0/G1` XYZ motion plus `G4`; unsupported motion,
+coordinate changes, cutter compensation, tool changes, tool-offset changes,
+and program end before `G69` are rejected.
+
+The production HAL is wired for this synchronized handoff, but all real-machine
+INIs still omit `[TWP] ENABLE=1`. Therefore `G68.2` continues to return the
+production lockout message.
+
+Offline validation completed on 2026-08-31:
+
+- `tests/kinematics/head-head-twp-switchkins-continuity/` imports the production
+  remap, sources the commissioned `2026082601` overlay, and enables TWP only in
+  its test INI
+- T3 at `B30 C90 R17` and T4 at reached `B-30 C-350 R0` both completed
+  stationary entry, reversible local-X motion, and stationary exit
+- T4 asserted the equivalent `C10` on `G68.2` and retained the live `C-350`
+  branch
+- a nonzero G54 translation exercised the coordinate-layer transfer
+- the final run captured 8,323 consecutive servo records across four switch
+  edges; no sampled joint
+  or physical-TCP span exceeded the `0.000005 mm/deg` test thresholds
+- the model remained valid with ID `2026082601`, T3/T4 evaluated lengths and
+  `q=1/0`, and a stable TCPC origin throughout each active frame
+- the existing G43.4 entry/exit regression and all 14 legacy head-head TWP
+  behavior regressions also passed
+- active-plane guard checks rejected rotary/G53/WCS/parameter/arc/tool/TLO/end
+  blocks and a closing `%` without changing TWP, TCPC, tool, model, joint, or
+  physical-TCP state
+
+Do not add the real-machine INI opt-in until both remaining gates are complete:
+
+- userspace state-component loss/restart recovery validation or an RT watchdog
+- supervised no-tool, no-cut entry/direction/exit test at safe clearance
+
+The existing G43.4 length-aware calibration revision `2026082601` is frozen;
+this TWP work does not alter its coefficients or the default cut-test
+configuration.
+
 ## Length-Aware Runtime Boundary - 2026-08-26
 
 The kinematics now has an opt-in, synchronous length-aware correction path.

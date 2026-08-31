@@ -126,10 +126,33 @@ struct haldata {
     hal_float_t *twp_b_angle;
     hal_float_t *twp_c_angle;
     hal_float_t *twp_normal_rotation;
+    hal_float_t *twp_coordinate_offset_x;
+    hal_float_t *twp_coordinate_offset_y;
+    hal_float_t *twp_coordinate_offset_z;
+    hal_float_t *twp_captured_origin_x;
+    hal_float_t *twp_captured_origin_y;
+    hal_float_t *twp_captured_origin_z;
+    hal_bit_t *kinstype_is_world;
+    hal_bit_t *kinstype_is_twp;
+    hal_bit_t *kinstype_frame_ready;
 } *haldata;
 
 static int comp_id;
 static int headhead_max_joints;
+static int switchkins_type;
+static int capture_twp_origin_on_forward;
+
+struct synchronized_twp_frame {
+    double b_angle;
+    double c_angle;
+    double normal_rotation;
+    double coordinate_offset[3];
+    double captured_origin[3];
+    double tcpc_origin[3];
+    int valid;
+};
+
+static struct synchronized_twp_frame active_twp_frame;
 
 static KINEMATICS_TYPE ktype = KINEMATICS_BOTH;
 
@@ -819,6 +842,41 @@ static int twp_parameters_are_finite(void)
         && isfinite(pinv(haldata->twp_normal_rotation));
 }
 
+static int synchronized_twp_inputs_are_finite(void)
+{
+    return isfinite(pinv(haldata->twp_coordinate_offset_x))
+        && isfinite(pinv(haldata->twp_coordinate_offset_y))
+        && isfinite(pinv(haldata->twp_coordinate_offset_z))
+        && isfinite(pinv(haldata->twp_b_angle))
+        && isfinite(pinv(haldata->twp_c_angle))
+        && isfinite(pinv(haldata->twp_normal_rotation));
+}
+
+static int synchronized_twp_frame_is_finite(void)
+{
+    return active_twp_frame.valid
+        && isfinite(active_twp_frame.b_angle)
+        && isfinite(active_twp_frame.c_angle)
+        && isfinite(active_twp_frame.normal_rotation)
+        && vec_is_finite(active_twp_frame.coordinate_offset)
+        && vec_is_finite(active_twp_frame.captured_origin)
+        && vec_is_finite(active_twp_frame.tcpc_origin);
+}
+
+static int wrapped_angle_delta(double current, double reference, double *delta)
+{
+    double current_mod;
+    double reference_mod;
+
+    if (!isfinite(current) || !isfinite(reference) || delta == NULL) return -1;
+    current_mod = fmod(current, 360.0);
+    reference_mod = fmod(reference, 360.0);
+    *delta = fmod(current_mod - reference_mod, 360.0);
+    if (*delta > 180.0) *delta -= 360.0;
+    if (*delta < -180.0) *delta += 360.0;
+    return isfinite(*delta) ? 0 : -1;
+}
+
 static void update_debug_pins(double b_cmd,
                               double c_cmd,
                               const struct tool_offset_evaluation *evaluation)
@@ -877,7 +935,12 @@ static void update_debug_pins(double b_cmd,
     setpin(haldata->tool_offset_eval_length, evaluation->empirical.length);
 }
 
-static void twp_plane_axes(double plane_x[3], double plane_y[3], double plane_z[3])
+static void twp_plane_axes_for(double b_angle,
+                               double c_angle,
+                               double normal_rotation,
+                               double plane_x[3],
+                               double plane_y[3],
+                               double plane_z[3])
 {
     double base_x[3] = {1.0, 0.0, 0.0};
     double base_y[3] = {0.0, 1.0, 0.0};
@@ -885,24 +948,37 @@ static void twp_plane_axes(double plane_x[3], double plane_y[3], double plane_z[
     double stored_plane_x[3];
     double stored_plane_y[3];
 
-    rotary_vector_world(pinv(haldata->twp_b_angle),
-                        pinv(haldata->twp_c_angle),
-                        base_x,
-                        stored_plane_x);
-    rotary_vector_world(pinv(haldata->twp_b_angle),
-                        pinv(haldata->twp_c_angle),
-                        base_y,
-                        stored_plane_y);
-    rotary_vector_world(pinv(haldata->twp_b_angle),
-                        pinv(haldata->twp_c_angle),
-                        base_z,
-                        plane_z);
+    rotary_vector_world(b_angle, c_angle, base_x, stored_plane_x);
+    rotary_vector_world(b_angle, c_angle, base_y, stored_plane_y);
+    rotary_vector_world(b_angle, c_angle, base_z, plane_z);
 
     rotate_about_plane_normal(stored_plane_x,
                               stored_plane_y,
-                              pinv(haldata->twp_normal_rotation),
+                              normal_rotation,
                               plane_x,
                               plane_y);
+}
+
+static void twp_plane_axes(double plane_x[3], double plane_y[3], double plane_z[3])
+{
+    twp_plane_axes_for(pinv(haldata->twp_b_angle),
+                       pinv(haldata->twp_c_angle),
+                       pinv(haldata->twp_normal_rotation),
+                       plane_x,
+                       plane_y,
+                       plane_z);
+}
+
+static void synchronized_twp_plane_axes(double plane_x[3],
+                                        double plane_y[3],
+                                        double plane_z[3])
+{
+    twp_plane_axes_for(active_twp_frame.b_angle,
+                       active_twp_frame.c_angle,
+                       active_twp_frame.normal_rotation,
+                       plane_x,
+                       plane_y,
+                       plane_z);
 }
 
 static void twp_local_to_world(const double local_xyz[3], double world_xyz[3])
@@ -947,10 +1023,62 @@ static void twp_world_to_local(const double world_xyz[3], double local_xyz[3])
     local_xyz[2] = vec_dot(offset, plane_z);
 }
 
+static void synchronized_twp_local_to_world(const double local_xyz[3],
+                                            double world_xyz[3])
+{
+    double plane_x[3];
+    double plane_y[3];
+    double plane_z[3];
+    double local_delta[3] = {
+        local_xyz[0] - active_twp_frame.coordinate_offset[0],
+        local_xyz[1] - active_twp_frame.coordinate_offset[1],
+        local_xyz[2] - active_twp_frame.coordinate_offset[2],
+    };
+
+    synchronized_twp_plane_axes(plane_x, plane_y, plane_z);
+    world_xyz[0] = active_twp_frame.captured_origin[0]
+                 + (local_delta[0] * plane_x[0])
+                 + (local_delta[1] * plane_y[0])
+                 + (local_delta[2] * plane_z[0]);
+    world_xyz[1] = active_twp_frame.captured_origin[1]
+                 + (local_delta[0] * plane_x[1])
+                 + (local_delta[1] * plane_y[1])
+                 + (local_delta[2] * plane_z[1]);
+    world_xyz[2] = active_twp_frame.captured_origin[2]
+                 + (local_delta[0] * plane_x[2])
+                 + (local_delta[1] * plane_y[2])
+                 + (local_delta[2] * plane_z[2]);
+}
+
+static void synchronized_twp_world_to_local(const double world_xyz[3],
+                                            double local_xyz[3])
+{
+    double plane_x[3];
+    double plane_y[3];
+    double plane_z[3];
+    double origin[3] = {
+        active_twp_frame.captured_origin[0],
+        active_twp_frame.captured_origin[1],
+        active_twp_frame.captured_origin[2],
+    };
+    double world_delta[3];
+
+    synchronized_twp_plane_axes(plane_x, plane_y, plane_z);
+    vec_sub(world_xyz, origin, world_delta);
+    local_xyz[0] = vec_dot(world_delta, plane_x)
+                 + active_twp_frame.coordinate_offset[0];
+    local_xyz[1] = vec_dot(world_delta, plane_y)
+                 + active_twp_frame.coordinate_offset[1];
+    local_xyz[2] = vec_dot(world_delta, plane_z)
+                 + active_twp_frame.coordinate_offset[2];
+}
+
 static int headheadKinematicsForward(const double *joints,
                                      EmcPose *pos,
                                      const KINEMATICS_FORWARD_FLAGS *fflags,
-                                     KINEMATICS_INVERSE_FLAGS *iflags)
+                                     KINEMATICS_INVERSE_FLAGS *iflags,
+                                     int twp_enabled,
+                                     int synchronized_twp)
 {
     struct tool_offset_evaluation evaluation;
     struct active_tool_offset active_tool;
@@ -958,19 +1086,28 @@ static int headheadKinematicsForward(const double *joints,
     double world_xyz[3];
     double local_xyz[3];
     int tcpc_enabled;
-    int twp_enabled;
+    int twp_parameters_valid;
 
     (void)fflags;
     (void)iflags;
 
     tcpc_enabled = pinb(haldata->tcpc_enable);
-    twp_enabled = pinb(haldata->twp_mode);
-    tcpc_origin(origin);
+    twp_parameters_valid = !twp_enabled
+        || (synchronized_twp
+            ? synchronized_twp_frame_is_finite()
+            : twp_parameters_are_finite());
+    if (synchronized_twp) {
+        origin[0] = active_twp_frame.tcpc_origin[0];
+        origin[1] = active_twp_frame.tcpc_origin[1];
+        origin[2] = active_twp_frame.tcpc_origin[2];
+    } else {
+        tcpc_origin(origin);
+    }
     snapshot_active_tool_offset(&active_tool);
     evaluate_tool_offset_world(joints[JB], joints[JC], &active_tool, &evaluation);
     if (lengthmodel && (tcpc_enabled || twp_enabled)
         && (!vec_is_finite(origin)
-            || (twp_enabled && !twp_parameters_are_finite()))) {
+            || !twp_parameters_valid)) {
         evaluation.empirical.valid = 0;
         evaluation.empirical.fault = LENGTH_MODEL_TRANSFORM_NONFINITE;
     }
@@ -991,7 +1128,20 @@ static int headheadKinematicsForward(const double *joints,
     }
 
     if (twp_enabled) {
-        twp_world_to_local(world_xyz, local_xyz);
+        if (synchronized_twp && capture_twp_origin_on_forward) {
+            active_twp_frame.captured_origin[0] = world_xyz[0];
+            active_twp_frame.captured_origin[1] = world_xyz[1];
+            active_twp_frame.captured_origin[2] = world_xyz[2];
+            setpin(haldata->twp_captured_origin_x, world_xyz[0]);
+            setpin(haldata->twp_captured_origin_y, world_xyz[1]);
+            setpin(haldata->twp_captured_origin_z, world_xyz[2]);
+            capture_twp_origin_on_forward = 0;
+        }
+        if (synchronized_twp) {
+            synchronized_twp_world_to_local(world_xyz, local_xyz);
+        } else {
+            twp_world_to_local(world_xyz, local_xyz);
+        }
         if (lengthmodel && !vec_is_finite(local_xyz)) {
             evaluation.empirical.valid = 0;
             evaluation.empirical.fault = LENGTH_MODEL_TRANSFORM_NONFINITE;
@@ -1019,7 +1169,9 @@ static int headheadKinematicsForward(const double *joints,
 static int headheadKinematicsInverse(const EmcPose *pos,
                                      double *joints,
                                      const KINEMATICS_INVERSE_FLAGS *iflags,
-                                     KINEMATICS_FORWARD_FLAGS *fflags)
+                                     KINEMATICS_FORWARD_FLAGS *fflags,
+                                     int twp_enabled,
+                                     int synchronized_twp)
 {
     struct tool_offset_evaluation evaluation;
     struct active_tool_offset active_tool;
@@ -1027,31 +1179,56 @@ static int headheadKinematicsInverse(const EmcPose *pos,
     EmcPose mapped;
     double tool_xyz[3];
     int tcpc_enabled;
-    int twp_enabled;
     int twp_parameters_valid;
 
     (void)fflags;
     (void)iflags;
 
     tcpc_enabled = pinb(haldata->tcpc_enable);
-    twp_enabled = pinb(haldata->twp_mode);
-    twp_parameters_valid = !twp_enabled || twp_parameters_are_finite();
-    tcpc_origin(origin);
+    twp_parameters_valid = !twp_enabled
+        || (synchronized_twp
+            ? synchronized_twp_frame_is_finite()
+            : twp_parameters_are_finite());
+    if (synchronized_twp) {
+        origin[0] = active_twp_frame.tcpc_origin[0];
+        origin[1] = active_twp_frame.tcpc_origin[1];
+        origin[2] = active_twp_frame.tcpc_origin[2];
+    } else {
+        tcpc_origin(origin);
+    }
     snapshot_active_tool_offset(&active_tool);
 
     mapped = *pos;
     if (twp_enabled && (!lengthmodel || twp_parameters_valid)) {
-        if (fabs(pos->b - pinv(haldata->twp_b_angle)) > TWP_ROTARY_TOLERANCE_DEG
-            || fabs(pos->c - pinv(haldata->twp_c_angle)) > TWP_ROTARY_TOLERANCE_DEG) {
+        double twp_b_angle = synchronized_twp
+            ? active_twp_frame.b_angle
+            : pinv(haldata->twp_b_angle);
+        double twp_c_angle = synchronized_twp
+            ? active_twp_frame.c_angle
+            : pinv(haldata->twp_c_angle);
+        double c_delta;
+        int c_delta_invalid = wrapped_angle_delta(pos->c,
+                                                  twp_c_angle,
+                                                  &c_delta);
+        if (!isfinite(pos->b)
+            || !isfinite(twp_b_angle)
+            || c_delta_invalid
+            || fabs(pos->b - twp_b_angle) > TWP_ROTARY_TOLERANCE_DEG
+            || fabs(c_delta)
+               > TWP_ROTARY_TOLERANCE_DEG) {
             return -1;
         }
         double local_xyz[3] = {pos->tran.x, pos->tran.y, pos->tran.z};
-        twp_local_to_world(local_xyz, tool_xyz);
+        if (synchronized_twp) {
+            synchronized_twp_local_to_world(local_xyz, tool_xyz);
+        } else {
+            twp_local_to_world(local_xyz, tool_xyz);
+        }
         mapped.tran.x = tool_xyz[0];
         mapped.tran.y = tool_xyz[1];
         mapped.tran.z = tool_xyz[2];
-        mapped.b = pinv(haldata->twp_b_angle);
-        mapped.c = pinv(haldata->twp_c_angle);
+        mapped.b = twp_b_angle;
+        mapped.c = twp_c_angle;
         if (lengthmodel && !vec_is_finite(tool_xyz)) {
             twp_parameters_valid = 0;
         }
@@ -1386,6 +1563,33 @@ static int init_geometry_pins(void)
     if (result < 0) return result;
     result = new_hal_float_pin(&haldata->twp_normal_rotation, HAL_IN, "twp-normal-rotation");
     if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_coordinate_offset_x,
+                               HAL_IN, "twp-coordinate-offset.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_coordinate_offset_y,
+                               HAL_IN, "twp-coordinate-offset.y");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_coordinate_offset_z,
+                               HAL_IN, "twp-coordinate-offset.z");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_captured_origin_x,
+                               HAL_OUT, "twp-captured-origin.x");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_captured_origin_y,
+                               HAL_OUT, "twp-captured-origin.y");
+    if (result < 0) return result;
+    result = new_hal_float_pin(&haldata->twp_captured_origin_z,
+                               HAL_OUT, "twp-captured-origin.z");
+    if (result < 0) return result;
+    result = new_hal_bit_pin(&haldata->kinstype_is_world,
+                             HAL_OUT, "kinstype-is-world");
+    if (result < 0) return result;
+    result = new_hal_bit_pin(&haldata->kinstype_is_twp,
+                             HAL_OUT, "kinstype-is-twp");
+    if (result < 0) return result;
+    result = new_hal_bit_pin(&haldata->kinstype_frame_ready,
+                             HAL_OUT, "kinstype-frame-ready");
+    if (result < 0) return result;
 
     *haldata->nominal_c_to_b_x = 0.0;
     *haldata->nominal_c_to_b_y = 0.0;
@@ -1499,6 +1703,15 @@ static int init_geometry_pins(void)
     *haldata->twp_b_angle = 0.0;
     *haldata->twp_c_angle = 0.0;
     *haldata->twp_normal_rotation = 0.0;
+    *haldata->twp_coordinate_offset_x = 0.0;
+    *haldata->twp_coordinate_offset_y = 0.0;
+    *haldata->twp_coordinate_offset_z = 0.0;
+    *haldata->twp_captured_origin_x = 0.0;
+    *haldata->twp_captured_origin_y = 0.0;
+    *haldata->twp_captured_origin_z = 0.0;
+    *haldata->kinstype_is_world = 1;
+    *haldata->kinstype_is_twp = 0;
+    *haldata->kinstype_frame_ready = 0;
 
     return 0;
 }
@@ -1508,7 +1721,20 @@ int kinematicsForward(const double *joints,
                       const KINEMATICS_FORWARD_FLAGS *fflags,
                       KINEMATICS_INVERSE_FLAGS *iflags)
 {
-    return headheadKinematicsForward(joints, pos, fflags, iflags);
+    int result;
+
+    if (switchkins_type == 1) {
+        result = headheadKinematicsForward(joints, pos, fflags, iflags, 1, 1);
+    } else {
+        result = headheadKinematicsForward(
+            joints, pos, fflags, iflags, pinb(haldata->twp_mode), 0);
+    }
+    if (result == 0) {
+        *haldata->kinstype_is_world = switchkins_type == 0;
+        *haldata->kinstype_is_twp = switchkins_type == 1;
+        *haldata->kinstype_frame_ready = 1;
+    }
+    return result;
 }
 
 int kinematicsInverse(const EmcPose *pos,
@@ -1516,7 +1742,11 @@ int kinematicsInverse(const EmcPose *pos,
                       const KINEMATICS_INVERSE_FLAGS *iflags,
                       KINEMATICS_FORWARD_FLAGS *fflags)
 {
-    return headheadKinematicsInverse(pos, joints, iflags, fflags);
+    if (switchkins_type == 1) {
+        return headheadKinematicsInverse(pos, joints, iflags, fflags, 1, 1);
+    }
+    return headheadKinematicsInverse(
+        pos, joints, iflags, fflags, pinb(haldata->twp_mode), 0);
 }
 
 KINEMATICS_TYPE kinematicsType(void)
@@ -1524,10 +1754,50 @@ KINEMATICS_TYPE kinematicsType(void)
     return ktype;
 }
 
-KINS_NOT_SWITCHABLE
+int kinematicsSwitchable(void)
+{
+    return 1;
+}
+
+int kinematicsSwitch(int new_switchkins_type)
+{
+    if (new_switchkins_type != 0 && new_switchkins_type != 1) {
+        return -1;
+    }
+    if (new_switchkins_type == 1
+        && (haldata == NULL
+            || !pinb(haldata->tcpc_enable)
+            || !synchronized_twp_inputs_are_finite()
+            || (lengthmodel && !pinb(haldata->length_model_valid)))) {
+        return -1;
+    }
+
+    if (new_switchkins_type == 1) {
+        active_twp_frame.b_angle = pinv(haldata->twp_b_angle);
+        active_twp_frame.c_angle = pinv(haldata->twp_c_angle);
+        active_twp_frame.normal_rotation = pinv(haldata->twp_normal_rotation);
+        active_twp_frame.coordinate_offset[0] = pinv(haldata->twp_coordinate_offset_x);
+        active_twp_frame.coordinate_offset[1] = pinv(haldata->twp_coordinate_offset_y);
+        active_twp_frame.coordinate_offset[2] = pinv(haldata->twp_coordinate_offset_z);
+        active_twp_frame.tcpc_origin[0] = pinv(haldata->tcpc_origin_x);
+        active_twp_frame.tcpc_origin[1] = pinv(haldata->tcpc_origin_y);
+        active_twp_frame.tcpc_origin[2] = pinv(haldata->tcpc_origin_z);
+        active_twp_frame.valid = 1;
+    }
+
+    switchkins_type = new_switchkins_type;
+    capture_twp_origin_on_forward = new_switchkins_type == 1;
+    if (haldata != NULL) {
+        *haldata->kinstype_frame_ready = 0;
+    }
+    return 0;
+}
+
 EXPORT_SYMBOL(kinematicsType);
 EXPORT_SYMBOL(kinematicsForward);
 EXPORT_SYMBOL(kinematicsInverse);
+EXPORT_SYMBOL(kinematicsSwitchable);
+EXPORT_SYMBOL(kinematicsSwitch);
 MODULE_LICENSE("GPL");
 
 int rtapi_app_main(void)
@@ -1535,6 +1805,22 @@ int rtapi_app_main(void)
     int axis_idx_for_jno[EMCMOT_MAX_JOINTS];
     int i;
     kparms ksetup;
+
+    switchkins_type = 0;
+    capture_twp_origin_on_forward = 0;
+    active_twp_frame.b_angle = 0.0;
+    active_twp_frame.c_angle = 0.0;
+    active_twp_frame.normal_rotation = 0.0;
+    active_twp_frame.coordinate_offset[0] = 0.0;
+    active_twp_frame.coordinate_offset[1] = 0.0;
+    active_twp_frame.coordinate_offset[2] = 0.0;
+    active_twp_frame.captured_origin[0] = 0.0;
+    active_twp_frame.captured_origin[1] = 0.0;
+    active_twp_frame.captured_origin[2] = 0.0;
+    active_twp_frame.tcpc_origin[0] = 0.0;
+    active_twp_frame.tcpc_origin[1] = 0.0;
+    active_twp_frame.tcpc_origin[2] = 0.0;
+    active_twp_frame.valid = 0;
 
     switch (*kinstype) {
     case '1':

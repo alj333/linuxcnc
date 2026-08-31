@@ -259,13 +259,15 @@ setp headheadtwp.b_zero_offset 0.0
 setp headheadtwp.c_zero_offset -0.024500
 setp headheadtwp.requested_normal_rotation 0.0
 
-# Feed the kinematics layer from the stored TWP state only after G68.2 enables
-# TWP motion. With TWP off, ordinary headheadkins TCPC math is still active.
+# Feed the same calibrated headheadkins path from the stored state. TWP changes
+# only the Cartesian frame interpretation; motion.switchkins-type performs the
+# synchronized world/TWP handoff without changing the joint pose.
 net headhead-tcpc-enabled headheadtwp.tcpc_enabled => headheadkins.tcpc-enable
 net headhead-tcpc-origin-x headheadtwp.tcpc_origin_x => headheadkins.tcpc-origin.x
 net headhead-tcpc-origin-y headheadtwp.tcpc_origin_y => headheadkins.tcpc-origin.y
 net headhead-tcpc-origin-z headheadtwp.tcpc_origin_z => headheadkins.tcpc-origin.z
-net headhead-twp-motion-enabled headheadtwp.motion_enabled => headheadkins.twp-mode
+setp headheadkins.twp-mode 0
+net headhead-twp-kinematics-type headheadtwp.kinematics_type => motion.switchkins-type
 net headhead-twp-b-angle headheadtwp.twp_b_angle => headheadkins.twp-angle.b
 net headhead-twp-c-angle headheadtwp.twp_c_angle => headheadkins.twp-angle.c
 net headhead-twp-normal-rotation headheadtwp.twp_normal_rotation => headheadkins.twp-normal-rotation

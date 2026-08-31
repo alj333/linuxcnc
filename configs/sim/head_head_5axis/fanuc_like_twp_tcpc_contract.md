@@ -100,21 +100,41 @@ For this controller branch, the machine-facing TWP syntax target is:
 
 Current `G68.2` semantics:
 
-- TWP origin comes from the current tool-tip position
-- `B/C` define the stored tilted-plane orientation when supplied
+- TCPC must already be active through `G43.4`
+- the operator or program reaches the required `B/C` pose before `G68.2`
+- `B/C` on the `G68.2` block are assertions of that reached pose, not rotary
+  motion commands; both must be present or both omitted
 - if `B/C` are omitted, `G68.2` captures the current rotary orientation
+- an equivalent wrapped C assertion is accepted, but the exact live continuous
+  C branch is latched
+- the current world TCP is captured as the frame anchor
+- the active G5X XYZ translation becomes the local coordinate at that anchor
 - optional `R` defines plane rotation about the plane normal
-- active TWP immediately switches ordinary `G0/G1 X/Y/Z` into plane-local motion
-- active TWP rejects rotary changes away from the stored `B/C`
-- active TWP also rejects:
-  - tool length compensation changes (`G43`, `G43.1`, `G43.2`, `G49`)
-  - tool changes / current-tool-number changes (`M6`, `M61`)
+- entry is a stationary, acknowledged switchkins transaction; it is complete
+  only after the new forward transform reports its frame ready
+- active TWP switches ordinary `G0/G1 X/Y/Z` into plane-local motion
+- the complete commissioned G43.4 geometry and length-aware tool model remain
+  underneath the plane transform
+
+Initial active-TWP command envelope:
+
+- supported motion: `G0`, `G1`, `G80`, and `G4` dwell
+- fixed `B/C`; `A/B/C/U/V/W` axis words are rejected
+- arcs, probes, threading, canned cycles, and G53 are rejected
+- coordinate-system selection, G52/G92, and coordinate-parameter writes are
+  rejected
+- cutter compensation must remain off
+- tool selection/change and tool-length changes are rejected
+- `M2`, `M30`, top-level `M99`, and M70/M73 context restoration are rejected
+  until `G69` has completed
 
 Current `G69` semantics:
 
 - preserve the current world tool-tip position
-- disable TWP motion
-- cancel and reset the stored TWP definition
+- request world kinematics and wait for its successful forward transform
+- preserve the latched frame if the return to world mode cannot be confirmed
+- clear the stored TWP definition only after world mode is confirmed
+- preserve the active G43.4 TCPC state and tool-length model
 - once `G69` completes, normal tool-state operations are allowed again:
   - `M6`
   - `M61`
@@ -139,6 +159,18 @@ Current abort/reset/home expectation:
 - re-home / unhome-home events clear TWP and preserve the current TCPC mode
 - with TCPC on and TWP off, manual `B/C` motion is allowed
 - after `G69`, manual `B/C` motion is allowed again before the next `G68.2`
+
+Current release status:
+
+- the production-equivalent T3/T4 switchkins regression passed 8,323 sampled
+  servo cycles across four entry/exit edges with no joint or physical-TCP
+  transient beyond its `0.000005 mm/deg` thresholds
+- the synchronized workpath is enabled only by test INIs that explicitly set
+  `[TWP] ENABLE=1`
+- the real-machine INIs omit that opt-in, so `G68.2` remains fail-closed
+- userspace state-component loss while type 1 is active currently requires a
+  LinuxCNC restart; a watchdog or a validated restart-only recovery procedure
+  is required before real-machine TWP enablement
 
 Reason:
 
@@ -227,10 +259,20 @@ the implementation target should be:
 - TWP-aware behavior inside `headheadkins` and/or the interpreter path
 - remap or M-code wrappers only for mode control commands
 
-Current prototype files that remain useful:
+Current implementation files:
 
 - [head_head_twp_state.py](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/head_head_twp_state.py)
 - [headheadkins.c](/home/cnc5/linuxcnc-dev/src/emc/kinematics/headheadkins.c)
+- [production remap.py](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/python/remap.py)
+
+The central invariant is:
+
+```text
+G68.2 geometry = commissioned G43.4 geometry + tilted coordinate frame
+```
+
+The TWP path must never copy, approximate, bypass, or separately tune the
+active-tool or length-aware correction model.
 - [twp_operator_interface.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_operator_interface.md)
 
 Current prototype path that is not the final operator model:
@@ -247,14 +289,17 @@ Current operator model to target:
 - `G69`
 - optional `G49.1`
 
-## Recommended Build Order
+## Commissioning Order
 
-1. Extend `headheadkins` with explicit TCPC/TWP state inputs.
-2. Add a sim-only runtime test proving that active TWP changes ordinary
-   `G0/G1` interpretation.
-3. Add operator-facing on/off wrappers for TCPC and TWP.
-4. Freeze the posted-code contract.
-5. Build the Fusion post around that contract.
+1. Prove stationary type-0/type-1 entry and exit at every servo cycle with T3
+   and T4 and the commissioned length model.
+2. Prove local XYZ direction and reversible linear motion at positive and
+   negative B, including a wrapped C assertion.
+3. Validate userspace-loss and restart recovery while the real-machine opt-in
+   remains absent.
+4. Run a supervised, no-tool, no-cut real-machine switch test at safe clearance.
+5. Run bounded no-cut paths before any posted cutting program.
+6. Freeze the posted-code contract and update the Fusion post.
 
 ## Decision
 

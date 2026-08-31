@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Prototype TWP state component for the head-head XYZBC simulation."""
+"""Production-local TCPC/TWP state component for the head-head XYZBC machine."""
 
 import math
 import os

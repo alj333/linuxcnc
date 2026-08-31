@@ -359,6 +359,7 @@ int Interp::_execute(const char *command)
       return INTERP_OK;
     }
 
+  CHP(guard_headhead_twp_parameters(&_setup));
   for (n = 0; n < _setup.parameter_occurrence; n++)
   {  // copy parameter settings from parameter buffer into parameter table
     _setup.parameters[_setup.parameter_numbers[n]]

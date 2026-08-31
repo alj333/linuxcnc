@@ -67,7 +67,92 @@ static bool hal_bit_pin_is_true(const char *name)
 static bool headhead_twp_is_active()
 {
     return hal_bit_pin_is_true("headheadtwp.active")
-        || hal_bit_pin_is_true("headheadkins.twp-mode");
+        || hal_bit_pin_is_true("headheadtwp.motion_enabled")
+        || hal_bit_pin_is_true("headheadkins.twp-mode")
+        || hal_bit_pin_is_true("headheadkins.kinstype-is-twp");
+}
+
+static bool headhead_synchronized_twp_is_active()
+{
+    return hal_bit_pin_is_true("headheadkins.kinstype-is-twp");
+}
+
+int Interp::guard_headhead_twp_block(block_pointer block,
+                                     setup_pointer settings)
+{
+    const int headhead_g69_cancel = 690;
+    const bool g69_pending = TODO(STEP_MOTION)
+        && block->g_modes[GM_MOTION] == headhead_g69_cancel
+        && block->motion_to_be == headhead_g69_cancel;
+
+    if (!headhead_synchronized_twp_is_active()) {
+        return INTERP_OK;
+    }
+
+    CHKS((settings->cutter_comp_side && !g69_pending),
+         (_("Cutter compensation must remain off while TWP is active")));
+    CHKS((TODO(STEP_PREPARE) && block->t_flag),
+         (_("Cannot select a tool while TWP is active")));
+    CHKS((TODO(STEP_COORD_SYSTEM)
+          && block->g_modes[GM_COORD_SYSTEM] != -1),
+         (_("Cannot change coordinate systems while TWP is active")));
+    CHKS((TODO(STEP_CUTTER_COMP)
+          && block->g_modes[GM_CUTTER_COMP] != -1
+          && block->g_modes[GM_CUTTER_COMP] != G_40),
+         (_("Cannot enable cutter compensation while TWP is active")));
+    CHKS((TODO(STEP_MODAL_0)
+          && block->g_modes[GM_MODAL_0] != -1
+          && block->g_modes[GM_MODAL_0] != G_4),
+         (_("Only G4 is supported from modal group 0 while TWP is active")));
+    CHKS((TODO(STEP_G92_IS_APPLIED)
+          && block->g_modes[GM_G92_IS_APPLIED] != -1),
+         (_("Cannot change G52/G92 axis offsets while TWP is active")));
+    CHKS((TODO(STEP_MOTION)
+          && block->motion_to_be != -1
+          && block->motion_to_be != G_0
+          && block->motion_to_be != G_1
+          && block->motion_to_be != G_80
+          && block->motion_to_be != headhead_g69_cancel),
+         (_("Only G0, G1, G80, and G69 are supported while TWP is active")));
+    CHKS((TODO(STEP_MOTION)
+          && !g69_pending
+          && (block->a_flag || block->b_flag || block->c_flag
+              || block->u_flag || block->v_flag || block->w_flag)),
+         (_("Only XYZ linear-axis words are supported while TWP is active")));
+    CHKS((TODO(STEP_MGROUP4)
+          && !g69_pending
+          && (block->m_modes[4] == 2
+              || block->m_modes[4] == 30
+              || block->m_modes[4] == 99)),
+         (_("Cancel TWP with G69 before ending or restarting a program")));
+    CHKS((TODO(STEP_M_7) && block->m_modes[7] == 72),
+         (_("Cannot restore an M70/M73 context while TWP is active")));
+    return INTERP_OK;
+}
+
+int Interp::guard_headhead_twp_parameters(setup_pointer settings)
+{
+    int occurrence;
+
+    if (!headhead_synchronized_twp_is_active()) {
+        return INTERP_OK;
+    }
+    for (occurrence = 0;
+         occurrence < settings->parameter_occurrence;
+         occurrence++) {
+        int parameter = settings->parameter_numbers[occurrence];
+        CHKS((parameter >= 5210 && parameter <= 5390),
+             (_("Cannot change coordinate parameter #%d while TWP is active")),
+             parameter);
+    }
+    return INTERP_OK;
+}
+
+int Interp::guard_headhead_twp_program_end()
+{
+    CHKS((headhead_synchronized_twp_is_active()),
+         (_("Cancel TWP with G69 before ending the program")));
+    return INTERP_OK;
 }
 
 static bool headhead_tcpc_is_active()
@@ -1101,6 +1186,8 @@ int Interp::convert_axis_offsets(int g_code,     //!< g_code being executed (mus
 {
   double *pars;                 /* short name for settings->parameters            */
 
+  CHKS((headhead_synchronized_twp_is_active()),
+       (_("Cannot change G52/G92 axis offsets while TWP is active")));
   CHKS((settings->cutter_comp_side),      /* not "== true" */
       NCE_CANNOT_CHANGE_AXIS_OFFSETS_WITH_CUTTER_RADIUS_COMP);
   CHKS((block->a_flag && settings->a_axis_wrapped &&
@@ -1828,6 +1915,10 @@ int Interp::convert_coordinate_system(int g_code,        //!< g_code called (mus
   default:
     ERS(NCE_BUG_CODE_NOT_IN_RANGE_G54_TO_G593);
   }
+
+  CHKS((headhead_synchronized_twp_is_active()
+        && origin != settings->origin_index),
+       (_("Cannot change coordinate systems while TWP is active")));
 
   if (origin == settings->origin_index) {       /* already using this origin */
 #ifdef DEBUG_EMC
@@ -3112,6 +3203,8 @@ int Interp::restore_settings(setup_pointer settings,
 			    int from_level)    //!< call level of context to restore from
 {
 
+    CHKS((headhead_synchronized_twp_is_active()),
+         (_("Cannot restore an M70/M73 context while TWP is active")));
     CHKS((from_level < settings->call_level),
 	 (_("BUG: cannot restore from a lower call level (%d) to a higher call level (%d)")),from_level,settings->call_level);
     CHKS((from_level < 0), (_("BUG: restore from level %d !?")),from_level);
@@ -3748,6 +3841,9 @@ int Interp::convert_modal_0(int code,    //!< G-code, must be from group 0
                            setup_pointer settings)      //!< pointer to machine settings
 {
 
+  CHKS((headhead_synchronized_twp_is_active() && code != G_4),
+       (_("Only G4 is supported from modal group 0 while TWP is active")));
+
   if (code == G_10) {
       if(block->l_number == 1 || block->l_number == 10 || block->l_number == 11)
           CHP(convert_setup_tool(block, settings));
@@ -3808,6 +3904,16 @@ int Interp::convert_motion(int motion,   //!< g_code for a line, arc, canned cyc
                           block_pointer block,  //!< pointer to a block of RS274 instructions
                           setup_pointer settings)       //!< pointer to machine settings
 {
+  // G69 is a configured remap (integer code 690), not a built-in enum value.
+  const int headhead_g69_cancel = 690;
+
+  CHKS((headhead_synchronized_twp_is_active()
+        && motion != G_0
+        && motion != G_1
+        && motion != G_80
+        && motion != headhead_g69_cancel),
+       (_("Only G0, G1, G80, and G69 are supported while TWP is active")));
+
   int ai = block->a_flag && (-1 != settings->a_indexer_jnum);
   int bi = block->b_flag && (-1 != settings->b_indexer_jnum);
   int ci = block->c_flag && (-1 != settings->c_indexer_jnum);
@@ -4830,6 +4936,14 @@ int Interp::convert_straight(int move,   //!< either G_0 or G_1
   double CC_end;
   double u_end, v_end, w_end;
   int status;
+
+  CHKS((headhead_synchronized_twp_is_active()
+        && (block->a_flag || block->b_flag || block->c_flag
+            || block->u_flag || block->v_flag || block->w_flag)),
+       (_("Only XYZ linear-axis words are supported while TWP is active")));
+  CHKS((headhead_synchronized_twp_is_active()
+        && block->g_modes[GM_MODAL_0] == G_53),
+       (_("G53 machine-coordinate motion is not supported while TWP is active")));
 
   settings->arc_not_allowed = false;
 

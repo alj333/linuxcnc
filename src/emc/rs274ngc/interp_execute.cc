@@ -239,6 +239,7 @@ int Interp::execute_block(block_pointer block,   //!< pointer to a block of RS27
   int status = INTERP_EXIT;
 
   block->line_number = settings->sequence_number;
+  CHP(guard_headhead_twp_block(block, settings));
   if ((block->comment[0] != 0) && ONCE(STEP_COMMENT)) {
     status = convert_comment(block->comment);
     CHP(status);
@@ -419,4 +420,3 @@ int Interp::execute_unary(double *double_ptr,    //!< pointer to the operand
   }
   return INTERP_OK;
 }
-

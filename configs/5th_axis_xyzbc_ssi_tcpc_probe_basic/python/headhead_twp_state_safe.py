@@ -11,12 +11,10 @@ is active.
 """
 
 import os
-import runpy
-
-
 os.environ.setdefault("HEADHEAD_TWP_DEFAULT_TCPC", "0")
 os.environ.setdefault("HEADHEAD_TWP_TOOL_LENGTH_GUARD", "1")
-runpy.run_path(
-    "/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/head_head_twp_state.py",
-    run_name="__main__",
-)
+
+from headhead_twp_state import main
+
+
+main()

@@ -3157,6 +3157,7 @@ int Interp::read_text(
     rtapi_strlcpy(line, raw_line, LINELEN);
     CHP(close_and_downcase(line));
     if ((line[0] == '%') && (line[1] == 0) && (_setup.percent_flag)) {
+        CHP(guard_headhead_twp_program_end());
         FINISH();
         return INTERP_ENDFILE;
     }

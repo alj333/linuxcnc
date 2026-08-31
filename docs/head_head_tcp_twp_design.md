@@ -21,13 +21,20 @@ implementing:
 
 Current branch status:
 
-- nominal simulation geometry is committed
-- a first `headheadkins` module exists for `XYZBC`
-- that module currently provides parameterized forward/inverse math only
-- TCP is currently represented in the narrow kinematic sense because world
-  `XYZ` are treated as tool-tip coordinates in the simulation scaffold
-- production TCP semantics and TWP are still future layers on top of the same
-  transform model
+- `headheadkins` provides the commissioned `XYZBC` forward/inverse TCPC path
+- the active `G43` tool offset and length-aware calibration revision
+  `2026082601` are evaluated inside that path
+- synchronized TWP is implemented as switchkins type 1 in the same module
+- type 1 reuses the complete TCPC/tool-length evaluation and adds only the
+  reciprocal tilted program-frame transform
+- guarded `G68.2`/`G69` remaps and interpreter restrictions are implemented
+  for offline commissioning
+- a production-equivalent T3/T4 test passed 8,323 consecutive servo samples
+  across four stationary type switches, including nonzero G54, `R17`, and a
+  wrapped C assertion
+- the real-machine INIs do not set `[TWP] ENABLE=1`; production TWP therefore
+  remains locked until the remaining recovery and supervised machine checks
+  are complete
 
 ## Machine Topology
 
@@ -286,64 +293,49 @@ Recommended first operator interface:
 - keep the first implementation narrow and predictable before adding richer
   plane-definition workflows
 
-## Current TWP Scaffold
+## Current TWP Architecture
 
-The simulation branch now has a narrow TWP preprocessor model:
+The production-facing implementation uses two switchkins types exported by
+the same `headheadkins` component:
 
-- choose a fixed `B/C` plane orientation
-- define plane-local `UVW` points
-- transform those points offline into world `XYZ`
-- execute the resulting `XYZBC` path through the existing TCP-capable
-  simulation kinematics
+- type 0: normal world-programming frame with the commissioned G43.4 TCPC math
+- type 1: tilted program frame around that same TCPC math
 
-This is intentionally limited. It proves:
+Both types call the same active-tool snapshot and the same
+`evaluate_tool_offset_world()` function. This includes the complete nominal
+geometry, fitted common correction, tool-length differential correction,
+coefficient-set ID checks, length-domain checks, and TCPC origin handling.
+There is no second TWP calibration or reduced tool model.
 
-- plane basis orientation
-- local-plane to world transform math
-- coherence with the current head-head TCP geometry
+At a stationary `G68.2` transition, type 1 latches:
 
-The branch now also has a prototype TWP HAL state component:
+- the exact reached `B/C` values, including the continuous C branch
+- optional plane-normal rotation `R`
+- active G5X translation
+- TCPC origin
+- current world TCP as the tilted-frame anchor
 
-- `head_head_twp_state.py`
-- `head_head_twp_state.hal`
+The first successful type-1 forward transform asserts a frame-ready pin. The
+local coordinate corresponding to the unchanged TCP is the active G5X
+coordinate, so changing kinematics type does not request joint motion. Normal
+`G0/G1 X/Y/Z` blocks then map through the latched plane basis while `B/C` stay
+fixed.
 
-Current role:
+`G69` is a two-stage transaction. It first requests world kinematics and waits
+for a successful world forward transform. Only after that confirmation does it
+clear the stored frame. This ordering prevents live TWP or TCPC state from
+being erased underneath an active type-1 transform.
 
-- snapshot current tool-tip origin
-- snapshot current `B/C` orientation
-- store/cancel/activate explicit TWP state
-- expose plane basis vectors for inspection
+The earlier HAL commands and `G88.5` transformed-motion path remain useful as
+legacy simulation tools. They are not the production workpath.
 
-Current command binding in the simulation branch:
+Initial synchronized-TWP scope is intentionally narrow:
 
-- `M150` origin from current tool tip
-- `M151` orientation from current `B/C`
-- `M152` set both from current pose
-- `M153` activate
-- `M154` cancel
-- `M155` reset
-- `M156 P...` set plane-normal rotation
-
-This is still not a live LinuxCNC TWP motion mode.
-
-Current first live-motion slice:
-
-- remapped `G88.5 P.. Q.. R.. [L..]`
-- `P/Q/R` are interpreted as plane-local `U/V/W`
-- the remap reads the stored TWP origin, stored `B/C`, and plane basis from
-  `headheadtwp`
-- it expands the plane-local target into world `XYZBC`
-- it then executes a world `G1`
-
-This is intentionally not a general frame switch. It is the smallest live TWP
-motion path that can be validated in simulation before changing normal motion
-semantics.
-
-It does not yet provide:
-
-- a live LinuxCNC TWP mode
-- remap/operator semantics
-- dynamic switching between world and tilted-plane programming
+- linear `G0/G1` XYZ motion and `G4` dwell
+- fixed reached `B/C` for the life of the frame
+- no arcs, probing, canned cycles, cutter compensation, WCS changes, G52/G92,
+  tool selection/change, tool-offset changes, or program end before `G69`
+- fail-closed length-model and state-transition checks
 
 ## Recommended Software Architecture
 
@@ -453,6 +445,11 @@ Minimum acceptance tests for the new kinematics stack:
 7. rotary limits are enforced correctly
 8. simulation visual pose matches expected physical pose
 9. posted Fusion 360 5-axis test programs run correctly in simulation
+10. every servo cycle across G68.2/G69 entry and exit is free of joint-command
+    and physical-TCP transients for both calibrated probe lengths
+11. equivalent wrapped C assertions preserve the reached continuous branch
+12. the commissioned length-model ID, evaluated length, correction blend, and
+    TCPC origin remain unchanged across the frame switch
 
 Current visual acceptance aids:
 
