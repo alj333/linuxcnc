@@ -163,6 +163,39 @@ entry, probe offset, or length-model ID. Revision `2026082601` remains the
 single shared calibration for TCPC and TWP. The next physical attempt must be
 a full restart of the WORLD/TWP/WORLD program under direct supervision.
 
+### Accepted B0/C0 Physical TWP Run - 2026-09-01 +07
+
+The restarted T4/H4 program completed all six passes and appended its first
+accepted physical result row. Measured rotary position was
+`B-0.000354 C-0.000367`. The result was:
+
+- 24/24 gated contacts
+- WORLD opening-to-closing closure `0.008815 mm`
+- transformed TWP center error `0.001965 mm`
+- opening WORLD / TWP / closing WORLD two-pass deltas
+  `0.005467 / 0.005058 / 0.010796 mm`
+- V diameters `30.173000 / 30.177167 / 30.184667 mm`
+- maximum radial residuals `0.086970 / 0.090712 / 0.097388 mm`
+
+Each pass intentionally uses four contacts: top W, one stand-safe U side
+(X-minus at B0), and both V sides (Y-minus/Y-plus at B0). The opposite U side
+is omitted for stand clearance; the certified sphere radius supplies that
+single-sided center constraint, while the paired V contacts provide the
+diameter check.
+
+The operator paused once for a transient wireless-probe error that self-cleared.
+The raw/mux counters finished at 25 edges and the motion-gated counter at the
+required 24, proving the extra receiver pulse did not reach a G38 contact. No
+point was missed, all program gates passed, and no persistent fault remained.
+The result is accepted supervised evidence with one documented intervention,
+not an unattended-clean run.
+
+`G69` restored world type 0 and cleared all TWP frame state. This neutral run
+validates the physical coordinate-layer correction and the B0 TWP path. It
+does not replace nonzero-angle validation; perform separate complete runs at
+`B+5 C0` and `B-5 C0` next, with the operator prepositioning each pose while
+TWP is clear.
+
 ## Length-Aware Runtime Boundary - 2026-08-26
 
 The kinematics now has an opt-in, synchronous length-aware correction path.

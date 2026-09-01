@@ -5178,3 +5178,34 @@ Future work split:
   the initial interrupt and ignored SIGTERM; terminating only the hung GUI
   allowed the launcher to complete its normal HAL/hardware cleanup. The final
   check found no controller process and no `/tmp/linuxcnc.lock`.
+
+## Update (2026-09-01, accepted B0/C0 physical TWP sphere run)
+
+- The complete T4/H4 stage-1 program passed physically at measured
+  `B-0.000354 C-0.000367`, with ordinary `G43 H4` active and public `G43.4`
+  off. The run crossed the corrected `G68.2 R0` / `G53.1` entry, completed
+  local TWP probing, issued `G69`, and completed the closing WORLD phase.
+- Accepted result:
+  - 24/24 gated contacts and six complete four-contact pass rows
+  - WORLD opening-to-closing closure `0.008815 mm`
+  - transformed TWP center error against the mean WORLD center `0.001965 mm`
+  - opening WORLD / TWP / closing WORLD two-pass center deltas
+    `0.005467 / 0.005058 / 0.010796 mm`
+  - corresponding V diameters
+    `30.173000 / 30.177167 / 30.184667 mm`
+  - maximum radial residuals `0.086970 / 0.090712 / 0.097388 mm`
+- The operator paused once for a transient wireless-probe error; it
+  self-cleared and the run then continued. Raw/mux counters recorded 25 edges
+  while the gated motion counter recorded the required 24, so the one extra
+  receiver pulse did not become a probing contact. No contact was missed and
+  no persistent probe fault remained at completion. Treat this as an accepted
+  supervised run with one documented intervention, not an unattended-clean
+  run.
+- Final read-only checks found the controller back in world switchkins type 0,
+  TWP frame/state clear, B/C unchanged, T4 with `229.407 mm` Z offset still
+  active, inputs clear, and the machine in position.
+- This B0/C0 run validates neutral TWP coordinate entry, local XYZ probing,
+  transformed center reconstruction, and clean cancellation. It does not by
+  itself validate nonzero rotary orientation. The next physical gates are
+  separate full runs at `B+5 C0` and `B-5 C0`, prepositioned by the operator
+  while TWP is clear.

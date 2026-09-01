@@ -118,3 +118,24 @@ For the next physical attempt, close/restart the dedicated config, home all
 five joints, reapply T4/H4 with `G43.4` off, return 3-5 mm above the sphere at
 B0/C0, and run the complete program from its beginning. Do not resume after
 the two retained WORLD rows from Attempt 1.
+
+## Attempt 2 Status - 2026-09-01
+
+The complete B0/C0 physical run passed and wrote the first accepted result
+row. At measured `B-0.000354 C-0.000367`, it completed 24/24 gated contacts,
+six pass rows, the local TWP preflight, TWP probing, `G69`, and the closing
+WORLD measurement. WORLD closure was `0.008815 mm`; transformed TWP center
+error was `0.001965 mm`. Opening WORLD / TWP / closing WORLD two-pass deltas
+were `0.005467 / 0.005058 / 0.010796 mm`.
+
+The operator paused once when the wireless probe showed a transient error.
+It self-cleared. Counters finished with 25 raw/mux edges and exactly 24 gated
+motion contacts, all intended points completed, and every program acceptance
+gate passed. Retain the result as accepted supervised evidence with one
+documented intervention rather than an unattended-clean run.
+
+The B0 run intentionally leaves the rotary axes stationary: `G68.2 R0`
+captures the reached B0 tool plane and `G53.1` selects its same physical
+solution. It validates coordinate transformation and cancellation at neutral
+orientation. Continue with separate full runs at `B+5 C0` and `B-5 C0`; do
+not combine them and do not resume part-way through either run.
