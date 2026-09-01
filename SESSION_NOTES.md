@@ -5310,3 +5310,38 @@ Future work split:
   or length-model ID changed. Full closeout:
   `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_FULL_CYCLE_BMINUS5_T4_CLOSEOUT_2026090102.md`.
 - The next staged TWP lifecycle evidence is the signed B+5/B-5 pair at C90.
+
+## Update (2026-09-01, expanded low-angle TWP grid prepared)
+
+- Added campaign `2026090103`, program
+  `nc_files/calibration/twp_sphere_grid_low_angle_t4.ngc`.
+- The matrix contains 24 symmetric targets: B `+/-5, +/-15, +/-30` at C
+  `0, 90, 180, 270`; every positive B target is immediately followed by its
+  negative counterpart.
+- Every target executes a separate CAM lifecycle: world-mode index, rotating-
+  ZXZ `G68.2`, `G53.1`, reversible local-Z preflight, one four-contact sphere
+  pass, `G69`, and world-mode retract. Public `G43.4` remains off.
+- An initial simulator run passed B+5 and B-5 C0, then correctly stopped before
+  B+15 because the direct long-T4 transition required more than the audited
+  160 mm physical-tool correction. No evidence files were retained from that
+  rejected simulator run.
+- The program now changes B first and C second in at most 10-degree increments
+  and re-centers the physical probe at the common 80 mm clearance point after
+  every step. The 160 mm correction bound remains unchanged.
+- The complete actual-program runtime then passed:
+  - 24/24 poses, TWP entries/exits, and local-Z preflights
+  - 112/112 raw, mux, and gated contacts
+  - no B/C motion while TWP was active
+  - minimum fixed-sphere transition clearance `70.824641 mm`
+  - WORLD return closure `0.001195 mm`
+  - final B0/C0 world state with TWP/TCPC clear
+  - byte-identical restoration of all three production evidence CSVs
+- Static O-code, 24-pose Euler identities, signed-pair ordering, schemas,
+  Python, shell, and whitespace checks pass. LinuxCNC also accepted the file
+  through the physical preview/load path without starting it.
+- Each completed target is logged immediately. Reviewed recovery uses a new
+  attempt ID and the first unfinished start-pose number after the operator
+  restores the standard B0/C0 sphere-top start; restart-from-line remains
+  prohibited.
+- No shared calibration value changed. Operator contract:
+  `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_GRID_LOW_ANGLE_T4_PLAN_2026090103.md`.

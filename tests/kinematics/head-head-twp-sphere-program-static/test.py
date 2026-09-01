@@ -11,6 +11,7 @@ CONFIG = ROOT / "configs/5th_axis_xyzbc_ssi_tcpc_probe_basic"
 PROGRAM = ROOT / "nc_files/calibration/twp_sphere_probe_stage1_t4.ngc"
 FULL_CYCLE_PROGRAM = ROOT / "nc_files/calibration/twp_sphere_full_cycle_bplus5_t4.ngc"
 FULL_CYCLE_BMINUS5_PROGRAM = ROOT / "nc_files/calibration/twp_sphere_full_cycle_bminus5_t4.ngc"
+GRID_PROGRAM = ROOT / "nc_files/calibration/twp_sphere_grid_low_angle_t4.ngc"
 MACHINE_HAL = CONFIG / "5th_axis_xyzbc_ssi_tcpc_probe_basic.hal"
 REMAP = CONFIG / "python/remap.py"
 INI = CONFIG / "5th_axis_xyzbc_ssi_tcpc_probe_basic_twp_probe_validation_2026083101.ini"
@@ -22,6 +23,9 @@ FULL_CYCLE_PASSES = CONFIG / "twp-sphere-full-cycle-bplus5-t4-passes.csv"
 FULL_CYCLE_RESULTS = CONFIG / "twp-sphere-full-cycle-bplus5-t4-results.csv"
 FULL_CYCLE_BMINUS5_PASSES = CONFIG / "twp-sphere-full-cycle-bminus5-t4-passes.csv"
 FULL_CYCLE_BMINUS5_RESULTS = CONFIG / "twp-sphere-full-cycle-bminus5-t4-results.csv"
+GRID_PASSES = CONFIG / "twp-sphere-grid-low-angle-t4-passes.csv"
+GRID_POSES = CONFIG / "twp-sphere-grid-low-angle-t4-poses.csv"
+GRID_SUMMARY = CONFIG / "twp-sphere-grid-low-angle-t4-summary.csv"
 
 TOOL_LENGTH = 229.407
 TOOL_OFFSET = (-36.280125, -26.685194, -677.346675)
@@ -111,7 +115,7 @@ def normalize_angle(angle_deg):
 
 
 def validate_fusion_zxz_pose_grid():
-    for b_deg in (5.0, -5.0):
+    for b_deg in (5.0, -5.0, 15.0, -15.0, 30.0, -30.0):
         for c_deg in (0.0, 45.0, 90.0, 180.0, 225.0, 270.0):
             if b_deg > 0.0:
                 euler = (normalize_angle(c_deg + 90.0), b_deg, -90.0)
@@ -402,6 +406,108 @@ def validate_bminus5_full_cycle_program_static():
     validate_control_pairs(lines)
 
 
+def low_angle_pose_table():
+    poses = []
+    sequence = 0
+    for c_deg in (0.0, 90.0, 180.0, 270.0):
+        for magnitude in (5.0, 15.0, 30.0):
+            for b_deg in (magnitude, -magnitude):
+                sequence += 1
+                if b_deg > 0.0:
+                    euler = (normalize_angle(c_deg + 90.0), b_deg, -90.0)
+                else:
+                    euler = (normalize_angle(c_deg - 90.0), abs(b_deg), 90.0)
+                poses.append((float(sequence), b_deg, c_deg) + euler)
+    return poses
+
+
+def validate_grid_program_static():
+    text = GRID_PROGRAM.read_text(encoding="ascii")
+    raw_lines = text.splitlines()
+    lines = executable_lines(text)
+    code = "\n".join(lines)
+
+    long_lines = [(index, len(line)) for index, line in enumerate(raw_lines, 1) if len(line) > 240]
+    require(not long_lines, "grid program lines exceed 240 characters: %r" % (long_lines,))
+    require(set(re.findall(r"\bG38\.\d\b", code)) == {"G38.3"}, "grid probe envelope is not G38.3-only")
+    require(len(re.findall(r"\bG38\.3\b", code)) == 1, "grid probe subroutine must contain one G38.3 block")
+    require(len(re.findall(r"\bG68\.2\b", code)) == 1, "grid run-pose subroutine must define TWP exactly once")
+    require(len(re.findall(r"\bG53\.1\b", code)) == 1, "grid run-pose subroutine must activate TWP exactly once")
+    require(len(re.findall(r"\bG69\b", code)) == 2, "grid path must have run-pose and abort-cleanup G69 paths")
+    require(not re.search(r"\bG43\.4\b", code), "grid TWP path must keep public TCPC off")
+    require(len(re.findall(r"\bM0\b", code)) == 1, "grid path must have one initial operator hold")
+    require(
+        "G68.2 X0 Y0 Z0 I#<euler_i> J#<euler_j> K#<euler_k>" in code,
+        "grid path does not use the reviewed dynamic rotating-ZXZ words",
+    )
+    require("G68.2 R0" not in code, "grid path uses the commissioning-only R0 form")
+    require("#<_twp_grid_transition_radius> = 80.0" in text, "grid clearance is not pinned at 80 mm")
+    require("#<_twp_grid_rotary_step> = 10.0" in text, "grid rotary step is not bounded at 10 degrees")
+    require("#<_twp_grid_pose_error_limit> = 2.000" in text, "grid diagnostic error gate is not 2 mm")
+    require("#<_twp_grid_start_pose> = 1.0" in text, "grid default does not start at pose 1")
+    require("#<_twp_grid_pose_count> = 24.0" in text, "grid pose count is not pinned at 24")
+    require("#<expected_edges> = [16.0 + [4.0 *" in text, "grid gated-edge contract is missing")
+    require(text.count("o<twp_grid_measure_pair> call") == 2, "grid must pair only opening and closing WORLD references")
+
+    call_pattern = re.compile(
+        r"^\s*o<twp_grid_run_pose>\s+call\s+"
+        r"\[(-?\d+(?:\.\d+)?)\]\s+\[(-?\d+(?:\.\d+)?)\]\s+"
+        r"\[(-?\d+(?:\.\d+)?)\]\s+\[(-?\d+(?:\.\d+)?)\]\s+"
+        r"\[(-?\d+(?:\.\d+)?)\]\s+\[(-?\d+(?:\.\d+)?)\]$",
+        re.MULTILINE,
+    )
+    actual_poses = [tuple(float(value) for value in match) for match in call_pattern.findall(code)]
+    expected_poses = low_angle_pose_table()
+    require(actual_poses == expected_poses, "grid pose table or Euler branch differs from the reviewed matrix")
+    require(len(actual_poses) == 24, "grid does not contain exactly 24 pose calls")
+
+    for index in range(0, len(actual_poses), 2):
+        positive, negative = actual_poses[index : index + 2]
+        require(positive[1] == -negative[1] and positive[2] == negative[2], "signed B pair is not adjacent")
+        require(positive[1] > 0.0 and negative[1] < 0.0, "signed B pair order changed")
+    for _, b_deg, c_deg, i_deg, j_deg, k_deg in actual_poses:
+        actual_axes = fusion_zxz_axes(i_deg, j_deg, k_deg)
+        expected_axes = tuple(
+            rotate_z(c_deg, rotate_y(b_deg, basis))
+            for basis in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+        )
+        for axis, actual_axis, expected_axis in zip("XYZ", actual_axes, expected_axes):
+            assert_vector("grid B%g C%g %s" % (b_deg, c_deg, axis), actual_axis, expected_axis)
+
+    index_out = code.index("o<twp_grid_index_world_clear> call [#<target_b>] [#<target_c>]")
+    twp_define = code.index("G68.2 X0 Y0 Z0 I#<euler_i> J#<euler_j> K#<euler_k>")
+    twp_activate = code.index("G53.1", twp_define)
+    twp_measure = code.index("o<twp_grid_measure_pass> call [1.0] [#<target_b>]", twp_activate)
+    twp_cancel = code.index("G69", twp_measure)
+    retract = code.index("o<twp_grid_move_world_tool> call [#<pose_far_x>]", twp_cancel)
+    require(
+        index_out < twp_define < twp_activate < twp_measure < twp_cancel < retract,
+        "grid rotary/TWP lifecycle order changed",
+    )
+    index_start = code.index("o<twp_grid_index_world_clear> sub")
+    index_end = code.index("o<twp_grid_index_world_clear> endsub", index_start)
+    index_code = code[index_start:index_end]
+    require(
+        index_code.count("o<twp_grid_move_world_tool> call [#<_twp_grid_world_high_x>]") == 2,
+        "grid does not re-center the physical probe after both B and C index steps",
+    )
+    active_lines = code[twp_activate:twp_cancel].splitlines()[1:]
+    require(
+        not any(re.match(r"^\s*G(?:0|1)\b.*(?:\sB|\sC)", line, re.IGNORECASE) for line in active_lines),
+        "grid commands rotary motion while TWP is active",
+    )
+    require(
+        str(GRID_PASSES) in text and str(GRID_POSES) in text and str(GRID_SUMMARY) in text,
+        "grid program does not use its three separate evidence tables",
+    )
+
+    sub_names = re.findall(r"^o<([^>]+)>\s+sub\b", code, re.MULTILINE)
+    require(len(sub_names) == len(set(sub_names)), "duplicate grid O-code subroutine definition")
+    call_names = set(re.findall(r"^\s*o<([^>]+)>\s+call\b", code, re.MULTILINE))
+    require(call_names <= set(sub_names), "undefined grid O-code calls: %r" % sorted(call_names - set(sub_names)))
+    validate_control_pairs(lines)
+
+
 def validate_csv_headers():
     expected_passes = (
         "schema_version,campaign_id,phase_id,pass_id,twp_mode,b_deg,c_deg,"
@@ -468,6 +574,38 @@ def validate_csv_headers():
     require(all(len(row) == 13 for row in bminus5_pass_rows), "B-5 pass CSV column count is not 13")
     require(all(len(row) == 29 for row in bminus5_result_rows), "B-5 result CSV column count is not 29")
 
+    expected_grid_passes = (
+        "schema_version,campaign_id,attempt_id,phase_id,pass_id,twp_mode,b_deg,c_deg,"
+        "center_x,center_y,center_z,v_diameter_mm,max_radial_residual_mm,"
+        "cumulative_gated_edges"
+    )
+    expected_grid_poses = (
+        "schema_version,campaign_id,attempt_id,pose_seq,reached_b_deg,reached_c_deg,"
+        "euler_i_deg,euler_j_deg,euler_k_deg,tool_length_mm,probe_offset_mm,world_x,"
+        "world_y,world_z,open_delta_x_mm,open_delta_y_mm,open_delta_z_mm,open_error_mm,"
+        "v_diameter_mm,max_radial_residual_mm,cumulative_gated_edges"
+    )
+    expected_grid_summary = (
+        "schema_version,campaign_id,attempt_id,start_pose,last_pose,return_b_deg,"
+        "return_c_deg,tool_length_mm,probe_offset_mm,world_open_x,world_open_y,"
+        "world_open_z,world_close_x,world_close_y,world_close_z,world_return_closure_mm,"
+        "world_open_pair_mm,world_close_pair_mm,world_open_v_diameter_mm,"
+        "world_close_v_diameter_mm,world_open_max_residual_mm,"
+        "world_close_max_residual_mm,gated_edge_count"
+    )
+    grid_pass_rows = list(csv.reader(GRID_PASSES.read_text(encoding="ascii").splitlines()))
+    grid_pose_rows = list(csv.reader(GRID_POSES.read_text(encoding="ascii").splitlines()))
+    grid_summary_rows = list(csv.reader(GRID_SUMMARY.read_text(encoding="ascii").splitlines()))
+    require(grid_pass_rows and ",".join(grid_pass_rows[0]) == expected_grid_passes, "grid pass CSV schema changed")
+    require(grid_pose_rows and ",".join(grid_pose_rows[0]) == expected_grid_poses, "grid pose CSV schema changed")
+    require(
+        grid_summary_rows and ",".join(grid_summary_rows[0]) == expected_grid_summary,
+        "grid summary CSV schema changed",
+    )
+    require(all(len(row) == 14 for row in grid_pass_rows), "grid pass CSV column count is not 14")
+    require(all(len(row) == 21 for row in grid_pose_rows), "grid pose CSV column count is not 21")
+    require(all(len(row) == 23 for row in grid_summary_rows), "grid summary CSV column count is not 23")
+
 
 def validate_launch_boundary():
     ini = INI.read_text(encoding="ascii")
@@ -503,12 +641,13 @@ def main():
     validate_program_static()
     validate_full_cycle_program_static()
     validate_bminus5_full_cycle_program_static()
+    validate_grid_program_static()
     validate_coordinate_math()
     validate_fusion_zxz_pose_grid()
     validate_csv_headers()
     validate_launch_boundary()
     validate_machine_coordinate_sources()
-    print("TWP sphere stage-1/full-cycle static and coordinate-math validation passed")
+    print("TWP sphere stage-1/full-cycle/grid static and coordinate-math validation passed")
 
 
 if __name__ == "__main__":

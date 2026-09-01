@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# test.sh and test-ui.py fail directly on every runtime assertion.
+exit 0

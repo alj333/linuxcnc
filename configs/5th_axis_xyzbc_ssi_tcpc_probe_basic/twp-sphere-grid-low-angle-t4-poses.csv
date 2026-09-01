@@ -1,0 +1,1 @@
+schema_version,campaign_id,attempt_id,pose_seq,reached_b_deg,reached_c_deg,euler_i_deg,euler_j_deg,euler_k_deg,tool_length_mm,probe_offset_mm,world_x,world_y,world_z,open_delta_x_mm,open_delta_y_mm,open_delta_z_mm,open_error_mm,v_diameter_mm,max_radial_residual_mm,cumulative_gated_edges

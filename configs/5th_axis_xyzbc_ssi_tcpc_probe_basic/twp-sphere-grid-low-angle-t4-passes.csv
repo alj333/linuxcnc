@@ -1,0 +1,1 @@
+schema_version,campaign_id,attempt_id,phase_id,pass_id,twp_mode,b_deg,c_deg,center_x,center_y,center_z,v_diameter_mm,max_radial_residual_mm,cumulative_gated_edges

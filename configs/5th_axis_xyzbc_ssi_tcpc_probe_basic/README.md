@@ -292,6 +292,33 @@ and the 25 mm safe lift complete. Full disposition is in
 calibration value changed. The next staged lifecycle evidence is the signed
 B+5/B-5 pair at C90.
 
+### Prepared Low-Angle B/C TWP Grid - 2026-09-01 +07
+
+The next physical program is `twp_sphere_grid_low_angle_t4.ngc`, campaign
+`2026090103`. It expands the single-pose tests to 24 symmetric targets:
+B `+/-5, +/-15, +/-30` at C `0, 90, 180, 270`. Each positive B pose is
+immediately followed by its negative counterpart. Every pose performs a full
+world index, literal rotating-ZXZ `G68.2` / `G53.1`, local-Z preflight,
+four-contact sphere pass, `G69`, and world-mode retract.
+
+The first simulator route correctly rejected a direct B-5-to-B+15 transition
+because long-T4 displacement exceeded the existing 160 mm positioning bound.
+The released program retains that bound and indexes B then C in at most
+10-degree increments, re-centering the physical probe at the common 80 mm
+sphere-clear point after each increment.
+
+The complete actual-program runtime passed 24/24 poses, 24/24 TWP
+entries/exits, 24/24 preflights, and 112/112 raw/mux/gated contacts. Minimum
+rotary-transition clearance was `70.824641 mm`; simulated WORLD return closure
+was `0.001195 mm`. It finished at commanded B0/C0 in world type 0 with all TWP
+and TCPC state clear, and restored all three production CSVs byte-for-byte.
+
+The program has one initial M0 and no later planned holds. It logs each target
+immediately and supports a reviewed start-pose recovery after a clean return to
+the standard B0/C0 start. Full operator and recovery instructions are in
+`TWP_SPHERE_GRID_LOW_ANGLE_T4_PLAN_2026090103.md`. Calibration revision
+`2026082601` remains frozen.
+
 ## Length-Aware Runtime Boundary - 2026-08-26
 
 The kinematics now has an opt-in, synchronous length-aware correction path.
