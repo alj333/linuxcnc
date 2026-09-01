@@ -147,38 +147,35 @@ tool_tip_world    = [X, Y, Z] + tool_offset_world
 This is sufficient to expose sign, order, and pivot-offset mistakes early,
 which is the immediate goal of the math simulation.
 
-Current TCP interpretation:
+Legacy scaffold TCP interpretation:
 
 - in this scaffold, world `XYZ` are already tool-tip coordinates
 - that means coordinated `XYZBC` motion already behaves as TCP in the sim
-- what is still missing is production-level operator semantics, mode handling,
-  and later TWP integration
+- this simplified interpretation is retained for old visual tests; it is not
+  the production mode/state contract
 
-Current TWP interpretation:
+Current production-facing TWP interpretation:
 
-- the branch now has a kinematics-level TWP mode for sample data
-- machine-facing sample-data syntax is:
-  - `G43.4` TCPC on
-  - `G68.2 [B.. C..] [R..]` define and activate TWP from current tool tip
-  - ordinary `G0/G1 X/Y/Z` in plane-local coordinates
-  - `G69` cancel TWP
-  - `G49.1` TCPC off
-- active TWP keeps the stored `B/C` orientation fixed
-- ordinary `G0/G1` are no longer world-coordinate moves while TWP is active
-- active TWP rejects rotary changes away from the stored `B/C`
-- active TWP rejects tool length compensation changes and tool changes
-- after `G69`, normal tool-state operations are allowed again
-- with TCPC on and TWP off, manual `B/C` motion is allowed
-- `G68.2` may omit `B/C` to capture the current manual rotary orientation
-- a TWP move that exceeds realistic travel limits is rejected before motion, and
-  the validated recovery path is cancel -> safe reposition -> re-enter
-- program abort leaves TWP/TCPC state alone until explicit cancel
-- estop clears TWP and restores default TCPC-on
-- re-home clears TWP and preserves the current TCPC mode
-- the offline transform and `G88.5` path still remain useful math-validation
-  tools, but they are no longer the intended posted interface
+- the authoritative controller and Fusion post contract is
+  [TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md)
+- ordinary positive `G43 H` remains active and public `G43.4` remains off
+- B/C are safely prepositioned in world mode before TWP definition
+- rotating-`ZXZ` `G68.2 X/Y/Z/I/J/K` defines the frame without motion
+- a separate `G53.1` block performs the stationary type-1 activation
+- fixed-B/C `G0/G1 X/Y/Z` are local tilted-plane moves
+- `G69` performs a stationary return to world type 0 and clears the frame
+- arcs, canned cycles, rotary words, WCS changes, cutter compensation, and
+  tool/offset changes are rejected while TWP is defined or active
+- the completed physical grid passed 24 poses through B `+/-30 deg` and all
+  four C quadrants; this releases supervised CAM cut testing, not unattended
+  production
+- the offline transform, HAL helper commands, and `G88.5` path remain legacy
+  simulation fixtures and are not postprocessor targets
 
-Initial machine calibration workflow:
+Historical machine calibration workflow:
+
+The bullets below describe the original simulation plan only. They have been
+completed or superseded and must not be used as current operator instructions.
 
 - qualify the OMP40-style probe in the 50 mm ring
 - verify basic B/C direction and zero poses
@@ -187,19 +184,20 @@ Initial machine calibration workflow:
 - verify moving 5-axis TCP motion
 - only then move on to TWP validation
 
-Current shop-facing calibration references:
+Current shop-facing references:
 
-- [five_axis_calibration_procedure.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/five_axis_calibration_procedure.md)
-- [machine_bringup_checklist.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_bringup_checklist.md)
-- [machine_rotary_zeroing_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_rotary_zeroing_sequence.md)
-- [machine_tcp_twp_verification_sequence.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_twp_verification_sequence.md)
+- [TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md)
+- [TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md)
+- [TCPC_CALIBRATION_RESUME_STATE.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_CALIBRATION_RESUME_STATE.md)
+- [TCPC_LONG_SHORT_PROBE_CALIBRATION_PLAN.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_LONG_SHORT_PROBE_CALIBRATION_PLAN.md)
 - [software_acceptance_matrix.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/software_acceptance_matrix.md)
-- [run_head_head_acceptance.sh](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/run_head_head_acceptance.sh)
 - [fanless_pc_rebuild_notes.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/fanless_pc_rebuild_notes.md)
-- [fusion_post_requirements.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/fusion_post_requirements.md)
 - [inspection_alignment_contract.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/inspection_alignment_contract.md)
 - [legacy_probe_workflow_review.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/legacy_probe_workflow_review.md)
 - [inspection_results_format_spec.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/inspection_results_format_spec.md)
+
+Legacy simulator calibration programs, not released machine programs:
+
 - [calibration_sphere_capture_sequence.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_sphere_capture_sequence.ngc)
 - [calibration_bc_alignment_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_bc_alignment_check.ngc)
 - [calibration_tcpc_fixed_tip_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/calibration_tcpc_fixed_tip_check.ngc)
@@ -210,7 +208,7 @@ Current shop-facing calibration references:
 - [machine_tcp_motion_probe_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_tcp_motion_probe_check.ngc)
 - [machine_twp_granite_square_check.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/machine_twp_granite_square_check.ngc)
 
-Prototype TWP state commands from a terminal:
+Legacy simulation-only TWP state commands from a terminal:
 
 ```bash
 halcmd setp headheadtwp.cmd_set_from_current 1
@@ -239,7 +237,7 @@ halcmd setp headheadtwp.cmd_cancel 0
 - `2` defined
 - `3` active
 
-Prototype TWP M-codes:
+Legacy simulation-only TWP M-codes:
 
 - `M150` set TWP origin from current tool tip
 - `M151` set TWP orientation from current `B/C`
@@ -249,7 +247,7 @@ Prototype TWP M-codes:
 - `M155` reset TWP state
 - `M156 P...` set plane-normal rotation
 
-Demo program:
+Legacy simulation demo programs:
 
 - [twp_state_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_state_demo.ngc)
 - [twp_live_demo.ngc](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/twp_live_demo.ngc)

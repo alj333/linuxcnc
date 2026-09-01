@@ -1,5 +1,9 @@
 # Head-Head TCP/TWP Design Baseline
 
+Status: design background. The authoritative implemented TWP and Fusion post
+contract is
+[TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md).
+
 ## Scope
 
 This note defines the intended kinematic model and simulation plan for the
@@ -28,16 +32,17 @@ Current branch status:
 - type 1 reuses the complete TCPC/tool-length evaluation and adds only the
   reciprocal tilted program-frame transform
 - guarded `G68.2`/`G53.1`/`G69` remaps and interpreter restrictions are
-  implemented for offline commissioning
+  implemented and physically commissioned through B `+/-30 deg`
 - a production-equivalent T3/T4 test passed 18,931 consecutive servo samples
   across four stationary type switches, including nonzero G54, Fusion rotating
   `ZXZ` I/J/K input, `R17`, and a wrapped C assertion, with public TCPC off
-- the exact stage-1 T4 sphere program passed a full 24-contact AUTO simulation;
-  WORLD closure was `0.000726 mm` and transformed TWP error was `0.000776 mm`
+- the physical low-angle T4 grid completed all 24 signed-B/C poses and 112
+  motion-gated contacts; WORLD closure was `0.052759 mm` and maximum
+  transformed center error was `0.205463 mm`
 - component-loss/restart and all 15 legacy TCPC/TWP behavior scenarios pass
-- the real-machine INIs do not set `[TWP] ENABLE=1`; production TWP therefore
-  remains locked; only the dedicated commissioning INI permits the first
-  supervised physical sphere check
+- the default real-machine cut-test INI remains TWP-locked; the dedicated
+  supervised INI is physically validated and is released for controlled CAM
+  cut testing only
 
 ## Machine Topology
 

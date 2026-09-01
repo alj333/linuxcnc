@@ -1,5 +1,8 @@
 # TWP Sphere Low-Angle Grid - T4 Operator Plan
 
+Status: completed physically on 2026-09-01. The accepted result and final
+disposition are in `TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md`.
+
 Date: 2026-09-01
 Campaign: `2026090103`
 Calibration revision: `2026082601` frozen

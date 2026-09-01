@@ -5345,3 +5345,47 @@ Future work split:
   prohibited.
 - No shared calibration value changed. Operator contract:
   `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_GRID_LOW_ANGLE_T4_PLAN_2026090103.md`.
+
+## Update (2026-09-01, low-angle TWP grid accepted and post contract frozen)
+
+- The physical T4/H4 grid completed campaign `2026090103` attempt 1 without a
+  recovery segment: 24/24 poses, 24/24 TWP entries/exits and preflights,
+  112/112 motion-gated contacts, 28 pass rows, 24 pose rows, and one complete
+  summary row.
+- The tested matrix was B `+/-5, +/-15, +/-30` at C `0, 90, 180, 270`.
+  Every pose used world indexing, rotating-`ZXZ` `G68.2`, separate stationary
+  `G53.1`, fixed-B/C local motion, `G69`, and world retraction. No rotary
+  motion occurred while TWP was active.
+- Final physical metrics:
+  - WORLD opening-to-closing closure `0.052759 mm`
+  - opening/closing pair repeatability `0.006406/0.010418 mm`
+  - center-error mean/RMS `0.141458/0.150468 mm`
+  - center-error range `0.031116..0.205463 mm`
+  - worst center pose B-30/C180
+  - maximum radial residual `0.141089 mm` at B+30/C270
+- All program gates passed. The `2.000 mm` center gate remained a diagnostic
+  stop, not an accuracy target. The result is accepted lifecycle/frame
+  evidence and does not justify any TWP-specific calibration adjustment.
+- Final read-only state was idle/in-position at commanded B0/C0, all five
+  joints homed, world type 0 ready, all synchronized TWP and public TCPC state
+  clear, T4/H4 `229.407 mm` retained, model `2026082601` valid with fault 0,
+  spindle off, and motion probe input clear.
+- TWP is released for supervised CAM cut testing inside the physically tested
+  `|B| <= 30 deg` envelope. It is not released for unattended production,
+  untested arcs/cycles, changing B/C inside TWP, or the remaining angular
+  travel.
+- Added the authoritative current controller/Fusion post contract:
+  `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md`.
+  It records the required separation from public `G43.4`, ordinary `G43 H`
+  tooling, world B/C preposition, `G68.2 X/Y/Z/I/J/K`, separate `G53.1`,
+  active-motion restrictions, `G69`, recovery, and the exact stock Fanuc post
+  behaviors that must be changed.
+- Added physical closeout and evidence hashes in
+  `TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md`.
+- Replaced superseded simulation-era TWP/post/operator/calibration contracts
+  with link-compatible historical notices. Rebuilt the software acceptance
+  matrix around the synchronized switchkins, component-loss, exact-program,
+  signed-cycle, grid-runtime, and static tests. Historical run evidence and
+  calibration archives were not modified.
+- Calibration revision `2026082601` remains frozen. No coefficient, B/C zero,
+  WCS, tool-table entry, probe offset, or kinematics model changed.

@@ -370,8 +370,9 @@ Do these in order, stopping on any unexpected result:
    nc_files/calibration/tcpc_production_entry_exit_smoke.ngc
    ```
 
-6. Keep `G68.2` TWP production use disabled until the current TCPC/TWP notes in
-   `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/README.md` say otherwise.
+6. Keep `G68.2` disabled in the default cut-test configuration. Controlled TWP
+   use requires the dedicated opt-in INI and must follow
+   `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md`.
 
 ## Codex Handoff Prompt
 

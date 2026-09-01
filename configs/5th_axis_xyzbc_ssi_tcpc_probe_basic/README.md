@@ -60,6 +60,11 @@ kinematics, HAL calibration, or tool table.
 
 ## Separate TWP Shared Workpath - 2026-08-31 +07
 
+The authoritative current controller and Fusion postprocessor contract is
+`TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md`. Older simulation contracts
+that required public `G43.4` under TWP are superseded and must not be used for
+posted code.
+
 `G43.4` TCPC and `G68.2` TWP are separate public modes. The commissioned
 length-aware geometry revision remains shared internally; there is no second
 TWP coefficient set or reduced tool model. The guarded TWP sequence is:
@@ -122,8 +127,9 @@ Revalidation completed after a clean controller shutdown on 2026-08-31:
   successful process status, preserving the older diagnostics interface and
   its fail-closed tooling, reset, limit, and recovery behavior.
 
-These are offline/headless results only. No physical TWP move has yet been
-released; the dedicated INI remains a supervised commissioning path.
+At this historical stage these were offline/headless results only. That status
+is superseded by the accepted B0, signed-B, and 24-pose physical runs recorded
+later in this section. The dedicated INI remains a supervised path.
 
 The existing calibration revision `2026082601` is frozen. This TWP work changes
 no fitted coefficient, B/C zero, tool-table entry, or default cut-test
@@ -292,32 +298,43 @@ and the 25 mm safe lift complete. Full disposition is in
 calibration value changed. The next staged lifecycle evidence is the signed
 B+5/B-5 pair at C90.
 
-### Prepared Low-Angle B/C TWP Grid - 2026-09-01 +07
+### Accepted Low-Angle B/C TWP Grid - 2026-09-01 +07
 
-The next physical program is `twp_sphere_grid_low_angle_t4.ngc`, campaign
-`2026090103`. It expands the single-pose tests to 24 symmetric targets:
-B `+/-5, +/-15, +/-30` at C `0, 90, 180, 270`. Each positive B pose is
-immediately followed by its negative counterpart. Every pose performs a full
-world index, literal rotating-ZXZ `G68.2` / `G53.1`, local-Z preflight,
-four-contact sphere pass, `G69`, and world-mode retract.
+The supervised T4 campaign `2026090103` completed the full 24-pose matrix:
+B `+/-5, +/-15, +/-30` at C `0, 90, 180, 270`. Each pose completed a world
+index, literal rotating-`ZXZ` `G68.2`, stationary `G53.1`, local-Z preflight,
+four-contact sphere pass, `G69`, and world-mode retract. Every positive B pose
+was immediately followed by its negative counterpart.
 
-The first simulator route correctly rejected a direct B-5-to-B+15 transition
-because long-T4 displacement exceeded the existing 160 mm positioning bound.
-The released program retains that bound and indexes B then C in at most
-10-degree increments, re-centering the physical probe at the common 80 mm
-sphere-clear point after each increment.
+Accepted acquisition:
 
-The complete actual-program runtime passed 24/24 poses, 24/24 TWP
-entries/exits, 24/24 preflights, and 112/112 raw/mux/gated contacts. Minimum
-rotary-transition clearance was `70.824641 mm`; simulated WORLD return closure
-was `0.001195 mm`. It finished at commanded B0/C0 in world type 0 with all TWP
-and TCPC state clear, and restored all three production CSVs byte-for-byte.
+- 24/24 pose rows and 24/24 TWP entries/exits
+- 24/24 reversible local-Z preflights
+- 112/112 motion-gated contacts and 28 complete pass rows
+- no B/C motion while TWP was active
+- no Stop, Abort, recovery segment, restart, or offset change
+- final commanded B0/C0 in ready world type 0 with TWP/TCPC clear
 
-The program has one initial M0 and no later planned holds. It logs each target
-immediately and supports a reviewed start-pose recovery after a clean return to
-the standard B0/C0 start. Full operator and recovery instructions are in
-`TWP_SPHERE_GRID_LOW_ANGLE_T4_PLAN_2026090103.md`. Calibration revision
-`2026082601` remains frozen.
+Physical metrics:
+
+- WORLD return closure `0.052759 mm`
+- opening/closing pair repeatability `0.006406/0.010418 mm`
+- center-error mean/RMS `0.141458/0.150468 mm`
+- center-error range `0.031116..0.205463 mm`
+- worst center pose B-30/C180
+- maximum radial residual `0.141089 mm` at B+30/C270
+
+All program gates passed. The center-error gate was a tolerant `2.000 mm`
+diagnostic stop, not an accuracy target. The matching signed-B TCPC/TWP
+evidence continues to identify the remaining error as shared machine/rotary
+geometry rather than a TWP transition defect. No calibration coefficient,
+B/C zero, WCS, tool-table value, or probe offset changed.
+
+The implementation is accepted for supervised CAM cut testing inside the
+physically tested `|B| <= 30 deg` envelope. This is not an unattended
+production release and does not validate arcs, canned cycles, changing B/C in
+TWP, or the remaining machine angular range. Full disposition and evidence
+hashes are in `TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md`.
 
 ## Length-Aware Runtime Boundary - 2026-08-26
 
@@ -703,6 +720,10 @@ the persistent fitted-correction enable for this TCPC work config.
 
 ## Production TCPC Entry/Exit - 2026-05-07 +07
 
+This section is the dated TCPC commissioning record. Its TCPC entry/exit rules
+remain relevant, but its TWP lockout and combined TCPC/TWP program examples are
+superseded by `TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md`.
+
 Production entry/exit behavior is now implemented in the real-machine remap:
 
 - `G43.4` checks that the machine is enabled, all five joints are homed, TWP is
@@ -726,9 +747,9 @@ Production entry/exit behavior is now implemented in the real-machine remap:
   physical/current tool state can change; exit with `G49.1` first
 - active `G43 Hn` length is included in the head-head kinematics as local tool
   length, so the same B-to-spindle-nose geometry can handle different tools
-- `G68.2` TWP entry is temporarily disabled in the real-machine config pending
-  entry-continuity validation; TCPC entry/exit is validated, but the TWP motion
-  enable path is not yet production safe
+- at this 2026-05-07 stage, `G68.2` TWP entry was temporarily disabled pending
+  continuity work; that historical lockout was later replaced by the separate
+  synchronized TWP implementation and dedicated supervised INI
 - the TCPC tool-length guard is enabled by
   `headheadtwp.tcpc_tool_length_guard`; the real fail-safe state wrapper sets
   this pin true so the interpreter blocks tool-length changes only for guarded
@@ -738,7 +759,7 @@ Production entry/exit behavior is now implemented in the real-machine remap:
   state. Return B/C to `B0 C0`, run `G49.1`, and only then clear tool length
   with `G49` if required.
 
-Recommended production program envelope:
+TCPC-only program envelope:
 
 ```ngc
 G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94
@@ -747,15 +768,18 @@ Tn M6
 G43 Hn
 G0 B0 C0
 G43.4
-(normal TCPC or TWP work)
-G69     (only needed if TWP was used)
+(normal TCPC work only)
 G0 B0 C0
 G49.1
 G49
 M30
 ```
 
-Production-release items still open:
+Do not extend this TCPC envelope with `G68.2`. Indexed TWP uses ordinary
+`G43 H`, public `G43.4` off, world B/C preposition, `G68.2`, `G53.1`, local
+motion, and `G69` as defined by the current TWP contract.
+
+Historical production-release items that were open at this stage:
 
 - restart LinuxCNC before testing; currently running processes do not pick up
   rebuilt kinematics/interpreter code
@@ -768,7 +792,7 @@ Production-release items still open:
 - execute the reviewed T3/T4/T3 plan above after independent probe
   qualification and collision-clearance dry runs
 
-Headless regression added:
+Legacy prototype-era headless regression added:
 
 ```bash
 cd /home/cnc5/linuxcnc-dev/tests/kinematics/head-head-tcpc-entry-exit
@@ -923,7 +947,7 @@ Linear-axis motion check against the old Feb 2026 5-axis config:
   Z `0.000178 mm`, with no PID saturation and all axes returning to the start
   position
 
-Next servo/motion checks:
+Historical next servo/motion checks from 2026-05-08 (superseded):
 
 - fresh restart verification completed with
   `/tmp/tcpc_servo_logs/rotary-p75-max12-fresh.csv`; the INI-loaded
@@ -977,7 +1001,7 @@ Fresh startup/homing tool-restore check, 2026-05-07 21:10 +07:
   instead, TCPC programs and checks must verify the live active TLO before
   `G43.4` and keep all `G43`/`G49` changes outside active TCPC
 
-TWP entry fault, 2026-05-07 21:20 +07:
+Historical TWP entry fault, 2026-05-07 21:20 +07:
 
 - TCPC-only smoke checks passed, including the preserve-tool path that leaves
   T3/G43 active after `G49.1`

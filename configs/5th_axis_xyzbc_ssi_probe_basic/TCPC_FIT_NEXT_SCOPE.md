@@ -1,6 +1,13 @@
 # TCPC Fit Next Scope
 
-Status: TCPC direction checks, fixed-tip validation, corrected expanded
+Status: historical fit-development record. Current calibration authority is
+`configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_CALIBRATION_RESUME_STATE.md`,
+and the current TWP/post contract is
+`configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md`.
+Do not execute the old TWP lockout/recovery instructions or retune the frozen
+`2026082601` model from this file.
+
+TCPC direction checks, fixed-tip validation, corrected expanded
 validation, B50 redo data, clean B90 diagnostics, C0 B-angle scaling, the
 B/C-cross candidate run, and the refined B/C-cross candidate run have now run
 on the real machine. The current guidance is the
