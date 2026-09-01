@@ -192,9 +192,65 @@ not an unattended-clean run.
 
 `G69` restored world type 0 and cleared all TWP frame state. This neutral run
 validates the physical coordinate-layer correction and the B0 TWP path. It
-does not replace nonzero-angle validation; perform separate complete runs at
-`B+5 C0` and `B-5 C0` next, with the operator prepositioning each pose while
-TWP is clear.
+does not replace nonzero-angle validation. The earlier plan for an
+operator-prepositioned B+5 run is superseded by the guarded full-cycle test
+below.
+
+### Prepared B0/B+5/B0 Full-Cycle Test - 2026-09-01 +07
+
+The next production test program is
+`twp_sphere_full_cycle_bplus5_t4.ngc`. It starts only from the standard B0/C0
+sphere-top point. After two opening WORLD references, it moves the physical
+probe through an 80 mm world-clearance point, indexes to B+5/C0 with TWP clear,
+approaches the B+5 start, and executes the literal Fusion/Fanuc sequence
+`G68.2 X0 Y0 Z0 I90 J5 K-90` followed by `G53.1`. It probes in TWP, cancels
+with `G69`, returns through the guarded clearance path to B0/C0, and measures
+closing WORLD references. This validates positioning plus transition into and
+out of TWP as one cycle rather than relying on operator prepositioning.
+
+The program has one initial `M0`, 24 gated contacts, no clearance-test holds,
+and separate pass/result CSVs. Its full operator and recovery contract is in
+`TWP_SPHERE_FULL_CYCLE_BPLUS5_T4_PLAN_2026090101.md`. Static G-code,
+lifecycle-order, coordinate-source, and CSV-schema checks pass. With the
+physical controller closed, the dedicated actual-program simulator completed
+the B0/B+5/B0 path with 24/24 contacts, `79.734424 mm` minimum rotary-transition
+clearance, exact 1 mm local-Z preflight and zero closure, `0.000410 mm` WORLD
+return closure, and `0.000606 mm` transformed TWP error. It observed exactly
+one TWP entry and exit, no rotary motion in TWP, final B0/C0 world state, and
+byte-identical evidence-CSV restoration. The program is ready for its first
+supervised physical run but has not been loaded or started on the CNC.
+
+### Accepted B0/B+5/B0 Physical TWP Cycle - 2026-09-01 +07
+
+The first physical full-cycle run passed. Starting from the standard B0/C0
+sphere-top point with T4/H4 and public TCPC off, it completed the guarded world
+lift, B+5 index, literal Fusion/Fanuc `G68.2 X0 Y0 Z0 I90 J5 K-90` / `G53.1`
+entry, local TWP probing, `G69`, B0 return, and closing WORLD reference.
+
+Accepted metrics were:
+
+- 24/24 gated contacts and six complete pass rows
+- WORLD return closure `0.006120 mm`
+- transformed B+5 TWP center error `0.039035 mm`
+- opening WORLD / TWP / closing WORLD pair deltas
+  `0.006026 / 0.007905 / 0.009274 mm`
+- V diameters `30.174250 / 30.181332 / 30.186333 mm`
+- maximum radial residuals `0.088598 / 0.091539 / 0.095250 mm`
+
+Rapid override was initially 0%, so the program waited safely at the common
+world-clearance point before B motion. Raising it to 10% continued the queued
+move; there was no Stop, Abort, jog, MDI, or restart-from-line. Raw/mux/gated
+counters ended `31/31/24`: six additional pulses were delayed post-contact
+events inside the ignore window, and one transient pulse occurred during the
+safe B index. The latter asserted the abnormal/fault event briefly but never
+reached `motion.probe-input`, self-cleared, and passed the subsequent quiet and
+state guards before TWP entry.
+
+Final state was idle at commanded B0/C0 in world type 0, all TWP/TCPC state and
+probe levels clear, SSI valid, T4/H4 retained, and the 25 mm safe lift complete.
+The full disposition is in
+`TWP_SPHERE_FULL_CYCLE_BPLUS5_T4_CLOSEOUT_2026090101.md`. This accepted B+5
+result changes no shared calibration value.
 
 ## Length-Aware Runtime Boundary - 2026-08-26
 

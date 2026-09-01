@@ -5209,3 +5209,72 @@ Future work split:
   itself validate nonzero rotary orientation. The next physical gates are
   separate full runs at `B+5 C0` and `B-5 C0`, prepositioned by the operator
   while TWP is clear.
+
+## Update (2026-09-01, prepared B0/B+5/B0 CAM-style TWP cycle)
+
+- The operator superseded the earlier manually prepositioned B+5 plan. The
+  next test must begin at the standard B0/C0 sphere-top point and exercise
+  program-controlled positioning, transition into TWP, cancellation, and
+  return as one complete cycle.
+- Added `nc_files/calibration/twp_sphere_full_cycle_bplus5_t4.ngc`:
+  - two opening WORLD references at B0/C0
+  - guarded physical-probe lift to an 80 mm common world-clearance point
+  - world-mode B0-to-B+5 index and B+5 sphere-top approach
+  - literal Fusion/Fanuc `G68.2 X0 Y0 Z0 I90 J5 K-90`, then `G53.1`
+  - reversible 1 mm local-Z preflight and two B+5 TWP references
+  - `G69`, guarded B+5-to-B0 return, and two closing WORLD references
+  - one initial M0, 24 gated contacts, no exploratory clearance holds, and
+    separate pass/result evidence tables
+- Added static lifecycle/schema checks and a dedicated actual-program runtime
+  fixture. The runtime fixes the simulated sphere in world space and rejects
+  TWP at the wrong pose, rotary motion in TWP, transition penetration, missed
+  contacts, incomplete G69/B0 return, or physical-center disagreement.
+- With the physical LinuxCNC instance closed, the production program passed:
+  - B0/B+5/B0 and exactly one TWP entry/exit
+  - no B/C motion while TWP was active
+  - minimum rotary-transition clearance `79.734424 mm`
+  - local-Z preflight `1.000000 mm` and zero closure
+  - 24/24 contacts, six passes, and one accepted simulated result
+  - WORLD return closure `0.000410 mm`
+  - transformed B+5 TWP error `0.000606 mm`
+  - final B0/C0 world state, TWP/TCPC clear, and 25 mm safe lift
+  - byte-identical restoration of both production CSVs after clean shutdown
+- Static G-code, O-code, CAM lifecycle ordering, coordinate-source, CSV schema,
+  Python, shell, and whitespace checks pass. No calibration coefficient, B/C
+  zero, tool-table entry, probe offset, or length-model ID changed.
+- The full operator and recovery contract is
+  `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_FULL_CYCLE_BPLUS5_T4_PLAN_2026090101.md`.
+  The program is prepared but has not been loaded or started on the physical
+  CNC.
+
+## Update (2026-09-01, accepted physical B0/B+5/B0 TWP cycle)
+
+- The first physical full-cycle T4/H4 run passed the literal Fusion/Fanuc
+  `G68.2 X0 Y0 Z0 I90 J5 K-90` / `G53.1` entry at B+5, local TWP probing,
+  `G69`, and the program-controlled return to B0.
+- Accepted metrics:
+  - 24/24 gated contacts and six complete pass rows
+  - WORLD opening-to-closing closure `0.006120 mm`
+  - transformed B+5 TWP center error `0.039035 mm`
+  - WORLD open / TWP / WORLD close pair deltas
+    `0.006026 / 0.007905 / 0.009274 mm`
+  - V diameters `30.174250 / 30.181332 / 30.186333 mm`
+  - maximum radial residuals `0.088598 / 0.091539 / 0.095250 mm`
+- Error components for the B+5 transformed center against the mean WORLD
+  center were approximately X `-0.031966`, Y `-0.002259`, Z `+0.022289 mm`.
+  The `0.039035 mm` norm is below the secondary `0.100 mm` project target and
+  is accepted as coherent nonzero-angle evidence.
+- Rapid override was initially 0%. The program waited at the guarded common
+  world-clearance point on its B+5 block until the operator raised rapid to
+  10%; no Stop, Abort, jog, MDI, offset change, or restart-from-line occurred.
+- Raw/mux/gated counters ended `31/31/24`. Six extra pulses were delayed
+  post-contact events inside `ignore_active`. One transient pulse occurred
+  during the safe world-mode B index at approximately `B4.695390`; it asserted
+  abnormal/fault briefly, never reached `motion.probe-input`, cleared in about
+  half a second, and passed the subsequent quiet/state guards before TWP entry.
+- Final state was idle/in-position at commanded B0/C0, world type 0, all TWP
+  and public TCPC state clear, all probe levels clear, SSI valid, T4/H4 and
+  model `2026082601` valid, and the 25 mm safe lift complete.
+- No calibration coefficient, B/C zero, WCS, tool-table value, probe offset,
+  or length-model ID changed. Full closeout:
+  `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_FULL_CYCLE_BPLUS5_T4_CLOSEOUT_2026090101.md`.

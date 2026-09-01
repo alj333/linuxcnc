@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG = ROOT / "configs/5th_axis_xyzbc_ssi_tcpc_probe_basic"
 PROGRAM = ROOT / "nc_files/calibration/twp_sphere_probe_stage1_t4.ngc"
+FULL_CYCLE_PROGRAM = ROOT / "nc_files/calibration/twp_sphere_full_cycle_bplus5_t4.ngc"
 MACHINE_HAL = CONFIG / "5th_axis_xyzbc_ssi_tcpc_probe_basic.hal"
 REMAP = CONFIG / "python/remap.py"
 INI = CONFIG / "5th_axis_xyzbc_ssi_tcpc_probe_basic_twp_probe_validation_2026083101.ini"
@@ -16,6 +17,8 @@ LAUNCHER = CONFIG / "launch_xyzbc_ssi_twp_probe_validation.sh"
 DEFAULT_LAUNCHER = CONFIG / "launch_xyzbc_ssi_tcpc_probe_basic.sh"
 PASSES = CONFIG / "twp-sphere-stage1-t4-passes.csv"
 RESULTS = CONFIG / "twp-sphere-stage1-t4-results.csv"
+FULL_CYCLE_PASSES = CONFIG / "twp-sphere-full-cycle-bplus5-t4-passes.csv"
+FULL_CYCLE_RESULTS = CONFIG / "twp-sphere-full-cycle-bplus5-t4-results.csv"
 
 TOOL_LENGTH = 229.407
 TOOL_OFFSET = (-36.280125, -26.685194, -677.346675)
@@ -243,6 +246,78 @@ def validate_program_static():
     validate_control_pairs(lines)
 
 
+def validate_full_cycle_program_static():
+    text = FULL_CYCLE_PROGRAM.read_text(encoding="ascii")
+    raw_lines = text.splitlines()
+    lines = executable_lines(text)
+    code = "\n".join(lines)
+
+    long_lines = [(index, len(line)) for index, line in enumerate(raw_lines, 1) if len(line) > 240]
+    require(not long_lines, "full-cycle program lines exceed 240 characters: %r" % (long_lines,))
+    require(set(re.findall(r"\bG38\.\d\b", code)) == {"G38.3"}, "full-cycle probe envelope is not G38.3-only")
+    require(len(re.findall(r"\bG38\.3\b", code)) == 1, "full-cycle probe subroutine must contain one G38.3 block")
+    require(len(re.findall(r"\bG68\.2\b", code)) == 1, "full-cycle path must define TWP exactly once")
+    require(len(re.findall(r"\bG53\.1\b", code)) == 1, "full-cycle path must activate TWP exactly once")
+    require(len(re.findall(r"\bG69\b", code)) == 2, "full-cycle path must have main and abort-cleanup G69 paths")
+    require(not re.search(r"\bG43\.4\b", code), "full-cycle TWP path must keep public TCPC off")
+    require(len(re.findall(r"\bM0\b", code)) == 1, "full-cycle path must have one initial operator hold")
+    require(
+        "G68.2 X0 Y0 Z0 I90 J5 K-90" in code,
+        "full-cycle path does not use the literal Fusion rotating-ZXZ B+5 frame",
+    )
+    require("G68.2 R0" not in code, "full-cycle path still uses the commissioning-only R0 form")
+
+    index_out = code.index("G0 B#<_twp_fc5_target_b> C#<_twp_fc5_target_c>")
+    twp_define = code.index("G68.2 X0 Y0 Z0 I90 J5 K-90")
+    twp_activate = code.index("G53.1", twp_define)
+    twp_cancel = code.index("G69", twp_activate)
+    index_home = code.index("G0 B0 C0", twp_cancel)
+    require(
+        index_out < twp_define < twp_activate < twp_cancel < index_home,
+        "full-cycle rotary/TWP lifecycle order changed",
+    )
+    require(
+        text.count("o<twp_fc5_move_world_tool> call") == 7,
+        "full-cycle path must use seven guarded physical-tool positioning moves",
+    )
+    require(
+        "#<_hal[headheadtwp.current_tool_x]>" in text
+        and "#<_hal[headheadtwp.current_tool_y]>" in text
+        and "#<_hal[headheadtwp.current_tool_z]>" in text,
+        "full-cycle positioning does not close against the physical probe-ball center",
+    )
+    require(
+        "#<_twp_fc5_transition_radius> = 80.0" in text,
+        "full-cycle transition clearance is not pinned at 80 mm",
+    )
+    require(
+        "#<_hal[headheadtwp.plane_x_x]>" in text
+        and "#<_hal[headheadtwp.plane_z_z]>" in text,
+        "full-cycle reconstruction does not use synchronized CAM plane axes",
+    )
+    require(
+        text.count("o<twp_fc5_measure_pair> call") == 3,
+        "full-cycle path must measure B0 WORLD / B+5 TWP / B0 WORLD",
+    )
+    require(
+        "#<_twp_fc5_expected_b> = #<_twp_fc5_target_b>" in text
+        and "#<_twp_fc5_expected_b> = 0.0" in text,
+        "full-cycle B hold guard does not follow the planned index and return",
+    )
+    require(
+        str(FULL_CYCLE_PASSES) in text and str(FULL_CYCLE_RESULTS) in text,
+        "full-cycle program does not use its separate evidence tables",
+    )
+    require("#<counter_delta> - 24.0" in text, "full-cycle path does not require 24 gated contacts")
+    require("#<_twp_fc5_full_cycle_error>" in text, "full-cycle center error is not calculated")
+
+    sub_names = re.findall(r"^o<([^>]+)>\s+sub\b", code, re.MULTILINE)
+    require(len(sub_names) == len(set(sub_names)), "duplicate full-cycle O-code subroutine definition")
+    call_names = set(re.findall(r"^\s*o<([^>]+)>\s+call\b", code, re.MULTILINE))
+    require(call_names <= set(sub_names), "undefined full-cycle O-code calls: %r" % sorted(call_names - set(sub_names)))
+    validate_control_pairs(lines)
+
+
 def validate_csv_headers():
     expected_passes = (
         "schema_version,campaign_id,phase_id,pass_id,twp_mode,b_deg,c_deg,"
@@ -272,6 +347,28 @@ def validate_csv_headers():
         all(len(row) == 27 for row in result_rows[1:]),
         "an appended accepted-result row does not contain 27 columns",
     )
+
+    expected_full_cycle_results = (
+        "schema_version,campaign_id,reached_b_deg,reached_c_deg,return_b_deg,"
+        "return_c_deg,tool_length_mm,probe_offset_mm,world_open_x,world_open_y,"
+        "world_open_z,twp_bplus5_world_x,twp_bplus5_world_y,twp_bplus5_world_z,"
+        "world_close_x,world_close_y,world_close_z,world_return_closure_mm,"
+        "full_cycle_center_error_mm,world_open_pair_mm,twp_bplus5_pair_mm,"
+        "world_close_pair_mm,world_open_v_diameter_mm,twp_bplus5_v_diameter_mm,"
+        "world_close_v_diameter_mm,world_open_max_residual_mm,"
+        "twp_bplus5_max_residual_mm,world_close_max_residual_mm,gated_edge_count"
+    )
+    full_pass_rows = list(csv.reader(FULL_CYCLE_PASSES.read_text(encoding="ascii").splitlines()))
+    full_result_rows = list(csv.reader(FULL_CYCLE_RESULTS.read_text(encoding="ascii").splitlines()))
+    require(full_pass_rows and ",".join(full_pass_rows[0]) == expected_passes, "full-cycle pass CSV schema changed")
+    require(
+        full_result_rows and ",".join(full_result_rows[0]) == expected_full_cycle_results,
+        "full-cycle result CSV schema changed",
+    )
+    require(len(full_pass_rows[0]) == 13, "full-cycle pass CSV column count is not 13")
+    require(len(full_result_rows[0]) == 29, "full-cycle result CSV column count is not 29")
+    require(all(len(row) == 13 for row in full_pass_rows[1:]), "a full-cycle pass row does not contain 13 columns")
+    require(all(len(row) == 29 for row in full_result_rows[1:]), "a full-cycle result row does not contain 29 columns")
 
 
 def validate_launch_boundary():
@@ -306,11 +403,12 @@ def validate_machine_coordinate_sources():
 
 def main():
     validate_program_static()
+    validate_full_cycle_program_static()
     validate_coordinate_math()
     validate_csv_headers()
     validate_launch_boundary()
     validate_machine_coordinate_sources()
-    print("TWP sphere stage-1 static and coordinate-math validation passed")
+    print("TWP sphere stage-1/full-cycle static and coordinate-math validation passed")
 
 
 if __name__ == "__main__":

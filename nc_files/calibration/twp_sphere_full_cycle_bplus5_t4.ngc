@@ -1,0 +1,887 @@
+(TWP sphere full-cycle B+5 validation - T4 long probe.)
+(Campaign 2026090101. This validates the CAM lifecycle; it does not fit calibration.)
+
+(Operator setup:)
+(1. Use the dedicated TWP sphere validation INI only.)
+(2. Install T4. Apply M61 Q4 and G43 H4. TCPC G43.4 must be off.)
+(3. Start at B0 C0 at the standard sphere-top point.)
+(4. Position the probe 3-5 mm above the accessible sphere surface, on the)
+(    spindle/probe axis. The sphere-to-post direction is X- Y+ Z-.)
+(5. Confirm the spindle and laser are off and all probe inputs are quiet.)
+(6. After the initial M0 the program indexes B+5, enters/exits TWP, and returns)
+(    B0. Do not jog, use MDI, restart from line, or alter offsets during it.)
+(7. Keep the run supervised. After Stop/Abort while TWP may be active, do not)
+(    jog or restart from line. At standstill run G69 and verify world mode; if)
+(    G69 or state health is unavailable, restart cleanly, home, and re-establish.)
+(8. The program leaves TCPC/TWP off, B0 C0 restored, and Z lifted 25 mm.)
+
+(The program performs WORLD B0 / TWP B+5 / WORLD B0. Each phase is)
+(two four-contact sphere measurements: W, sign-aware upper U, -V, and +V.)
+(It uses the Fusion/Fanuc G68.2 X/Y/Z/I/J/K then G53.1 sequence. Only G38.3)
+(probing is used. No WCS or calibration coefficient is changed. The program sets)
+(#3032 to the frozen T4 probe value 0.154742.)
+
+G21 G17 G40 G64 P0.001 G80 G90 G94
+
+o<twp_fc5_preview> if [#<_task> EQ 0]
+  (DEBUG, TWP_SPHERE_FULL_CYCLE_BPLUS5_T4 preview only)
+  M2
+o<twp_fc5_preview> endif
+
+#<_twp_fc5_campaign> = 2026090101
+#<_twp_fc5_probe_feed> = 50.0
+#<_twp_fc5_position_feed> = 600.0
+#<_twp_fc5_target_b> = 5.0
+#<_twp_fc5_target_c> = 0.0
+#<_twp_fc5_tool_length> = 229.407
+#<_twp_fc5_sphere_radius> = 15.0
+#<_twp_fc5_probe_radius> = 3.0
+#<_twp_fc5_probe_offset> = 0.154742
+#<_twp_fc5_probe_effective> = [#<_twp_fc5_probe_radius> - #<_twp_fc5_probe_offset>]
+#<_twp_fc5_envelope_radius> = [#<_twp_fc5_sphere_radius> + #<_twp_fc5_probe_effective>]
+#<_twp_fc5_top_radius> = [#<_twp_fc5_envelope_radius> + 5.0]
+#<_twp_fc5_side_radius> = [#<_twp_fc5_envelope_radius> + 4.0]
+#<_twp_fc5_top_probe> = 7.0
+#<_twp_fc5_side_probe> = 6.0
+#<_twp_fc5_ready_timeout> = 60.0
+#<_twp_fc5_pair_limit> = 0.100
+#<_twp_fc5_world_closure_limit> = 0.100
+#<_twp_fc5_full_cycle_limit> = 0.250
+#<_twp_fc5_quality_limit> = 0.250
+#<_twp_fc5_preflight_distance> = 1.0
+#<_twp_fc5_preflight_limit> = 0.050
+#<_twp_fc5_transition_radius> = 80.0
+#<_twp_fc5_transition_move_limit> = 160.0
+#<_twp_fc5_position_closure_limit> = 0.050
+
+o<twp_fc5_cancel_if_active> sub
+  #<state_sum> = [#<_hal[headheadtwp.valid]> + #<_hal[headheadtwp.active]>]
+  #<state_sum> = [#<state_sum> + #<_hal[headheadtwp.motion_enabled]>]
+  #<state_sum> = [#<state_sum> + #<_hal[headheadtwp.origin_defined]>]
+  #<state_sum> = [#<state_sum> + #<_hal[headheadtwp.orientation_defined]>]
+  #<state_sum> = [#<state_sum> + #<_hal[headheadkins.kinstype-is-twp]>]
+  o<twp_fc5_cancel_needed> if [#<state_sum> GT 0.5]
+    G69
+  o<twp_fc5_cancel_needed> endif
+o<twp_fc5_cancel_if_active> endsub
+
+o<twp_fc5_live_guard> sub
+  #<expect_twp> = #1
+  M66 E0 L0
+
+  o<twp_fc5_guard_wcs_index> if [[#5220 LT 0.5] OR [#5220 GT 9.5] OR [ABS[#5220 - FIX[#5220]] GT 0.000001]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires a valid integral active WCS index)
+  o<twp_fc5_guard_wcs_index> endif
+  o<twp_fc5_guard_g52_g92_enable> if [ABS[#5210] GT 0.0001]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires G52 and G92 disabled)
+  o<twp_fc5_guard_g52_g92_enable> endif
+  o<twp_fc5_guard_g52_g92_xyz> if [[ABS[#5211] GT 0.0001] OR [ABS[#5212] GT 0.0001] OR [ABS[#5213] GT 0.0001]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires zero XYZ G52 and G92 offsets)
+  o<twp_fc5_guard_g52_g92_xyz> endif
+  o<twp_fc5_guard_g52_g92_abc> if [[ABS[#5214] GT 0.0001] OR [ABS[#5215] GT 0.0001] OR [ABS[#5216] GT 0.0001]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires zero ABC G52 and G92 offsets)
+  o<twp_fc5_guard_g52_g92_abc> endif
+  o<twp_fc5_guard_g52_g92_uvw> if [[ABS[#5217] GT 0.0001] OR [ABS[#5218] GT 0.0001] OR [ABS[#5219] GT 0.0001]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires zero UVW G52 and G92 offsets)
+  o<twp_fc5_guard_g52_g92_uvw> endif
+  o<twp_fc5_guard_wcs_abc> if [[ABS[#[5204 + [20 * #5220]]] GT 0.0001] OR [ABS[#[5205 + [20 * #5220]]] GT 0.0001] OR [ABS[#[5206 + [20 * #5220]]] GT 0.0001]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires zero active WCS ABC offsets)
+  o<twp_fc5_guard_wcs_abc> endif
+  o<twp_fc5_guard_wcs_uvw> if [[ABS[#[5207 + [20 * #5220]]] GT 0.0001] OR [ABS[#[5208 + [20 * #5220]]] GT 0.0001] OR [ABS[#[5209 + [20 * #5220]]] GT 0.0001]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires zero active WCS UVW offsets)
+  o<twp_fc5_guard_wcs_uvw> endif
+  o<twp_fc5_guard_wcs_rotation> if [ABS[#[5210 + [20 * #5220]]] GT 0.0001]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires zero active WCS XY rotation)
+  o<twp_fc5_guard_wcs_rotation> endif
+
+  o<twp_fc5_guard_machine> if [#<_hal[halui.machine.is-on]> LT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires the machine enabled)
+  o<twp_fc5_guard_machine> endif
+  #<homed_sum> = [#<_hal[joint.0.homed]> + #<_hal[joint.1.homed]>]
+  #<homed_sum> = [#<homed_sum> + #<_hal[joint.2.homed]>]
+  #<homed_sum> = [#<homed_sum> + #<_hal[joint.3.homed]>]
+  #<homed_sum> = [#<homed_sum> + #<_hal[joint.4.homed]>]
+  o<twp_fc5_guard_homed> if [#<homed_sum> LT 4.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires all five joints homed)
+  o<twp_fc5_guard_homed> endif
+  o<twp_fc5_guard_spindle> if [#<_hal[spindle.0.on]> GT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires the spindle stopped)
+  o<twp_fc5_guard_spindle> endif
+  o<twp_fc5_guard_tool> if [ABS[#<_hal[iocontrol.0.tool-number]> - 4.0] GT 0.1]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires live T4 H4)
+  o<twp_fc5_guard_tool> endif
+  o<twp_fc5_guard_motion_tlo> if [ABS[#<_hal[motion.tooloffset.z]> - #<_twp_fc5_tool_length>] GT 0.002]
+    o<twp_fc5_cancel_if_active> call
+    (abort, motion tool length does not match T4 H4)
+  o<twp_fc5_guard_motion_tlo> endif
+  o<twp_fc5_guard_kins_tlo> if [ABS[#<_hal[headheadkins.active-tool-offset.z]> - #<_twp_fc5_tool_length>] GT 0.002]
+    o<twp_fc5_cancel_if_active> call
+    (abort, kinematics tool length does not match T4 H4)
+  o<twp_fc5_guard_kins_tlo> endif
+  #<tool_xy> = [ABS[#<_hal[motion.tooloffset.x]>] + ABS[#<_hal[motion.tooloffset.y]>]]
+  #<kins_tool_xy> = [ABS[#<_hal[headheadkins.active-tool-offset.x]>] + ABS[#<_hal[headheadkins.active-tool-offset.y]>]]
+  o<twp_fc5_guard_tool_xy> if [[#<tool_xy> GT 0.000001] OR [#<kins_tool_xy> GT 0.000001]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires zero T4 X and Y tool offsets)
+  o<twp_fc5_guard_tool_xy> endif
+  o<twp_fc5_guard_tcpc> if [#<_hal[headheadtwp.tcpc_enabled]> GT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires separate TWP mode with G43.4 off)
+  o<twp_fc5_guard_tcpc> endif
+  o<twp_fc5_guard_model_config> if [#<_hal[headheadkins.length-model.configured]> LT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires the length model configured)
+  o<twp_fc5_guard_model_config> endif
+  o<twp_fc5_guard_model_valid> if [#<_hal[headheadkins.length-model.valid]> LT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires a valid length model)
+  o<twp_fc5_guard_model_valid> endif
+  o<twp_fc5_guard_model_id> if [ABS[#<_hal[headheadkins.length-model.id]> - 2026082601] GT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires model 2026082601)
+  o<twp_fc5_guard_model_id> endif
+  o<twp_fc5_guard_model_fault> if [ABS[#<_hal[headheadkins.length-model.fault-code]>] GT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation length model has a fault)
+  o<twp_fc5_guard_model_fault> endif
+  o<twp_fc5_guard_model_q> if [ABS[#<_hal[headheadkins.length-model.q]>] GT 0.0001]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires T4 model q equal to zero)
+  o<twp_fc5_guard_model_q> endif
+  o<twp_fc5_guard_correction> if [#<_hal[headheadkins.sim-bharm-enable]> LT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires commissioned correction enabled)
+  o<twp_fc5_guard_correction> endif
+  o<twp_fc5_guard_b_ssi> if [#<_hal[b-ssi-invalid]> GT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires valid B SSI feedback)
+  o<twp_fc5_guard_b_ssi> endif
+  o<twp_fc5_guard_c_ssi> if [#<_hal[c-ssi-invalid]> GT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation requires valid C SSI feedback)
+  o<twp_fc5_guard_c_ssi> endif
+
+  #<b_error> = ABS[#<_hal[headheadtwp.current_joint_b]> - #<_twp_fc5_expected_b>]
+  #<c_delta> = [#<_hal[headheadtwp.current_joint_c]> - #<_twp_fc5_expected_c>]
+  #<c_error> = ABS[[[#<c_delta> + 540.0] MOD 360.0] - 180.0]
+  o<twp_fc5_guard_b_hold> if [#<b_error> GT 0.01]
+    o<twp_fc5_cancel_if_active> call
+    (abort, B changed during TWP sphere full-cycle validation)
+  o<twp_fc5_guard_b_hold> endif
+  o<twp_fc5_guard_c_hold> if [#<c_error> GT 0.01]
+    o<twp_fc5_cancel_if_active> call
+    (abort, C changed during TWP sphere full-cycle validation)
+  o<twp_fc5_guard_c_hold> endif
+  o<twp_fc5_guard_probe_gate> if [#<_hal[motion.probe-input]> GT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, G38-gated probe input is active outside probing motion)
+  o<twp_fc5_guard_probe_gate> endif
+
+  o<twp_fc5_guard_expect_world> if [#<expect_twp> LT 0.5]
+    o<twp_fc5_guard_world_type> if [#<_hal[headheadkins.kinstype-is-world]> LT 0.5]
+      o<twp_fc5_cancel_if_active> call
+      (abort, TWP sphere full-cycle validation expected world kinematics)
+    o<twp_fc5_guard_world_type> endif
+    o<twp_fc5_guard_world_twp_clear> if [#<_hal[headheadkins.kinstype-is-twp]> GT 0.5]
+      o<twp_fc5_cancel_if_active> call
+      (abort, TWP sphere full-cycle validation found TWP kinematics unexpectedly)
+    o<twp_fc5_guard_world_twp_clear> endif
+  o<twp_fc5_guard_expect_world> else
+    o<twp_fc5_guard_twp_type> if [#<_hal[headheadkins.kinstype-is-twp]> LT 0.5]
+      o<twp_fc5_cancel_if_active> call
+      (abort, TWP sphere full-cycle validation expected TWP kinematics)
+    o<twp_fc5_guard_twp_type> endif
+    o<twp_fc5_guard_twp_world_clear> if [#<_hal[headheadkins.kinstype-is-world]> GT 0.5]
+      o<twp_fc5_cancel_if_active> call
+      (abort, TWP sphere full-cycle validation found both kinematics types active)
+    o<twp_fc5_guard_twp_world_clear> endif
+    #<twp_state> = [#<_hal[headheadtwp.valid]> + #<_hal[headheadtwp.active]>]
+    #<twp_state> = [#<twp_state> + #<_hal[headheadtwp.motion_enabled]>]
+    o<twp_fc5_guard_twp_state> if [#<twp_state> LT 2.5]
+      o<twp_fc5_cancel_if_active> call
+      (abort, TWP sphere full-cycle validation found incomplete active TWP state)
+    o<twp_fc5_guard_twp_state> endif
+    o<twp_fc5_guard_twp_authorized> if [#<_hal[headheadkins.synchronized-twp-enable]> LT 0.5]
+      o<twp_fc5_cancel_if_active> call
+      (abort, TWP sphere full-cycle validation found kinematics authorization clear)
+    o<twp_fc5_guard_twp_authorized> endif
+    o<twp_fc5_guard_twp_transaction> if [#<_hal[headheadtwp.synchronized_frame]> LT 0.5]
+      o<twp_fc5_cancel_if_active> call
+      (abort, TWP sphere full-cycle validation found synchronized frame provenance clear)
+    o<twp_fc5_guard_twp_transaction> endif
+  o<twp_fc5_guard_expect_world> endif
+  o<twp_fc5_guard_frame_ready> if [#<_hal[headheadkins.kinstype-frame-ready]> LT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere full-cycle validation kinematics frame is not ready)
+  o<twp_fc5_guard_frame_ready> endif
+o<twp_fc5_live_guard> endsub
+
+o<twp_fc5_probe_ready> sub
+  #<ready_elapsed> = 0.0
+  #<ready_clear> = 0.0
+  o<twp_fc5_ready_loop> while [[#<ready_elapsed> LT #<_twp_fc5_ready_timeout>] AND [#<ready_clear> LT 3.0]]
+    M66 E0 L0
+    #<activity> = [#<_hal[t_probe-in]> + #<_hal[probe-mux]>]
+    #<activity> = [#<activity> + #<_hal[motion.probe-input]>]
+    #<activity> = [#<activity> + #<_hal[tcpc_probe_gate_ignore.out]>]
+    #<activity> = [#<activity> + #<_hal[tcpc-probe-abnormal-level]>]
+    #<activity> = [#<activity> + #<_hal[tcpc_probe_fault_pause.out]>]
+    o<twp_fc5_ready_sample> if [#<activity> LT 0.5]
+      #<ready_clear> = [#<ready_clear> + 1.0]
+    o<twp_fc5_ready_sample> else
+      #<ready_clear> = 0.0
+    o<twp_fc5_ready_sample> endif
+    o<twp_fc5_ready_wait> if [#<ready_clear> LT 3.0]
+      G4 P0.10
+    o<twp_fc5_ready_wait> endif
+    #<ready_elapsed> = [#<ready_elapsed> + 0.10]
+  o<twp_fc5_ready_loop> endwhile
+  o<twp_fc5_ready_timeout_fault> if [#<ready_clear> LT 3.0]
+    o<twp_fc5_cancel_if_active> call
+    (abort, Touch probe did not settle clear within 60 seconds)
+  o<twp_fc5_ready_timeout_fault> endif
+o<twp_fc5_probe_ready> endsub
+
+o<twp_fc5_probe_vector> sub
+  #<start_x> = #1
+  #<start_y> = #2
+  #<start_z> = #3
+  #<delta_x> = #4
+  #<delta_y> = #5
+  #<delta_z> = #6
+
+  o<twp_fc5_probe_ready> call
+  o<twp_fc5_live_guard> call [#<_twp_fc5_measure_twp_mode>]
+  #<gated_before> = #<_hal[counter.2.position]>
+  G91
+  F#<_twp_fc5_probe_feed>
+  G38.3 X#<delta_x> Y#<delta_y> Z#<delta_z>
+  #<hit_valid> = #5070
+  #<_twp_fc5_hit_x> = #5061
+  #<_twp_fc5_hit_y> = #5062
+  #<_twp_fc5_hit_z> = #5063
+  #<travel_x> = [#<_twp_fc5_hit_x> - #<start_x>]
+  #<travel_y> = [#<_twp_fc5_hit_y> - #<start_y>]
+  #<travel_z> = [#<_twp_fc5_hit_z> - #<start_z>]
+  #<_twp_fc5_hit_travel> = SQRT[[#<travel_x> * #<travel_x>] + [#<travel_y> * #<travel_y>] + [#<travel_z> * #<travel_z>]]
+  #<command_length> = SQRT[[#<delta_x> * #<delta_x>] + [#<delta_y> * #<delta_y>] + [#<delta_z> * #<delta_z>]]
+
+  G90
+  F#<_twp_fc5_position_feed>
+  G1 X#<start_x> Y#<start_y> Z#<start_z>
+  o<twp_fc5_probe_ready> call
+  #<gated_after> = #<_hal[counter.2.position]>
+  #<gated_delta> = [#<gated_after> - #<gated_before>]
+
+  o<twp_fc5_probe_no_hit> if [#<hit_valid> LT 0.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere G38.3 completed without a touch)
+  o<twp_fc5_probe_no_hit> endif
+  o<twp_fc5_probe_edge_count> if [ABS[#<gated_delta> - 1.0] GT 0.1]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere touch did not produce exactly one gated edge)
+  o<twp_fc5_probe_edge_count> endif
+  o<twp_fc5_probe_short_travel> if [#<_twp_fc5_hit_travel> LT 1.0]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere touch travel was below 1 mm)
+  o<twp_fc5_probe_short_travel> endif
+  o<twp_fc5_probe_long_travel> if [#<_twp_fc5_hit_travel> GT [#<command_length> + 0.1]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere touch travel exceeded its probe vector)
+  o<twp_fc5_probe_long_travel> endif
+  #<_twp_fc5_gated_edges> = [#<_twp_fc5_gated_edges> + #<gated_delta>]
+o<twp_fc5_probe_vector> endsub
+
+o<twp_fc5_measure_pass> sub
+  #<twp_mode> = #1
+  #<pose_b> = #2
+  #<_twp_fc5_measure_twp_mode> = #<twp_mode>
+  o<twp_fc5_live_guard> call [#<twp_mode>]
+
+  #<start_x> = #<_x>
+  #<start_y> = #<_y>
+  #<start_z> = #<_z>
+
+  o<twp_fc5_pass_world_axes> if [#<twp_mode> LT 0.5]
+    #<wx> = #<_hal[headheadkins.tool-frame-w.x]>
+    #<wy> = #<_hal[headheadkins.tool-frame-w.y]>
+    #<wz> = #<_hal[headheadkins.tool-frame-w.z]>
+    #<ux> = #<_hal[headheadkins.tool-frame-u.x]>
+    #<uy> = #<_hal[headheadkins.tool-frame-u.y]>
+    #<uz> = #<_hal[headheadkins.tool-frame-u.z]>
+    #<vx> = #<_hal[headheadkins.tool-frame-v.x]>
+    #<vy> = #<_hal[headheadkins.tool-frame-v.y]>
+    #<vz> = #<_hal[headheadkins.tool-frame-v.z]>
+  o<twp_fc5_pass_world_axes> else
+    #<wx> = 0.0
+    #<wy> = 0.0
+    #<wz> = -1.0
+    #<ux> = 1.0
+    #<uy> = 0.0
+    #<uz> = 0.0
+    #<vx> = 0.0
+    #<vy> = 1.0
+    #<vz> = 0.0
+  o<twp_fc5_pass_world_axes> endif
+
+  #<wnorm> = SQRT[[#<wx> * #<wx>] + [#<wy> * #<wy>] + [#<wz> * #<wz>]]
+  #<unorm> = SQRT[[#<ux> * #<ux>] + [#<uy> * #<uy>] + [#<uz> * #<uz>]]
+  #<vnorm> = SQRT[[#<vx> * #<vx>] + [#<vy> * #<vy>] + [#<vz> * #<vz>]]
+  o<twp_fc5_pass_axis_norm> if [[ABS[#<wnorm> - 1.0] GT 0.001] OR [ABS[#<unorm> - 1.0] GT 0.001]]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere W or U axis is not unit length)
+  o<twp_fc5_pass_axis_norm> endif
+  o<twp_fc5_pass_v_norm> if [ABS[#<vnorm> - 1.0] GT 0.001]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere V axis is not unit length)
+  o<twp_fc5_pass_v_norm> endif
+
+  #<u_sign> = -1.0
+  o<twp_fc5_pass_negative_b> if [#<pose_b> LT -0.001]
+    #<u_sign> = 1.0
+  o<twp_fc5_pass_negative_b> endif
+
+  (Contact 1: W from the operator/reconstructed top-clear point.)
+  #<dx> = [#<wx> * #<_twp_fc5_top_probe>]
+  #<dy> = [#<wy> * #<_twp_fc5_top_probe>]
+  #<dz> = [#<wz> * #<_twp_fc5_top_probe>]
+  o<twp_fc5_probe_vector> call [#<start_x>] [#<start_y>] [#<start_z>] [#<dx>] [#<dy>] [#<dz>]
+  #<qw_x> = #<_twp_fc5_hit_x>
+  #<qw_y> = #<_twp_fc5_hit_y>
+  #<qw_z> = #<_twp_fc5_hit_z>
+  #<top_center_x> = [#<qw_x> + [#<wx> * #<_twp_fc5_envelope_radius>]]
+  #<top_center_y> = [#<qw_y> + [#<wy> * #<_twp_fc5_envelope_radius>]]
+  #<top_center_z> = [#<qw_z> + [#<wz> * #<_twp_fc5_envelope_radius>]]
+  #<top_clear_x> = [#<top_center_x> - [#<wx> * #<_twp_fc5_top_radius>]]
+  #<top_clear_y> = [#<top_center_y> - [#<wy> * #<_twp_fc5_top_radius>]]
+  #<top_clear_z> = [#<top_center_z> - [#<wz> * #<_twp_fc5_top_radius>]]
+  G90
+  F#<_twp_fc5_position_feed>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  (Contact 2: sign-aware upper U side.)
+  #<u_start_x> = [#<top_center_x> + [#<u_sign> * #<ux> * #<_twp_fc5_side_radius>]]
+  #<u_start_y> = [#<top_center_y> + [#<u_sign> * #<uy> * #<_twp_fc5_side_radius>]]
+  #<u_start_z> = [#<top_center_z> + [#<u_sign> * #<uz> * #<_twp_fc5_side_radius>]]
+  #<u_clear_x> = [#<u_start_x> - [#<wx> * #<_twp_fc5_top_radius>]]
+  #<u_clear_y> = [#<u_start_y> - [#<wy> * #<_twp_fc5_top_radius>]]
+  #<u_clear_z> = [#<u_start_z> - [#<wz> * #<_twp_fc5_top_radius>]]
+  G1 X#<u_clear_x> Y#<u_clear_y> Z#<u_clear_z>
+  G1 X#<u_start_x> Y#<u_start_y> Z#<u_start_z>
+  #<dx> = [-#<u_sign> * #<ux> * #<_twp_fc5_side_probe>]
+  #<dy> = [-#<u_sign> * #<uy> * #<_twp_fc5_side_probe>]
+  #<dz> = [-#<u_sign> * #<uz> * #<_twp_fc5_side_probe>]
+  o<twp_fc5_probe_vector> call [#<u_start_x>] [#<u_start_y>] [#<u_start_z>] [#<dx>] [#<dy>] [#<dz>]
+  #<qu_x> = #<_twp_fc5_hit_x>
+  #<qu_y> = #<_twp_fc5_hit_y>
+  #<qu_z> = #<_twp_fc5_hit_z>
+  G1 X#<u_clear_x> Y#<u_clear_y> Z#<u_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  (Contact 3: -V side toward +V.)
+  #<vm_start_x> = [#<top_center_x> - [#<vx> * #<_twp_fc5_side_radius>]]
+  #<vm_start_y> = [#<top_center_y> - [#<vy> * #<_twp_fc5_side_radius>]]
+  #<vm_start_z> = [#<top_center_z> - [#<vz> * #<_twp_fc5_side_radius>]]
+  #<vm_clear_x> = [#<vm_start_x> - [#<wx> * #<_twp_fc5_top_radius>]]
+  #<vm_clear_y> = [#<vm_start_y> - [#<wy> * #<_twp_fc5_top_radius>]]
+  #<vm_clear_z> = [#<vm_start_z> - [#<wz> * #<_twp_fc5_top_radius>]]
+  G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+  G1 X#<vm_start_x> Y#<vm_start_y> Z#<vm_start_z>
+  #<dx> = [#<vx> * #<_twp_fc5_side_probe>]
+  #<dy> = [#<vy> * #<_twp_fc5_side_probe>]
+  #<dz> = [#<vz> * #<_twp_fc5_side_probe>]
+  o<twp_fc5_probe_vector> call [#<vm_start_x>] [#<vm_start_y>] [#<vm_start_z>] [#<dx>] [#<dy>] [#<dz>]
+  #<qvm_x> = #<_twp_fc5_hit_x>
+  #<qvm_y> = #<_twp_fc5_hit_y>
+  #<qvm_z> = #<_twp_fc5_hit_z>
+  G1 X#<vm_clear_x> Y#<vm_clear_y> Z#<vm_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  (Contact 4: +V side toward -V.)
+  #<vp_start_x> = [#<top_center_x> + [#<vx> * #<_twp_fc5_side_radius>]]
+  #<vp_start_y> = [#<top_center_y> + [#<vy> * #<_twp_fc5_side_radius>]]
+  #<vp_start_z> = [#<top_center_z> + [#<vz> * #<_twp_fc5_side_radius>]]
+  #<vp_clear_x> = [#<vp_start_x> - [#<wx> * #<_twp_fc5_top_radius>]]
+  #<vp_clear_y> = [#<vp_start_y> - [#<wy> * #<_twp_fc5_top_radius>]]
+  #<vp_clear_z> = [#<vp_start_z> - [#<wz> * #<_twp_fc5_top_radius>]]
+  G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+  G1 X#<vp_start_x> Y#<vp_start_y> Z#<vp_start_z>
+  #<dx> = [-#<vx> * #<_twp_fc5_side_probe>]
+  #<dy> = [-#<vy> * #<_twp_fc5_side_probe>]
+  #<dz> = [-#<vz> * #<_twp_fc5_side_probe>]
+  o<twp_fc5_probe_vector> call [#<vp_start_x>] [#<vp_start_y>] [#<vp_start_z>] [#<dx>] [#<dy>] [#<dz>]
+  #<qvp_x> = #<_twp_fc5_hit_x>
+  #<qvp_y> = #<_twp_fc5_hit_y>
+  #<qvp_z> = #<_twp_fc5_hit_z>
+  G1 X#<vp_clear_x> Y#<vp_clear_y> Z#<vp_clear_z>
+  G1 X#<top_clear_x> Y#<top_clear_y> Z#<top_clear_z>
+
+  #<center_w> = [[#<qw_x> * #<wx>] + [#<qw_y> * #<wy>] + [#<qw_z> * #<wz>]]
+  #<center_w> = [#<center_w> + #<_twp_fc5_envelope_radius>]
+  #<center_u> = [[#<qu_x> * #<ux>] + [#<qu_y> * #<uy>] + [#<qu_z> * #<uz>]]
+  #<center_u> = [#<center_u> - [#<u_sign> * #<_twp_fc5_envelope_radius>]]
+  #<center_vm> = [[#<qvm_x> * #<vx>] + [#<qvm_y> * #<vy>] + [#<qvm_z> * #<vz>]]
+  #<center_vp> = [[#<qvp_x> * #<vx>] + [#<qvp_y> * #<vy>] + [#<qvp_z> * #<vz>]]
+  #<center_v> = [[#<center_vm> + #<center_vp>] / 2.0]
+  #<_twp_fc5_pass_center_x> = [[#<wx> * #<center_w>] + [#<ux> * #<center_u>] + [#<vx> * #<center_v>]]
+  #<_twp_fc5_pass_center_y> = [[#<wy> * #<center_w>] + [#<uy> * #<center_u>] + [#<vy> * #<center_v>]]
+  #<_twp_fc5_pass_center_z> = [[#<wz> * #<center_w>] + [#<uz> * #<center_u>] + [#<vz> * #<center_v>]]
+
+  #<vdiam_x> = [#<qvp_x> - #<qvm_x>]
+  #<vdiam_y> = [#<qvp_y> - #<qvm_y>]
+  #<vdiam_z> = [#<qvp_z> - #<qvm_z>]
+  #<v_envelope> = [[#<vdiam_x> * #<vx>] + [#<vdiam_y> * #<vy>] + [#<vdiam_z> * #<vz>]]
+  #<_twp_fc5_pass_vdiam> = [#<v_envelope> - [2.0 * #<_twp_fc5_probe_effective>]]
+
+  #<rw_x> = [#<_twp_fc5_pass_center_x> - #<qw_x>]
+  #<rw_y> = [#<_twp_fc5_pass_center_y> - #<qw_y>]
+  #<rw_z> = [#<_twp_fc5_pass_center_z> - #<qw_z>]
+  #<rw> = SQRT[[#<rw_x> * #<rw_x>] + [#<rw_y> * #<rw_y>] + [#<rw_z> * #<rw_z>]]
+  #<ru_x> = [#<_twp_fc5_pass_center_x> - #<qu_x>]
+  #<ru_y> = [#<_twp_fc5_pass_center_y> - #<qu_y>]
+  #<ru_z> = [#<_twp_fc5_pass_center_z> - #<qu_z>]
+  #<ru> = SQRT[[#<ru_x> * #<ru_x>] + [#<ru_y> * #<ru_y>] + [#<ru_z> * #<ru_z>]]
+  #<rvm_x> = [#<_twp_fc5_pass_center_x> - #<qvm_x>]
+  #<rvm_y> = [#<_twp_fc5_pass_center_y> - #<qvm_y>]
+  #<rvm_z> = [#<_twp_fc5_pass_center_z> - #<qvm_z>]
+  #<rvm> = SQRT[[#<rvm_x> * #<rvm_x>] + [#<rvm_y> * #<rvm_y>] + [#<rvm_z> * #<rvm_z>]]
+  #<rvp_x> = [#<_twp_fc5_pass_center_x> - #<qvp_x>]
+  #<rvp_y> = [#<_twp_fc5_pass_center_y> - #<qvp_y>]
+  #<rvp_z> = [#<_twp_fc5_pass_center_z> - #<qvp_z>]
+  #<rvp> = SQRT[[#<rvp_x> * #<rvp_x>] + [#<rvp_y> * #<rvp_y>] + [#<rvp_z> * #<rvp_z>]]
+  #<_twp_fc5_pass_residual> = ABS[#<rw> - #<_twp_fc5_envelope_radius>]
+  o<twp_fc5_pass_residual_u> if [ABS[#<ru> - #<_twp_fc5_envelope_radius>] GT #<_twp_fc5_pass_residual>]
+    #<_twp_fc5_pass_residual> = ABS[#<ru> - #<_twp_fc5_envelope_radius>]
+  o<twp_fc5_pass_residual_u> endif
+  o<twp_fc5_pass_residual_vm> if [ABS[#<rvm> - #<_twp_fc5_envelope_radius>] GT #<_twp_fc5_pass_residual>]
+    #<_twp_fc5_pass_residual> = ABS[#<rvm> - #<_twp_fc5_envelope_radius>]
+  o<twp_fc5_pass_residual_vm> endif
+  o<twp_fc5_pass_residual_vp> if [ABS[#<rvp> - #<_twp_fc5_envelope_radius>] GT #<_twp_fc5_pass_residual>]
+    #<_twp_fc5_pass_residual> = ABS[#<rvp> - #<_twp_fc5_envelope_radius>]
+  o<twp_fc5_pass_residual_vp> endif
+
+  #100 = #<_twp_fc5_campaign>
+  #101 = #<_twp_fc5_phase>
+  #102 = #<_twp_fc5_pass_id>
+  #103 = #<twp_mode>
+  #104 = #<_twp_fc5_expected_b>
+  #105 = #<_twp_fc5_expected_c>
+  #106 = #<_twp_fc5_pass_center_x>
+  #107 = #<_twp_fc5_pass_center_y>
+  #108 = #<_twp_fc5_pass_center_z>
+  #109 = #<_twp_fc5_pass_vdiam>
+  #110 = #<_twp_fc5_pass_residual>
+  #111 = #<_twp_fc5_gated_edges>
+  (LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/twp-sphere-full-cycle-bplus5-t4-passes.csv)
+  (LOG,1,#100,#101,#102,#103,#104,#105,#106,#107,#108,#109,#110,#111)
+  (LOGCLOSE)
+
+  o<twp_fc5_pass_diam_low> if [#<_twp_fc5_pass_vdiam> LT 29.9]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere measured V diameter is below 29.9 mm)
+  o<twp_fc5_pass_diam_low> endif
+  o<twp_fc5_pass_diam_high> if [#<_twp_fc5_pass_vdiam> GT 30.5]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere measured V diameter is above 30.5 mm)
+  o<twp_fc5_pass_diam_high> endif
+  o<twp_fc5_pass_residual_limit> if [#<_twp_fc5_pass_residual> GT #<_twp_fc5_quality_limit>]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere radial residual exceeds 0.250 mm)
+  o<twp_fc5_pass_residual_limit> endif
+  o<twp_fc5_live_guard> call [#<twp_mode>]
+o<twp_fc5_measure_pass> endsub
+
+o<twp_fc5_measure_pair> sub
+  #<twp_mode> = #1
+  #<_twp_fc5_pass_id> = 1.0
+  o<twp_fc5_measure_pass> call [#<twp_mode>] [#<_twp_fc5_expected_b>]
+  #<p1_x> = #<_twp_fc5_pass_center_x>
+  #<p1_y> = #<_twp_fc5_pass_center_y>
+  #<p1_z> = #<_twp_fc5_pass_center_z>
+  #<p1_diam> = #<_twp_fc5_pass_vdiam>
+  #<p1_residual> = #<_twp_fc5_pass_residual>
+
+  #<_twp_fc5_pass_id> = 2.0
+  o<twp_fc5_measure_pass> call [#<twp_mode>] [#<_twp_fc5_expected_b>]
+  #<dx> = [#<_twp_fc5_pass_center_x> - #<p1_x>]
+  #<dy> = [#<_twp_fc5_pass_center_y> - #<p1_y>]
+  #<dz> = [#<_twp_fc5_pass_center_z> - #<p1_z>]
+  #<_twp_fc5_pair_delta> = SQRT[[#<dx> * #<dx>] + [#<dy> * #<dy>] + [#<dz> * #<dz>]]
+  #<_twp_fc5_measure_center_x> = [[#<p1_x> + #<_twp_fc5_pass_center_x>] / 2.0]
+  #<_twp_fc5_measure_center_y> = [[#<p1_y> + #<_twp_fc5_pass_center_y>] / 2.0]
+  #<_twp_fc5_measure_center_z> = [[#<p1_z> + #<_twp_fc5_pass_center_z>] / 2.0]
+  #<_twp_fc5_measure_vdiam> = [[#<p1_diam> + #<_twp_fc5_pass_vdiam>] / 2.0]
+  #<_twp_fc5_measure_residual> = #<p1_residual>
+  o<twp_fc5_pair_residual_select> if [#<_twp_fc5_pass_residual> GT #<_twp_fc5_measure_residual>]
+    #<_twp_fc5_measure_residual> = #<_twp_fc5_pass_residual>
+  o<twp_fc5_pair_residual_select> endif
+  o<twp_fc5_pair_limit_check> if [#<_twp_fc5_pair_delta> GT #<_twp_fc5_pair_limit>]
+    o<twp_fc5_cancel_if_active> call
+    (abort, TWP sphere two-pass center delta exceeds 0.100 mm)
+  o<twp_fc5_pair_limit_check> endif
+o<twp_fc5_measure_pair> endsub
+
+(Move the physical probe-ball center to a guarded world-space target while)
+(B/C are fixed and TWP/TCPC are clear. Relative XYZ avoids WCS/TLO ambiguity.)
+o<twp_fc5_move_world_tool> sub
+  #<target_x> = #1
+  #<target_y> = #2
+  #<target_z> = #3
+
+  o<twp_fc5_live_guard> call [0.0]
+  #<delta_x> = [#<target_x> - #<_hal[headheadtwp.current_tool_x]>]
+  #<delta_y> = [#<target_y> - #<_hal[headheadtwp.current_tool_y]>]
+  #<delta_z> = [#<target_z> - #<_hal[headheadtwp.current_tool_z]>]
+  #<delta_norm> = SQRT[[#<delta_x> * #<delta_x>] + [#<delta_y> * #<delta_y>] + [#<delta_z> * #<delta_z>]]
+  o<twp_fc5_world_move_x> if [ABS[#<delta_x>] GT #<_twp_fc5_transition_move_limit>]
+    (abort, Full-cycle world X positioning exceeds 160 mm)
+  o<twp_fc5_world_move_x> endif
+  o<twp_fc5_world_move_y> if [ABS[#<delta_y>] GT #<_twp_fc5_transition_move_limit>]
+    (abort, Full-cycle world Y positioning exceeds 160 mm)
+  o<twp_fc5_world_move_y> endif
+  o<twp_fc5_world_move_z> if [ABS[#<delta_z>] GT #<_twp_fc5_transition_move_limit>]
+    (abort, Full-cycle world Z positioning exceeds 160 mm)
+  o<twp_fc5_world_move_z> endif
+  o<twp_fc5_world_move_norm> if [#<delta_norm> GT #<_twp_fc5_transition_move_limit>]
+    (abort, Full-cycle world positioning vector exceeds 160 mm)
+  o<twp_fc5_world_move_norm> endif
+
+  G91
+  F#<_twp_fc5_position_feed>
+  G1 X#<delta_x> Y#<delta_y> Z#<delta_z>
+  G90
+  G4 P0.05
+  M66 E0 L0
+  #<close_x> = [#<_hal[headheadtwp.current_tool_x]> - #<target_x>]
+  #<close_y> = [#<_hal[headheadtwp.current_tool_y]> - #<target_y>]
+  #<close_z> = [#<_hal[headheadtwp.current_tool_z]> - #<target_z>]
+  #<close_norm> = SQRT[[#<close_x> * #<close_x>] + [#<close_y> * #<close_y>] + [#<close_z> * #<close_z>]]
+  o<twp_fc5_world_move_closure> if [#<close_norm> GT #<_twp_fc5_position_closure_limit>]
+    (abort, Full-cycle world positioning closure exceeds 0.050 mm)
+  o<twp_fc5_world_move_closure> endif
+  o<twp_fc5_live_guard> call [0.0]
+o<twp_fc5_move_world_tool> endsub
+
+(Initial fail-closed state checks. There is no axis motion before M0.)
+M65 P0
+M65 P1
+#3032 = #<_twp_fc5_probe_offset>
+#<_twp_fc5_initial_b> = #<_hal[headheadtwp.current_joint_b]>
+#<_twp_fc5_initial_c> = #<_hal[headheadtwp.current_joint_c]>
+#<_twp_fc5_expected_b> = #<_twp_fc5_initial_b>
+#<_twp_fc5_expected_c> = #<_twp_fc5_initial_c>
+o<twp_fc5_require_b0> if [ABS[#<_twp_fc5_initial_b>] GT 0.05]
+  (abort, Full-cycle B+5 validation must start at B0)
+o<twp_fc5_require_b0> endif
+#<start_c_error> = ABS[[[#<_twp_fc5_initial_c> + 540.0] MOD 360.0] - 180.0]
+o<twp_fc5_require_c0> if [#<start_c_error> GT 0.05]
+  (abort, Full-cycle B+5 validation must start at C0)
+o<twp_fc5_require_c0> endif
+#<initial_twp_state> = [#<_hal[headheadtwp.valid]> + #<_hal[headheadtwp.active]>]
+#<initial_twp_state> = [#<initial_twp_state> + #<_hal[headheadtwp.motion_enabled]>]
+#<initial_twp_state> = [#<initial_twp_state> + #<_hal[headheadtwp.origin_defined]>]
+#<initial_twp_state> = [#<initial_twp_state> + #<_hal[headheadtwp.orientation_defined]>]
+o<twp_fc5_require_twp_clear> if [#<initial_twp_state> GT 0.5]
+  o<twp_fc5_cancel_if_active> call
+  (abort, TWP state was not clear; G69 was requested, verify world mode)
+o<twp_fc5_require_twp_clear> endif
+#<_twp_fc5_gated_edges> = 0.0
+o<twp_fc5_live_guard> call [0.0]
+o<twp_fc5_probe_ready> call
+
+M0 (Confirm T4 at standard B0 C0 sphere-top start, spindle and laser off)
+
+(Reject any setup or position change made during the hold.)
+o<twp_fc5_live_guard> call [0.0]
+o<twp_fc5_probe_ready> call
+#<held_b_error> = ABS[#<_hal[headheadtwp.current_joint_b]> - #<_twp_fc5_initial_b>]
+#<held_c_delta> = [#<_hal[headheadtwp.current_joint_c]> - #<_twp_fc5_initial_c>]
+#<held_c_error> = ABS[[[#<held_c_delta> + 540.0] MOD 360.0] - 180.0]
+o<twp_fc5_hold_b> if [#<held_b_error> GT 0.01]
+  (abort, B changed during the initial M0)
+o<twp_fc5_hold_b> endif
+o<twp_fc5_hold_c> if [#<held_c_error> GT 0.01]
+  (abort, C changed during the initial M0)
+o<twp_fc5_hold_c> endif
+
+(NP_ABS includes the canonical tool offset; remove it to recover G5X XYZ.)
+#<_twp_fc5_wcs_x> = [#<_abs_x> - #<_x> - #<_hal[motion.tooloffset.x]>]
+#<_twp_fc5_wcs_y> = [#<_abs_y> - #<_y> - #<_hal[motion.tooloffset.y]>]
+#<_twp_fc5_wcs_z> = [#<_abs_z> - #<_z> - #<_hal[motion.tooloffset.z]>]
+#<_twp_fc5_eval_a1_x> = #<_hal[headheadkins.tool-offset.x]>
+#<_twp_fc5_eval_a1_y> = #<_hal[headheadkins.tool-offset.y]>
+#<_twp_fc5_eval_a1_z> = #<_hal[headheadkins.tool-offset.z]>
+#<_twp_fc5_counter_start> = #<_hal[counter.2.position]>
+
+(A1: opening WORLD center at the standard B0/C0 start.)
+#<_twp_fc5_phase> = 1.0
+o<twp_fc5_measure_pair> call [0.0]
+#<_twp_fc5_a1_x> = [#<_twp_fc5_measure_center_x> + #<_twp_fc5_wcs_x> + #<_twp_fc5_eval_a1_x>]
+#<_twp_fc5_a1_y> = [#<_twp_fc5_measure_center_y> + #<_twp_fc5_wcs_y> + #<_twp_fc5_eval_a1_y>]
+#<_twp_fc5_a1_z> = [#<_twp_fc5_measure_center_z> + #<_twp_fc5_wcs_z>]
+#<_twp_fc5_a1_z> = [#<_twp_fc5_a1_z> + #<_twp_fc5_tool_length> + #<_twp_fc5_eval_a1_z>]
+#<_twp_fc5_a1_pair> = #<_twp_fc5_pair_delta>
+#<_twp_fc5_a1_diam> = #<_twp_fc5_measure_vdiam>
+#<_twp_fc5_a1_residual> = #<_twp_fc5_measure_residual>
+
+(CAM-style WORLD preposition: lift the physical probe clear, index B+5/C0,)
+(then approach the same sphere along the reached probe axis.)
+#<world_high_x> = #<_twp_fc5_a1_x>
+#<world_high_y> = #<_twp_fc5_a1_y>
+#<world_high_z> = [#<_twp_fc5_a1_z> + #<_twp_fc5_transition_radius>]
+o<twp_fc5_move_world_tool> call [#<world_high_x>] [#<world_high_y>] [#<world_high_z>]
+
+G90
+G0 B#<_twp_fc5_target_b> C#<_twp_fc5_target_c>
+G4 P0.05
+M66 E0 L0
+#<_twp_fc5_expected_b> = #<_twp_fc5_target_b>
+#<_twp_fc5_expected_c> = #<_twp_fc5_target_c>
+o<twp_fc5_live_guard> call [0.0]
+#<_twp_fc5_reached_b> = #<_hal[headheadtwp.current_joint_b]>
+#<_twp_fc5_reached_c> = #<_hal[headheadtwp.current_joint_c]>
+#<b_wx> = #<_hal[headheadkins.tool-frame-w.x]>
+#<b_wy> = #<_hal[headheadkins.tool-frame-w.y]>
+#<b_wz> = #<_hal[headheadkins.tool-frame-w.z]>
+#<b_far_x> = [#<_twp_fc5_a1_x> - [#<b_wx> * #<_twp_fc5_transition_radius>]]
+#<b_far_y> = [#<_twp_fc5_a1_y> - [#<b_wy> * #<_twp_fc5_transition_radius>]]
+#<b_far_z> = [#<_twp_fc5_a1_z> - [#<b_wz> * #<_twp_fc5_transition_radius>]]
+o<twp_fc5_move_world_tool> call [#<b_far_x>] [#<b_far_y>] [#<b_far_z>]
+#<b_top_x> = [#<_twp_fc5_a1_x> - [#<b_wx> * #<_twp_fc5_top_radius>]]
+#<b_top_y> = [#<_twp_fc5_a1_y> - [#<b_wy> * #<_twp_fc5_top_radius>]]
+#<b_top_z> = [#<_twp_fc5_a1_z> - [#<b_wz> * #<_twp_fc5_top_radius>]]
+o<twp_fc5_move_world_tool> call [#<b_top_x>] [#<b_top_y>] [#<b_top_z>]
+#<_twp_fc5_eval_b_x> = #<_hal[headheadkins.tool-offset.x]>
+#<_twp_fc5_eval_b_y> = #<_hal[headheadkins.tool-offset.y]>
+#<_twp_fc5_eval_b_z> = #<_hal[headheadkins.tool-offset.z]>
+
+(B: literal Fusion/Fanuc rotating-ZXZ frame for nominal B+5 C0 R0.)
+G68.2 X0 Y0 Z0 I90 J5 K-90
+G53.1
+o<twp_fc5_live_guard> call [1.0]
+#<_twp_fc5_origin_x> = #<_hal[headheadkins.twp-captured-origin.x]>
+#<_twp_fc5_origin_y> = #<_hal[headheadkins.twp-captured-origin.y]>
+#<_twp_fc5_origin_z> = #<_hal[headheadkins.twp-captured-origin.z]>
+#<_twp_fc5_offset_x> = #<_hal[headheadkins.twp-coordinate-offset.x]>
+#<_twp_fc5_offset_y> = #<_hal[headheadkins.twp-coordinate-offset.y]>
+#<_twp_fc5_offset_z> = #<_hal[headheadkins.twp-coordinate-offset.z]>
+#<origin_dx> = [#<_twp_fc5_origin_x> - #<_twp_fc5_wcs_x>]
+#<origin_dy> = [#<_twp_fc5_origin_y> - #<_twp_fc5_wcs_y>]
+#<origin_dz> = [#<_twp_fc5_origin_z> - #<_twp_fc5_wcs_z>]
+(Use the synchronized plane axes, including the nominal CAM plane rotation.)
+#<_twp_fc5_px_x> = #<_hal[headheadtwp.plane_x_x]>
+#<_twp_fc5_px_y> = #<_hal[headheadtwp.plane_x_y]>
+#<_twp_fc5_px_z> = #<_hal[headheadtwp.plane_x_z]>
+#<_twp_fc5_py_x> = #<_hal[headheadtwp.plane_y_x]>
+#<_twp_fc5_py_y> = #<_hal[headheadtwp.plane_y_y]>
+#<_twp_fc5_py_z> = #<_hal[headheadtwp.plane_y_z]>
+#<_twp_fc5_pz_x> = #<_hal[headheadtwp.plane_z_x]>
+#<_twp_fc5_pz_y> = #<_hal[headheadtwp.plane_z_y]>
+#<_twp_fc5_pz_z> = #<_hal[headheadtwp.plane_z_z]>
+#<expected_offset_x> = [#<_twp_fc5_wcs_x> + [#<origin_dx> * #<_twp_fc5_px_x>]]
+#<expected_offset_x> = [#<expected_offset_x> + [#<origin_dy> * #<_twp_fc5_px_y>]]
+#<expected_offset_x> = [#<expected_offset_x> + [#<origin_dz> * #<_twp_fc5_px_z>]]
+#<expected_offset_y> = [#<_twp_fc5_wcs_y> + [#<origin_dx> * #<_twp_fc5_py_x>]]
+#<expected_offset_y> = [#<expected_offset_y> + [#<origin_dy> * #<_twp_fc5_py_y>]]
+#<expected_offset_y> = [#<expected_offset_y> + [#<origin_dz> * #<_twp_fc5_py_z>]]
+#<expected_offset_z> = [#<_twp_fc5_wcs_z> + [#<origin_dx> * #<_twp_fc5_pz_x>]]
+#<expected_offset_z> = [#<expected_offset_z> + [#<origin_dy> * #<_twp_fc5_pz_y>]]
+#<expected_offset_z> = [#<expected_offset_z> + [#<origin_dz> * #<_twp_fc5_pz_z>]]
+o<twp_fc5_offset_x_guard> if [ABS[#<_twp_fc5_offset_x> - #<expected_offset_x>] GT 0.001]
+  o<twp_fc5_cancel_if_active> call
+  (abort, TWP captured X coordinate layer is inconsistent with G68.2)
+o<twp_fc5_offset_x_guard> endif
+o<twp_fc5_offset_y_guard> if [ABS[#<_twp_fc5_offset_y> - #<expected_offset_y>] GT 0.001]
+  o<twp_fc5_cancel_if_active> call
+  (abort, TWP captured Y coordinate layer is inconsistent with G68.2)
+o<twp_fc5_offset_y_guard> endif
+o<twp_fc5_offset_z_guard> if [ABS[#<_twp_fc5_offset_z> - #<expected_offset_z>] GT 0.001]
+  o<twp_fc5_cancel_if_active> call
+  (abort, TWP captured Z coordinate layer is inconsistent with G68.2)
+o<twp_fc5_offset_z_guard> endif
+
+(Reversible local +Z preflight. Correct TWP motion moves one millimetre away)
+(from the sphere. Even a reversed mapping remains inside the initial clearance.)
+#<pre_x0> = #<_hal[headheadtwp.current_tcp_x]>
+#<pre_y0> = #<_hal[headheadtwp.current_tcp_y]>
+#<pre_z0> = #<_hal[headheadtwp.current_tcp_z]>
+G91
+F60.0
+G1 Z#<_twp_fc5_preflight_distance>
+G90
+G4 P0.05
+M66 E0 L0
+#<pre_dx> = [#<_hal[headheadtwp.current_tcp_x]> - #<pre_x0>]
+#<pre_dy> = [#<_hal[headheadtwp.current_tcp_y]> - #<pre_y0>]
+#<pre_dz> = [#<_hal[headheadtwp.current_tcp_z]> - #<pre_z0>]
+#<pre_ex> = [#<pre_dx> - [#<_twp_fc5_pz_x> * #<_twp_fc5_preflight_distance>]]
+#<pre_ey> = [#<pre_dy> - [#<_twp_fc5_pz_y> * #<_twp_fc5_preflight_distance>]]
+#<pre_ez> = [#<pre_dz> - [#<_twp_fc5_pz_z> * #<_twp_fc5_preflight_distance>]]
+#<pre_error> = SQRT[[#<pre_ex> * #<pre_ex>] + [#<pre_ey> * #<pre_ey>] + [#<pre_ez> * #<pre_ez>]]
+o<twp_fc5_preflight_direction> if [#<pre_error> GT #<_twp_fc5_preflight_limit>]
+  o<twp_fc5_cancel_if_active> call
+  (abort, TWP local Z preflight did not follow the captured plane Z axis)
+o<twp_fc5_preflight_direction> endif
+o<twp_fc5_live_guard> call [1.0]
+G91
+G1 Z[-#<_twp_fc5_preflight_distance>]
+G90
+G4 P0.05
+M66 E0 L0
+#<pre_cx> = [#<_hal[headheadtwp.current_tcp_x]> - #<pre_x0>]
+#<pre_cy> = [#<_hal[headheadtwp.current_tcp_y]> - #<pre_y0>]
+#<pre_cz> = [#<_hal[headheadtwp.current_tcp_z]> - #<pre_z0>]
+#<pre_closure> = SQRT[[#<pre_cx> * #<pre_cx>] + [#<pre_cy> * #<pre_cy>] + [#<pre_cz> * #<pre_cz>]]
+o<twp_fc5_preflight_closure> if [#<pre_closure> GT #<_twp_fc5_preflight_limit>]
+  o<twp_fc5_cancel_if_active> call
+  (abort, TWP local Z preflight return closure exceeds 0.050 mm)
+o<twp_fc5_preflight_closure> endif
+o<twp_fc5_live_guard> call [1.0]
+
+#<_twp_fc5_phase> = 2.0
+o<twp_fc5_measure_pair> call [1.0]
+#<_twp_fc5_b_local_x> = #<_twp_fc5_measure_center_x>
+#<_twp_fc5_b_local_y> = #<_twp_fc5_measure_center_y>
+#<_twp_fc5_b_local_z> = #<_twp_fc5_measure_center_z>
+#<_twp_fc5_b_pair> = #<_twp_fc5_pair_delta>
+#<_twp_fc5_b_diam> = #<_twp_fc5_measure_vdiam>
+#<_twp_fc5_b_residual> = #<_twp_fc5_measure_residual>
+(Probe results have G5X and the canonical tool offset removed by emccanon.)
+(Restore both, remove the captured local coordinate layer, then transform.)
+#<local_dx> = [#<_twp_fc5_b_local_x> + #<_twp_fc5_wcs_x> - #<_twp_fc5_offset_x>]
+#<local_dy> = [#<_twp_fc5_b_local_y> + #<_twp_fc5_wcs_y> - #<_twp_fc5_offset_y>]
+#<local_dz> = [#<_twp_fc5_b_local_z> + #<_twp_fc5_wcs_z>]
+#<local_dz> = [#<local_dz> + #<_twp_fc5_tool_length> - #<_twp_fc5_offset_z>]
+#<_twp_fc5_b_world_x> = [#<_twp_fc5_origin_x> + [#<local_dx> * #<_twp_fc5_px_x>]]
+#<_twp_fc5_b_world_x> = [#<_twp_fc5_b_world_x> + [#<local_dy> * #<_twp_fc5_py_x>]]
+#<_twp_fc5_b_world_x> = [#<_twp_fc5_b_world_x> + [#<local_dz> * #<_twp_fc5_pz_x>]]
+#<_twp_fc5_b_world_y> = [#<_twp_fc5_origin_y> + [#<local_dx> * #<_twp_fc5_px_y>]]
+#<_twp_fc5_b_world_y> = [#<_twp_fc5_b_world_y> + [#<local_dy> * #<_twp_fc5_py_y>]]
+#<_twp_fc5_b_world_y> = [#<_twp_fc5_b_world_y> + [#<local_dz> * #<_twp_fc5_pz_y>]]
+#<_twp_fc5_b_world_z> = [#<_twp_fc5_origin_z> + [#<local_dx> * #<_twp_fc5_px_z>]]
+#<_twp_fc5_b_world_z> = [#<_twp_fc5_b_world_z> + [#<local_dy> * #<_twp_fc5_py_z>]]
+#<_twp_fc5_b_world_z> = [#<_twp_fc5_b_world_z> + [#<local_dz> * #<_twp_fc5_pz_z>]]
+#<_twp_fc5_b_world_x> = [#<_twp_fc5_b_world_x> + #<_twp_fc5_eval_b_x>]
+#<_twp_fc5_b_world_y> = [#<_twp_fc5_b_world_y> + #<_twp_fc5_eval_b_y>]
+#<_twp_fc5_b_world_z> = [#<_twp_fc5_b_world_z> + #<_twp_fc5_eval_b_z>]
+
+G69
+o<twp_fc5_live_guard> call [0.0]
+
+(CAM-style WORLD exit: retract on the B+5 probe axis, move to the common)
+(world clearance point, return B0/C0, then approach the standard start.)
+o<twp_fc5_move_world_tool> call [#<b_far_x>] [#<b_far_y>] [#<b_far_z>]
+o<twp_fc5_move_world_tool> call [#<world_high_x>] [#<world_high_y>] [#<world_high_z>]
+G90
+G0 B0 C0
+G4 P0.05
+M66 E0 L0
+#<_twp_fc5_expected_b> = 0.0
+#<_twp_fc5_expected_c> = 0.0
+o<twp_fc5_live_guard> call [0.0]
+#<_twp_fc5_return_b> = #<_hal[headheadtwp.current_joint_b]>
+#<_twp_fc5_return_c> = #<_hal[headheadtwp.current_joint_c]>
+#<a_wx> = #<_hal[headheadkins.tool-frame-w.x]>
+#<a_wy> = #<_hal[headheadkins.tool-frame-w.y]>
+#<a_wz> = #<_hal[headheadkins.tool-frame-w.z]>
+#<a_far_x> = [#<_twp_fc5_a1_x> - [#<a_wx> * #<_twp_fc5_transition_radius>]]
+#<a_far_y> = [#<_twp_fc5_a1_y> - [#<a_wy> * #<_twp_fc5_transition_radius>]]
+#<a_far_z> = [#<_twp_fc5_a1_z> - [#<a_wz> * #<_twp_fc5_transition_radius>]]
+o<twp_fc5_move_world_tool> call [#<a_far_x>] [#<a_far_y>] [#<a_far_z>]
+#<a_top_x> = [#<_twp_fc5_a1_x> - [#<a_wx> * #<_twp_fc5_top_radius>]]
+#<a_top_y> = [#<_twp_fc5_a1_y> - [#<a_wy> * #<_twp_fc5_top_radius>]]
+#<a_top_z> = [#<_twp_fc5_a1_z> - [#<a_wz> * #<_twp_fc5_top_radius>]]
+o<twp_fc5_move_world_tool> call [#<a_top_x>] [#<a_top_y>] [#<a_top_z>]
+#<_twp_fc5_eval_a2_x> = #<_hal[headheadkins.tool-offset.x]>
+#<_twp_fc5_eval_a2_y> = #<_hal[headheadkins.tool-offset.y]>
+#<_twp_fc5_eval_a2_z> = #<_hal[headheadkins.tool-offset.z]>
+
+(A2: closing WORLD center after the full B0/B+5/TWP/B0 cycle.)
+#<_twp_fc5_phase> = 3.0
+o<twp_fc5_measure_pair> call [0.0]
+#<_twp_fc5_a2_x> = [#<_twp_fc5_measure_center_x> + #<_twp_fc5_wcs_x> + #<_twp_fc5_eval_a2_x>]
+#<_twp_fc5_a2_y> = [#<_twp_fc5_measure_center_y> + #<_twp_fc5_wcs_y> + #<_twp_fc5_eval_a2_y>]
+#<_twp_fc5_a2_z> = [#<_twp_fc5_measure_center_z> + #<_twp_fc5_wcs_z>]
+#<_twp_fc5_a2_z> = [#<_twp_fc5_a2_z> + #<_twp_fc5_tool_length> + #<_twp_fc5_eval_a2_z>]
+#<_twp_fc5_a2_pair> = #<_twp_fc5_pair_delta>
+#<_twp_fc5_a2_diam> = #<_twp_fc5_measure_vdiam>
+#<_twp_fc5_a2_residual> = #<_twp_fc5_measure_residual>
+
+(Move clear in world mode before evaluating or reporting any failed gate.)
+G91
+F#<_twp_fc5_position_feed>
+G1 Z25.0
+G90
+o<twp_fc5_live_guard> call [0.0]
+
+#<a_dx> = [#<_twp_fc5_a2_x> - #<_twp_fc5_a1_x>]
+#<a_dy> = [#<_twp_fc5_a2_y> - #<_twp_fc5_a1_y>]
+#<a_dz> = [#<_twp_fc5_a2_z> - #<_twp_fc5_a1_z>]
+#<_twp_fc5_world_closure> = SQRT[[#<a_dx> * #<a_dx>] + [#<a_dy> * #<a_dy>] + [#<a_dz> * #<a_dz>]]
+#<mean_x> = [[#<_twp_fc5_a1_x> + #<_twp_fc5_a2_x>] / 2.0]
+#<mean_y> = [[#<_twp_fc5_a1_y> + #<_twp_fc5_a2_y>] / 2.0]
+#<mean_z> = [[#<_twp_fc5_a1_z> + #<_twp_fc5_a2_z>] / 2.0]
+#<b_dx> = [#<_twp_fc5_b_world_x> - #<mean_x>]
+#<b_dy> = [#<_twp_fc5_b_world_y> - #<mean_y>]
+#<b_dz> = [#<_twp_fc5_b_world_z> - #<mean_z>]
+#<_twp_fc5_full_cycle_error> = SQRT[[#<b_dx> * #<b_dx>] + [#<b_dy> * #<b_dy>] + [#<b_dz> * #<b_dz>]]
+#<_twp_fc5_counter_end> = #<_hal[counter.2.position]>
+#<counter_delta> = [#<_twp_fc5_counter_end> - #<_twp_fc5_counter_start>]
+
+#100 = #<_twp_fc5_campaign>
+#101 = #<_twp_fc5_reached_b>
+#102 = #<_twp_fc5_reached_c>
+#103 = #<_twp_fc5_return_b>
+#104 = #<_twp_fc5_return_c>
+#105 = #<_twp_fc5_tool_length>
+#106 = #<_twp_fc5_probe_offset>
+#107 = #<_twp_fc5_a1_x>
+#108 = #<_twp_fc5_a1_y>
+#109 = #<_twp_fc5_a1_z>
+#110 = #<_twp_fc5_b_world_x>
+#111 = #<_twp_fc5_b_world_y>
+#112 = #<_twp_fc5_b_world_z>
+#113 = #<_twp_fc5_a2_x>
+#114 = #<_twp_fc5_a2_y>
+#115 = #<_twp_fc5_a2_z>
+#116 = #<_twp_fc5_world_closure>
+#117 = #<_twp_fc5_full_cycle_error>
+#118 = #<_twp_fc5_a1_pair>
+#119 = #<_twp_fc5_b_pair>
+#120 = #<_twp_fc5_a2_pair>
+#121 = #<_twp_fc5_a1_diam>
+#122 = #<_twp_fc5_b_diam>
+#123 = #<_twp_fc5_a2_diam>
+#124 = #<_twp_fc5_a1_residual>
+#125 = #<_twp_fc5_b_residual>
+#126 = #<_twp_fc5_a2_residual>
+#127 = #<counter_delta>
+(DEBUG, TWP_FULL_CYCLE_BPLUS5 world_closure=#<_twp_fc5_world_closure> full_cycle_error=#<_twp_fc5_full_cycle_error>)
+o<twp_fc5_total_edges> if [ABS[#<counter_delta> - 24.0] GT 0.1]
+  (abort, TWP sphere full cycle B+5 did not record exactly 24 gated contacts)
+o<twp_fc5_total_edges> endif
+o<twp_fc5_world_closure_gate> if [#<_twp_fc5_world_closure> GT #<_twp_fc5_world_closure_limit>]
+  (abort, Full-cycle B+5 WORLD return closure exceeds 0.100 mm)
+o<twp_fc5_world_closure_gate> endif
+o<twp_fc5_full_cycle_gate> if [#<_twp_fc5_full_cycle_error> GT #<_twp_fc5_full_cycle_limit>]
+  (abort, Full-cycle B+5 transformed center error exceeds 0.250 mm)
+o<twp_fc5_full_cycle_gate> endif
+
+(Only a fully accepted complete cycle is appended to the results table.)
+(LOGAPPEND,/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/twp-sphere-full-cycle-bplus5-t4-results.csv)
+(LOG,1,#100,#101,#102,#103,#104,#105,#106,#107,#108,#109,#110,#111,#112,#113,#114,#115,#116,#117,#118,#119,#120,#121,#122,#123,#124,#125,#126,#127)
+(LOGCLOSE)
+
+M2
