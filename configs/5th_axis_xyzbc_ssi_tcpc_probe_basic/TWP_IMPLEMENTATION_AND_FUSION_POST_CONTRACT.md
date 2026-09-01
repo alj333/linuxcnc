@@ -69,7 +69,9 @@ The required indexed-section lifecycle is:
    reviewed manual equivalent, followed by `G43 Hn`.
 5. Move to a collision-cleared world position.
 6. Position B/C in world mode. `G68.2` will not position the rotary axes.
-7. Move XYZ to the intended physical entry point at the reached B/C pose.
+7. Establish the intended collision-cleared physical entry at the reached B/C
+   pose. The MotionX post uses a second reviewed machine retract here; it does
+   not infer the live tool length from Fusion.
 8. Define the tilted frame with a complete Fusion/Fanuc `G68.2` block.
 9. Activate it on the immediately following `G53.1` block.
 10. Run fixed-B/C local XYZ motion.
@@ -204,43 +206,46 @@ already been confirmed. Both must occur with TWP and TCPC off.
 
 ## Fusion Post Changes
 
-The local Autodesk Fanuc family post is still the preferred starting point
-because it already emits rotating-`ZXZ` `G68.2` plus `G53.1`. It is not safe
-for this controller without modification.
+The Matsuura Fanuc 30i post in `Fusion Post/` is a table-table sequencing
+reference because it already emits rotating-`ZXZ` `G68.2` plus `G53.1`. Its
+table kinematics and tool-length positioning are not transferable to the
+MotionX head-head machine.
 
-Reference baseline on this PC:
+Current post and reference:
 
-- `/home/cnc5/Fusion/fanuc(1).cps`
+- `Fusion Post/pocketnc-motionX 3.cps`
+- `Fusion Post/FANUC_30i_Matsuura_MAM72_3VS.cps`
 
 Required settings and behavior:
 
-- `workPlaneMethod.useTiltedWorkplane = true`
-- `workPlaneMethod.eulerConvention = EULER_ZXZ_R`
-- `workPlaneMethod.useABCPrepositioning = true`
-- use the actual Fusion head-head B/C machine definition, not the disabled
-  generic A/C table example in `defineMachine()`
-- configure both B and C as head axes; enforce B `-100..+100 deg` and C
-  `-359..+359 deg`
-- retain the CAM-provided machine configuration unless a reviewed equivalent
-  is intentionally embedded in the post
+- enable the post property `useTWP` for indexed 3+2 output
+- use `EULER_ZXZ_R` directly from `currentSection.workPlane`
+- keep `useTCP` independent for simultaneous sections and mixed programs
+- use the reviewed embedded MotionX head-head orientation: B about `[0,-1,0]`
+  and C about `[0,0,-1]`
+- enforce B `-100..+100 deg`, C `-359..+359 deg`, and the current physical TWP
+  release `|B| <= 30 deg`
+- do not copy the Matsuura table-table geometry or positioning sequence
 
-The stock Fanuc `setWorkPlane()` path must be changed in these specific ways:
+The MotionX TWP path implements these controller-specific changes:
 
 1. Do not call `disableLengthCompensation()` merely because a TWP section is
    starting. This controller requires ordinary `G43 Hn` to remain active.
 2. Do not output `G43.4` to preposition a TWP section. Public TCPC and TWP are
    mutually exclusive here.
 3. Cancel the previous plane with `G69` before world positioning or indexing.
-4. Perform a reviewed world-space clearance move before `positionABC()`.
+4. Perform a reviewed machine/world retract before positioning B/C.
 5. Position the actual B/C axes before `G68.2`.
 6. Output the complete `G68.2 X/Y/Z/I/J/K` block.
 7. Output `G53.1` on the next block and only then mark TWP active in post state.
 
-The stock Fanuc initial-positioning path must also be reviewed. Its head-head
-logic can force TCP with `getOffsetCode(true)` and emit `G43.4` while
-prepositioning. That behavior must be disabled for indexed TWP sections.
+The stock Fanuc initial-positioning path is not used. The MotionX post
+keeps the live LinuxCNC `G43 Hn` active, retracts in world mode, indexes B/C,
+repeats the machine retract at the reached pose, activates TWP, and only then
+approaches the Fusion section start in local coordinates. It does not use
+Fusion gauge, body, or holder length for this entry.
 
-The post needs independent state variables for:
+The post maintains independent state variables for:
 
 - ordinary `G43 H` tool-length compensation
 - public `G43.4` TCPC
@@ -268,10 +273,12 @@ G54
 G43 H4
 G40
 
-(POST-CALCULATED WORLD CLEARANCE AND INDEX)
-G0 X... Y... Z...
+(REVIEWED WORLD CLEARANCE AND INDEX)
+G28 G91 Z0
+G90
 G0 B30.000 C90.000
-G0 X... Y... Z...
+G28 G91 Z0
+G90
 
 (FUSION ROTATING-ZXZ FRAME DEFINITION)
 G68.2 X0.000 Y0.000 Z0.000 I180.000 J30.000 K-90.000
