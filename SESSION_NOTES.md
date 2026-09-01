@@ -5126,3 +5126,55 @@ Future work split:
   `5th_axis_xyzbc_ssi_tcpc_probe_basic_twp_probe_validation_2026083101.ini`
   remains supervised commissioning work; the default cut-test config remains
   TWP-locked.
+
+## Update (2026-09-01, first physical TWP sphere attempt)
+
+- The dedicated TWP validation config was launched, all five joints were
+  homed, and T4/H4 was set with ordinary `G43 H4`; public `G43.4` TCPC was off.
+  The probe started above the unchanged sphere at nominal B0/C0. Actual rotary
+  commands were `B-0.000353638 C-0.000023181`.
+- The opening WORLD phase produced eight valid contacts and two coherent pass
+  rows. They are retained in `twp-sphere-stage1-t4-passes.csv` as physical
+  partial-attempt evidence:
+  - pass 1 center `(0.001139, 0.015416, -21.492091) mm`, V diameter
+    `30.185500 mm`, maximum radial residual `0.092750 mm`
+  - pass 2 center `(-0.004695, 0.014585, -21.489758) mm`, V diameter
+    `30.182167 mm`, maximum radial residual `0.091084 mm`
+- Stationary `G68.2` definition and `G53.1` type-1 activation completed, and
+  the live model/state guards passed. Before the reversible 1 mm local TWP
+  preflight, the line-630 coordinate-layer guard aborted with
+  `TWP captured X coordinate layer is inconsistent with G68.2`. The program
+  requested `G69` and returned cleanly to world type 0. No local TWP motion or
+  TWP sphere contact occurred, and no accepted-result row was written.
+- Post-abort read-only diagnostics showed the cause was not the sphere or the
+  commissioned tool model. At the captured pose:
+  - machine joint XYZ was approximately
+    `(878.641245, 645.599347, -279.510628) mm`
+  - `joint.N.motor-pos-cmd` XYZ was approximately
+    `(-0.001555, -0.001053, 1.354572) mm`
+  - the corresponding joint-minus-motor homing layers were
+    `(878.642799829, 645.600399981, -280.865200000) mm`
+  - active G54 XYZ was `(878.641254, 645.599347, -510.273128) mm`
+- Production `remap.py` had captured `joint.N.motor-pos-cmd` when constructing
+  the TWP frame, and the TWP state HAL used signals sourced from the same motor
+  layer. That layer includes the homing motor offset and is not a machine
+  coordinate. Both paths now use `joint.N.pos-cmd`. The coordinate guard is
+  retained unchanged; it correctly prevented physical local motion.
+- The full runtime fixture now forces the measured XYZ homing-layer separation
+  and asserts that the state component follows machine joint coordinates. It
+  also supports exact B/C, G54, and start-work overrides for captured-state
+  replay.
+- Exact captured-state replay passed the actual 24-contact production program:
+  six passes, `0.000965 mm` WORLD closure, `0.000510 mm` transformed TWP error,
+  exact 1 mm preflight and zero return closure, clean `G69`, and byte-identical
+  restoration of both production CSV files.
+- The normal B+5/C0 runtime also passed with the nonzero homing layers:
+  `0.000630 mm` WORLD closure and `0.000236 mm` TWP error. Switchkins
+  continuity and component-loss/restart passed, and all 15 established
+  TCPC/TWP scenarios passed by direct process status.
+- No fitted coefficient, B/C zero, tool-table value, probe calibration, or
+  length-model ID changed. Calibration revision `2026082601` remains frozen.
+- LinuxCNC was closed before offline testing. Probe Basic did not finish after
+  the initial interrupt and ignored SIGTERM; terminating only the hung GUI
+  allowed the launcher to complete its normal HAL/hardware cleanup. The final
+  check found no controller process and no `/tmp/linuxcnc.lock`.

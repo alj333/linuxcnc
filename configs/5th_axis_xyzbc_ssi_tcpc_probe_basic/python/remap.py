@@ -105,7 +105,9 @@ def _twp_transaction(command):
 
 
 def _joint_command_pose():
-    return tuple(float(_hal("joint.%d.motor-pos-cmd" % joint)) for joint in range(5))
+    # TWP is defined in machine joint coordinates. motor-pos-cmd includes the
+    # per-homing motor offset and can differ by the full machine travel.
+    return tuple(float(_hal("joint.%d.pos-cmd" % joint)) for joint in range(5))
 
 
 def _dot(a, b):

@@ -3,6 +3,7 @@
 import csv
 import io
 import math
+import os
 from pathlib import Path
 import sys
 import time
@@ -29,10 +30,27 @@ TIMEOUT = 360.0
 MODEL_ID = 2026082601
 TOOL_NUMBER = 4
 TOOL_LENGTH = 229.407
-START_B = 5.0
-START_C = 0.0
-G54_OFFSET = (17.125, -31.500, 8.750)
-START_WORK = (40.0, -25.0, 15.0)
+MOTOR_LAYER_OFFSETS = (878.642799829, 645.600399981, -280.865200000)
+
+
+def env_float(name, default):
+    return float(os.environ.get(name, default))
+
+
+def env_vector(name, default):
+    text = os.environ.get(name)
+    if text is None:
+        return default
+    values = tuple(float(value.strip()) for value in text.split(","))
+    if len(values) != 3:
+        raise ValueError("%s must contain three comma-separated values" % name)
+    return values
+
+
+START_B = env_float("TWP_SPHERE_TEST_B", 5.0)
+START_C = env_float("TWP_SPHERE_TEST_C", 0.0)
+G54_OFFSET = env_vector("TWP_SPHERE_TEST_G54", (17.125, -31.500, 8.750))
+START_WORK = env_vector("TWP_SPHERE_TEST_START_WORK", (40.0, -25.0, 15.0))
 SPHERE_RADIUS = 15.0
 PROBE_RADIUS = 3.0
 PROBE_OFFSET = 0.154742
@@ -88,7 +106,32 @@ def underscore_vector(prefix):
 
 
 def joint_pose():
-    return tuple(float(hal.get_value("joint.%d.motor-pos-cmd" % joint)) for joint in range(5))
+    return tuple(float(hal.get_value("joint.%d.pos-cmd" % joint)) for joint in range(5))
+
+
+def motor_pose():
+    return tuple(
+        float(hal.get_value("joint.%d.motor-pos-cmd" % joint))
+        for joint in range(5)
+    )
+
+
+def assert_coordinate_layers(label):
+    joints = joint_pose()
+    motors = motor_pose()
+    assert_vector(
+        label + " XYZ homing motor offsets",
+        vector_sub(joints[:3], motors[:3]),
+        MOTOR_LAYER_OFFSETS,
+        2e-6,
+    )
+    if max(abs(value) for value in vector_sub(joints[:3], motors[:3])) < 100.0:
+        fail(label + " does not reproduce the physical motor/joint separation")
+    state_pose = tuple(
+        float(hal.get_value("headheadtwp.current_joint_%s" % axis))
+        for axis in "xyzbc"
+    )
+    assert_vector(label + " TWP state machine pose", state_pose, joints, 2e-6)
 
 
 def physical_tcp():
@@ -562,6 +605,7 @@ def main():
     wait_for_homed(status)
     controller.teleop_enable(1)
     time.sleep(0.1)
+    assert_coordinate_layers("homed")
 
     mdi("G17 G21 G40 G49 G54 G64 P0.001 G80 G90 G92.1 G94 M5")
     mdi(
@@ -577,8 +621,9 @@ def main():
 
     mdi("M61 Q4")
     mdi("G43 H4")
-    mdi("G0 B5 C0")
+    mdi("G0 B%.9f C%.9f" % (START_B, START_C))
     mdi("G0 X%.6f Y%.6f Z%.6f" % START_WORK)
+    assert_coordinate_layers("sphere setup")
     assert_model_and_tool("setup")
     assert_world_final()
 
@@ -590,10 +635,12 @@ def main():
         vector_scale(tool_w, ENVELOPE_RADIUS + INITIAL_CLEARANCE),
     )
     log(
-        "fixed simulated sphere center %s from start TCP %s at B+5 C0"
+        "fixed simulated sphere center %s from start TCP %s at B%.6f C%.6f"
         % (
             tuple(round(value, 6) for value in sphere_center),
             tuple(round(value, 6) for value in start_tcp),
+            START_B,
+            START_C,
         )
     )
     run_actual_program(

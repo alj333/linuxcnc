@@ -218,12 +218,14 @@ net headhead-kins-tool-offset-x headheadkins.tool-offset.x => headheadtwp.extern
 net headhead-kins-tool-offset-y headheadkins.tool-offset.y => headheadtwp.external_tool_offset_y
 net headhead-kins-tool-offset-z headheadkins.tool-offset.z => headheadtwp.external_tool_offset_z
 
-# Snapshot the current commanded joint pose for the TWP state component.
-net x-pos-cmd => headheadtwp.current_joint_x
-net y-pos-cmd => headheadtwp.current_joint_y
-net z-pos-cmd => headheadtwp.current_joint_z
-net b-pos-cmd => headheadtwp.current_joint_b
-net c-pos-cmd => headheadtwp.current_joint_c
+# Snapshot machine joint coordinates for the TWP state component. The PID
+# command signals use motor-pos-cmd and therefore include homing motor offsets;
+# they are not a valid coordinate-frame source.
+net headhead-twp-joint-x joint.0.pos-cmd => headheadtwp.current_joint_x
+net headhead-twp-joint-y joint.1.pos-cmd => headheadtwp.current_joint_y
+net headhead-twp-joint-z joint.2.pos-cmd => headheadtwp.current_joint_z
+net headhead-twp-joint-b joint.3.pos-cmd => headheadtwp.current_joint_b
+net headhead-twp-joint-c joint.4.pos-cmd => headheadtwp.current_joint_c
 
 # C uses a single-turn absolute SSI encoder. The base SSI HAL normalizes the
 # startup angle, but that still jumps at the +/-180 deg encoder wrap. For TCPC

@@ -129,6 +129,40 @@ The existing calibration revision `2026082601` is frozen. This TWP work changes
 no fitted coefficient, B/C zero, tool-table entry, or default cut-test
 configuration.
 
+### First Physical Attempt And Coordinate-Layer Fix - 2026-09-01 +07
+
+The first B0/C0 physical attempt completed eight opening WORLD contacts before
+the program's coordinate-layer guard stopped it after stationary `G68.2` and
+`G53.1`, but before the 1 mm local TWP preflight. `G69` returned the controller
+cleanly to world type 0. Therefore this attempt contains valid opening WORLD
+diagnostics but no physical local-TWP motion and no accepted result row.
+
+The two retained pass rows have centers `(0.001139,0.015416,-21.492091)` and
+`(-0.004695,0.014585,-21.489758) mm`, V diameters `30.185500` and
+`30.182167 mm`, and radial residuals `0.092750` and `0.091084 mm`. They are
+partial-attempt evidence only.
+
+Read-only post-abort diagnostics isolated the failure to coordinate sources.
+The real homing state separated machine joint XYZ from `motor-pos-cmd` by
+`(878.642799829,645.600399981,-280.865200000) mm`. The TWP remap and state
+component had incorrectly treated the motor layer, which includes this homing
+offset, as machine coordinates. Both now source `joint.N.pos-cmd`. The
+program's independent coordinate guard remains unchanged and continues to
+fail closed.
+
+The simulator now preserves those measured homing layers instead of allowing
+machine and motor coordinates to be numerically identical. An exact replay at
+the captured B/C, G54, and work start completed the production program with 24
+contacts, `0.000965 mm` WORLD closure, and `0.000510 mm` TWP error. The normal
+B+5/C0 case also passed with `0.000630/0.000236 mm` closure/error. Switchkins
+continuity, component-loss/restart, and all 15 established TCPC/TWP scenarios
+passed. The production CSV backup/restore checks remained byte exact.
+
+This correction changes no calibration coefficient, rotary zero, tool-table
+entry, probe offset, or length-model ID. Revision `2026082601` remains the
+single shared calibration for TCPC and TWP. The next physical attempt must be
+a full restart of the WORLD/TWP/WORLD program under direct supervision.
+
 ## Length-Aware Runtime Boundary - 2026-08-26
 
 The kinematics now has an opt-in, synchronous length-aware correction path.

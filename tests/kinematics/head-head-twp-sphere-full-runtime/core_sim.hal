@@ -15,11 +15,11 @@ loadrt counter num_chan=3
 addf motion-command-handler servo-thread
 addf motion-controller servo-thread
 
-net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb
-net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb
-net Zpos joint.2.motor-pos-cmd => joint.2.motor-pos-fb
-net Bpos joint.3.motor-pos-cmd => joint.3.motor-pos-fb
-net Cpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb
+net Xmotor joint.0.motor-pos-cmd => joint.0.motor-pos-fb
+net Ymotor joint.1.motor-pos-cmd => joint.1.motor-pos-fb
+net Zmotor joint.2.motor-pos-cmd => joint.2.motor-pos-fb
+net Bmotor joint.3.motor-pos-cmd => joint.3.motor-pos-fb
+net Cmotor joint.4.motor-pos-cmd => joint.4.motor-pos-fb
 
 setp headheadkins.nominal-c-to-b.x 0.010934
 setp headheadkins.nominal-c-to-b.y 0.0
@@ -48,11 +48,11 @@ setp headheadtwp.use_external_tool_offset 1
 net headhead-kins-tool-offset-x headheadkins.tool-offset.x => headheadtwp.external_tool_offset_x
 net headhead-kins-tool-offset-y headheadkins.tool-offset.y => headheadtwp.external_tool_offset_y
 net headhead-kins-tool-offset-z headheadkins.tool-offset.z => headheadtwp.external_tool_offset_z
-net Xpos => headheadtwp.current_joint_x
-net Ypos => headheadtwp.current_joint_y
-net Zpos => headheadtwp.current_joint_z
-net Bpos => headheadtwp.current_joint_b
-net Cpos => headheadtwp.current_joint_c
+net Xjoint joint.0.pos-cmd => headheadtwp.current_joint_x
+net Yjoint joint.1.pos-cmd => headheadtwp.current_joint_y
+net Zjoint joint.2.pos-cmd => headheadtwp.current_joint_z
+net Bjoint joint.3.pos-cmd => headheadtwp.current_joint_b
+net Cjoint joint.4.pos-cmd => headheadtwp.current_joint_c
 net headhead-joint-0-homed joint.0.homed => headheadtwp.joint_0_homed
 net headhead-joint-1-homed joint.1.homed => headheadtwp.joint_1_homed
 net headhead-joint-2-homed joint.2.homed => headheadtwp.joint_2_homed

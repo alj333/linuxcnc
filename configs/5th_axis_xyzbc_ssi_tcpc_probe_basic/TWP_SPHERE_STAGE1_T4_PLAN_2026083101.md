@@ -97,3 +97,24 @@ The implementation evaluates the same commissioned length-aware geometry used
 by `G43.4` internally. It does not maintain a second TWP calibration. Fusion
 `G68.2 X Y Z I J K` input uses rotating `ZXZ` Euler angles; the first release
 expects the post to preposition B/C before `G68.2`/`G53.1`.
+
+## Attempt 1 Status - 2026-09-01
+
+The first physical B0/C0 attempt is a partial diagnostic run, not an accepted
+TWP result. Its opening WORLD phase completed eight valid contacts and wrote
+two pass rows. After stationary `G68.2`/`G53.1`, the independent coordinate
+guard detected that the implementation had captured the homing-adjusted motor
+layer instead of machine joint coordinates. It cancelled with `G69` before the
+1 mm local preflight, so no physical local-TWP motion occurred.
+
+The implementation now uses `joint.N.pos-cmd` for both remap frame capture and
+the TWP state component. A headless replay reproducing the measured
+joint/motor separation and exact captured B/C/G54 state completed all 24
+contacts with `0.000965 mm` WORLD closure and `0.000510 mm` transformed TWP
+error. The normal B+5/C0 case and all focused/legacy regressions also passed.
+Calibration revision `2026082601` was not changed.
+
+For the next physical attempt, close/restart the dedicated config, home all
+five joints, reapply T4/H4 with `G43.4` off, return 3-5 mm above the sphere at
+B0/C0, and run the complete program from its beginning. Do not resume after
+the two retained WORLD rows from Attempt 1.

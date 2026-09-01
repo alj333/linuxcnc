@@ -9,6 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG = ROOT / "configs/5th_axis_xyzbc_ssi_tcpc_probe_basic"
 PROGRAM = ROOT / "nc_files/calibration/twp_sphere_probe_stage1_t4.ngc"
+MACHINE_HAL = CONFIG / "5th_axis_xyzbc_ssi_tcpc_probe_basic.hal"
+REMAP = CONFIG / "python/remap.py"
 INI = CONFIG / "5th_axis_xyzbc_ssi_tcpc_probe_basic_twp_probe_validation_2026083101.ini"
 LAUNCHER = CONFIG / "launch_xyzbc_ssi_twp_probe_validation.sh"
 DEFAULT_LAUNCHER = CONFIG / "launch_xyzbc_ssi_tcpc_probe_basic.sh"
@@ -256,10 +258,20 @@ def validate_csv_headers():
         "world_open_max_residual_mm,twp_max_residual_mm,"
         "world_close_max_residual_mm,gated_edge_count"
     )
-    require(PASSES.read_text(encoding="ascii").strip() == expected_passes, "pass CSV schema changed")
-    require(RESULTS.read_text(encoding="ascii").strip() == expected_results, "result CSV schema changed")
-    require(len(next(csv.reader([expected_passes]))) == 13, "pass CSV column count is not 13")
-    require(len(next(csv.reader([expected_results]))) == 27, "result CSV column count is not 27")
+    pass_rows = list(csv.reader(PASSES.read_text(encoding="ascii").splitlines()))
+    result_rows = list(csv.reader(RESULTS.read_text(encoding="ascii").splitlines()))
+    require(pass_rows and ",".join(pass_rows[0]) == expected_passes, "pass CSV schema changed")
+    require(result_rows and ",".join(result_rows[0]) == expected_results, "result CSV schema changed")
+    require(len(pass_rows[0]) == 13, "pass CSV column count is not 13")
+    require(len(result_rows[0]) == 27, "result CSV column count is not 27")
+    require(
+        all(len(row) == 13 for row in pass_rows[1:]),
+        "an appended physical pass row does not contain 13 columns",
+    )
+    require(
+        all(len(row) == 27 for row in result_rows[1:]),
+        "an appended accepted-result row does not contain 27 columns",
+    )
 
 
 def validate_launch_boundary():
@@ -276,11 +288,28 @@ def validate_launch_boundary():
     require(INI.name not in default_launcher, "default launcher unexpectedly selects TWP validation")
 
 
+def validate_machine_coordinate_sources():
+    remap = REMAP.read_text(encoding="ascii")
+    machine_hal = MACHINE_HAL.read_text(encoding="ascii")
+    require(
+        'float(_hal("joint.%d.pos-cmd" % joint))' in remap,
+        "TWP remap does not capture machine joint coordinates",
+    )
+    require(
+        'float(_hal("joint.%d.motor-pos-cmd" % joint))' not in remap,
+        "TWP remap still constructs frames from motor-layer coordinates",
+    )
+    for joint, axis in enumerate("xyzbc"):
+        expected = "joint.%d.pos-cmd => headheadtwp.current_joint_%s" % (joint, axis)
+        require(expected in machine_hal, "TWP state source is not machine joint %s" % axis.upper())
+
+
 def main():
     validate_program_static()
     validate_coordinate_math()
     validate_csv_headers()
     validate_launch_boundary()
+    validate_machine_coordinate_sources()
     print("TWP sphere stage-1 static and coordinate-math validation passed")
 
 
