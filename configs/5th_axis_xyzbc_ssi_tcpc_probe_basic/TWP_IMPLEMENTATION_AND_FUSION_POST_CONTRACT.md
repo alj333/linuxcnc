@@ -36,6 +36,28 @@ Only the dedicated supervised INI currently opts in with `[TWP] ENABLE=1`:
 The default cut-test INI remains TWP-locked. Updating a Fusion post does not
 by itself authorize TWP use in another configuration.
 
+## Current Fusion Post Release Candidate
+
+The reviewed MotionX implementation was committed and pushed on 2026-09-01:
+
+- branch: `head-head-kinematics-rnd-pushable`
+- commit: `5679acd836b6022a0884ca1f88efd282f56beb48`
+- source: `Fusion Post/pocketnc-motionX 3.cps`
+- SHA-256:
+  `517429a2809c43be982ed36cdd3cae9e12d32f89bed97ab4a4fd5b8b0c066420`
+
+Repository static checks, generated-output validator self-tests, and the TWP
+sphere-program static/coordinate checks pass. This is a post release
+candidate, not completed physical post acceptance: no real Fusion-generated
+NGC has yet been retained and reviewed, loaded in LinuxCNC, air-run, or cut on
+material. The acceptance sequence and shutdown handoff are in
+`TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md`.
+
+The first posted file must remain unedited long enough to establish whether a
+failure originated in Fusion/post output or in a later machine/setup layer.
+Do not change the frozen controller calibration merely to make an unreviewed
+posted file run.
+
 ## Mode Separation
 
 World, TCPC, and TWP are distinct public modes.
@@ -374,3 +396,10 @@ Current actual-program runtime:
 - `tests/kinematics/head-head-twp-switchkins-continuity`
 - `tests/kinematics/head-head-twp-component-loss-restart`
 - `tests/kinematics/head-head-twp-sphere-program-static/test.py`
+
+Fusion post release and review tooling:
+
+- `Fusion Post/pocketnc-motionX 3.cps`
+- `Fusion Post/validate_motionx_twp_output.py`
+- `tests/kinematics/head-head-fusion-post-static/test.py`
+- `TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md`

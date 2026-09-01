@@ -1,5 +1,40 @@
 # TCPC Calibration Resume Checkpoint
 
+## Current Handoff - TWP Fusion Post Ready For Cut-Test Gate, 2026-09-01
+
+- Shared calibration revision `2026082601` remains frozen. No TCPC or TWP
+  coefficient, B/C zero, tool-table value, WCS, or probe offset changed during
+  TWP commissioning or post development.
+- Physical TWP lifecycle commissioning passed with T4/H4 for B
+  `+/-5,+/-15,+/-30 deg` and C `0/90/180/270 deg`: 24 complete tilted poses,
+  24 entries/exits, and 112 motion-gated contacts. The supervised CAM test
+  envelope is `|B| <= 30 deg`.
+- MotionX Fusion post `Fusion Post/pocketnc-motionX 3.cps` was committed and
+  pushed at `5679acd836b6022a0884ca1f88efd282f56beb48` on
+  `head-head-kinematics-rnd-pushable`. Its SHA-256 is
+  `517429a2809c43be982ed36cdd3cae9e12d32f89bed97ab4a4fd5b8b0c066420`.
+- The post supports ordinary three-axis, simultaneous `G43.4` TCPC, and
+  indexed `G68.2` TWP as distinct paths. LinuxCNC's live `G43 H` length is
+  authoritative. Public TCPC is not used for TWP prepositioning.
+- Static post, output-validator self-test, and TWP sphere-program checks pass.
+  A real Fusion-generated NGC has not yet been reviewed, loaded, air-run, or
+  cut. Do not describe the post as physically accepted until those gates pass.
+- The immediate next action is the controlled procedure in
+  `TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md`. Validate and retain the first
+  Fusion output before LinuxCNC load testing; start with a supervised air path
+  or single-block check before a noncritical cut.
+- At `2026-09-01T18:19:21+07:00`, after the operator closed LinuxCNC, no
+  LinuxCNC, Probe Basic, milltask, RTAPI, or HAL process and no LinuxCNC lock
+  file remained. The operator reported the machine homed before closeout, but
+  that state is not retained across shutdown. Hardware power-down remains
+  operator-owned.
+- At the next start assume no valid homing, tool, TLO, G5X, TCPC, TWP, or
+  probe state. Clean-launch, home, and re-establish every required setup state.
+  Program start and all physical motion remain operator-owned.
+
+The 2026-08-28 checkpoint below remains the calibration-fit provenance. It is
+superseded only as the immediate operational handoff.
+
 ## Current Handoff - Calibration Frozen For Controlled Cut Tests, 2026-08-28
 
 - Length-aware model revision `2026082601` is frozen. T4 is the formal

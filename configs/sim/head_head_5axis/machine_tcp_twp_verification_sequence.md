@@ -15,6 +15,10 @@ Current physical TWP acceptance:
 
 - [TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md)
 
+Current Fusion post and cut-test handoff:
+
+- [TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md)
+
 Current TCPC calibration state and evidence index:
 
 - [TCPC_CALIBRATION_RESUME_STATE.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_CALIBRATION_RESUME_STATE.md)

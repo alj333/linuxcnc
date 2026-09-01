@@ -169,6 +169,9 @@ Current production-facing TWP interpretation:
 - the completed physical grid passed 24 poses through B `+/-30 deg` and all
   four C quadrants; this releases supervised CAM cut testing, not unattended
   production
+- MotionX Fusion post release candidate
+  `5679acd836b6022a0884ca1f88efd282f56beb48` implements the commissioned
+  lifecycle; its first actual Fusion output and physical cut remain pending
 - the offline transform, HAL helper commands, and `G88.5` path remain legacy
   simulation fixtures and are not postprocessor targets
 
@@ -188,6 +191,7 @@ Current shop-facing references:
 
 - [TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md)
 - [TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md)
+- [TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md)
 - [TCPC_CALIBRATION_RESUME_STATE.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_CALIBRATION_RESUME_STATE.md)
 - [TCPC_LONG_SHORT_PROBE_CALIBRATION_PLAN.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TCPC_LONG_SHORT_PROBE_CALIBRATION_PLAN.md)
 - [software_acceptance_matrix.md](/home/cnc5/linuxcnc-dev/configs/sim/head_head_5axis/software_acceptance_matrix.md)

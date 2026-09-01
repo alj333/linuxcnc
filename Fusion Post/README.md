@@ -1,5 +1,20 @@
 # MotionX Fusion Post
 
+## Release State
+
+The current release candidate is commit
+`5679acd836b6022a0884ca1f88efd282f56beb48` on branch
+`head-head-kinematics-rnd-pushable`. The SHA-256 of
+`pocketnc-motionX 3.cps` is
+`517429a2809c43be982ed36cdd3cae9e12d32f89bed97ab4a4fd5b8b0c066420`.
+
+Static source-contract, output-validator self-test, and TWP sphere-program
+checks pass. A real Fusion-generated program has not yet completed manual
+review, LinuxCNC load testing, an air path, or a material cut. Until those
+steps pass, this is a supervised test candidate rather than a production post.
+The current checklist is
+`configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md`.
+
 ## Files
 
 - `pocketnc-motionX 3.cps` is the editable MotionX LinuxCNC post.
@@ -54,3 +69,8 @@ motion restrictions, and final TCPC/TWP closeout.
 The first posted three-axis, TCPC, TWP, and mixed-mode samples still require
 manual review. TWP output must then be previewed and load-tested in the
 dedicated TWP-enabled LinuxCNC configuration before any supervised air path.
+
+At the 2026-09-01 closeout LinuxCNC was fully closed with no controller
+process or lock remaining. The next machine session must start cleanly and
+re-establish homing, tool, live `G43 H`, G5X, and mode state; no modal state
+from post development or prior sphere testing may be assumed.

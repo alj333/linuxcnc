@@ -31,10 +31,11 @@ kinematics, HAL calibration, or tool table. An X-only/Y-only paired-position
 test is still required before attributing the effect to a specific rail or
 building an axis correction table.
 
-LinuxCNC was closed normally on `2026-08-28` after the completed campaigns.
-No LinuxCNC, Probe Basic, milltask, or RTAPI process and no
-`/tmp/linuxcnc.lock` remained at the closeout check. Do not assume homing,
-tool, TLO, G43.4, coordinate, or probe state at the next start.
+LinuxCNC was closed normally on `2026-09-01` after the TWP commissioning and
+Fusion post handoff. At `18:19:21 +07`, no LinuxCNC, Probe Basic, milltask,
+RTAPI, or HAL process and no LinuxCNC lock file remained. Hardware power-down
+remains operator-owned. Do not assume homing, tool, TLO, G5X, G43.4, TWP, or
+probe state at the next start.
 
 The complete read-only T3 composite evidence package is
 `calibration_runs/20260827_1503_campaign2026082602_t3_length_aware_attempt2_recovery_complete`.
@@ -335,6 +336,28 @@ physically tested `|B| <= 30 deg` envelope. This is not an unattended
 production release and does not validate arcs, canned cycles, changing B/C in
 TWP, or the remaining machine angular range. Full disposition and evidence
 hashes are in `TWP_SPHERE_GRID_LOW_ANGLE_T4_CLOSEOUT_2026090103.md`.
+
+### Fusion Post Cut-Test Handoff - 2026-09-01 +07
+
+The MotionX Fusion release candidate is committed and pushed at
+`5679acd836b6022a0884ca1f88efd282f56beb48` on branch
+`head-head-kinematics-rnd-pushable`. Its source is
+`Fusion Post/pocketnc-motionX 3.cps`; SHA-256 is
+`517429a2809c43be982ed36cdd3cae9e12d32f89bed97ab4a4fd5b8b0c066420`.
+
+The post keeps ordinary `G43 H`, public `G43.4` TCPC, and `G68.2` TWP as
+separate states. The live LinuxCNC H offset is authoritative for tool length;
+Fusion tool-body, holder, and gauge lengths are not used to position TWP
+entry. Indexed TWP emits world-mode clearance and B/C positioning before
+`G68.2`, a separate immediate `G53.1`, fixed-B/C local motion, local retract,
+and `G69`. The default `useTWP=false` prevents accidental TWP output.
+
+Repository static checks and the generated-output validator self-test pass.
+No actual Fusion-generated NGC, LinuxCNC load, air path, or material cut has
+yet validated this post revision. The next work is a controlled Fusion output
+review and supervised test inside `|B| <= 30 deg`; it is not a calibration
+refit. The authoritative next-session checklist is
+`TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md`.
 
 ## Length-Aware Runtime Boundary - 2026-08-26
 

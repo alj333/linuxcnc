@@ -43,6 +43,14 @@ Current branch status:
 - the default real-machine cut-test INI remains TWP-locked; the dedicated
   supervised INI is physically validated and is released for controlled CAM
   cut testing only
+- MotionX Fusion post release candidate
+  `5679acd836b6022a0884ca1f88efd282f56beb48` implements separate three-axis,
+  TCPC, and TWP section paths; repository checks pass, while its first real
+  Fusion output and physical cut remain the next acceptance gate
+
+Current post test handoff:
+
+- [TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md)
 
 ## Machine Topology
 

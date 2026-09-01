@@ -29,6 +29,25 @@ TWP sphere stage-1/full-cycle/grid static and coordinate-math validation passed
 This verifies the production programs' lifecycle order, Euler identities,
 coordinate-source rules, pose list, recovery settings, and evidence schemas.
 
+## Fusion Post Checks
+
+```bash
+cd /home/cnc5/linuxcnc-dev
+python3 tests/kinematics/head-head-fusion-post-static/test.py
+python3 "Fusion Post/validate_motionx_twp_output.py" --self-test
+```
+
+Required results:
+
+```text
+MotionX Fusion post static contract: PASS
+MotionX generated-output validator self-test: PASS
+```
+
+For a real Fusion-generated file, rerun the validator with the NGC path in
+place of `--self-test`, retain that exact output, and complete the manual gate
+in `TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md`.
+
 ## Switchkins Continuity
 
 ```bash
@@ -122,6 +141,15 @@ That result releases controlled CAM cut testing only inside the physically
 tested `|B| <= 30 deg` envelope. It does not authorize unattended production,
 untested arcs/cycles, changing B/C inside TWP, or physical use beyond the
 tested angular envelope.
+
+The current post-specific acceptance handoff is:
+
+- [TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md)
+
+Passing the post self-test is not evidence that a particular Fusion-generated
+program is safe or accepted. The generated file still requires validation,
+manual lifecycle/clearance review, LinuxCNC load testing, and a supervised air
+path before material cutting.
 
 ## Legacy Runner
 

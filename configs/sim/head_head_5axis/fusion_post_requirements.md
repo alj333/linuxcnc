@@ -21,11 +21,20 @@ Critical changes from the old proposal:
   linearized/expanded or rejected by the post
 - simultaneous 5-axis work is a separate TCPC workflow, not TWP
 
-The local Autodesk Fanuc post remains the recommended starting point:
+The implemented MotionX post and its review tooling are now:
 
-- `/home/cnc5/Fusion/fanuc(1).cps`
+- `Fusion Post/pocketnc-motionX 3.cps`
+- `Fusion Post/validate_motionx_twp_output.py`
+- `tests/kinematics/head-head-fusion-post-static/test.py`
 
-It must not be used unchanged. In particular, its stock head positioning can
-cancel ordinary tool length or force `G43.4` before TWP; both behaviors are
-incompatible with this controller and are covered explicitly in the current
-contract.
+Release candidate `5679acd836b6022a0884ca1f88efd282f56beb48` passed the
+repository static and validator self-tests. Its first actual Fusion output,
+LinuxCNC load, air path, and material cut are still pending. Use the current
+handoff:
+
+- [TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md)
+
+`Fusion Post/FANUC_30i_Matsuura_MAM72_3VS.cps` is retained only as a
+table-table sequencing reference. Its geometry, stock positioning, clamps,
+and tool-length calculations must not be transferred to this head-head
+machine.

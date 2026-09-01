@@ -2,6 +2,26 @@
 
 Status: `CALIBRATION FROZEN - DEFAULT FOR CONTROLLED CUT TESTS`
 
+## 2026-09-01 TWP/Post Addendum
+
+The calibration state in this handoff remains unchanged. Subsequent physical
+TWP commissioning passed the complete T4 low-angle grid through
+`|B| <= 30 deg`, and the first MotionX Fusion post supporting the separate
+three-axis, TCPC, and TWP paths was committed at
+`5679acd836b6022a0884ca1f88efd282f56beb48`.
+
+That post is a supervised cut-test candidate, not a production release. No
+real Fusion-generated NGC has yet passed output review, LinuxCNC load, air
+path, or material cutting. Follow
+`TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md` for the next session. Do not
+retune revision `2026082601` in response to unclassified post, transition,
+setup, or clearance behavior.
+
+LinuxCNC was closed cleanly at `2026-09-01T18:19:21+07:00`; no controller/HAL
+process or lock remained. The prior homed state is not retained. The default
+cut-test INI is still TWP-locked, so TWP load and air-path work remains on the
+dedicated supervised configuration until separately promoted.
+
 ## Default Selection
 
 The default TCPC launcher selects

@@ -9,6 +9,10 @@ Use the authoritative real-machine document:
 
 - [TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_IMPLEMENTATION_AND_FUSION_POST_CONTRACT.md)
 
+Use the current generated-output and cut-test handoff:
+
+- [TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md](/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md)
+
 The previous content predated synchronized switchkins TWP and contained two
 unsafe assumptions for the commissioned implementation:
 

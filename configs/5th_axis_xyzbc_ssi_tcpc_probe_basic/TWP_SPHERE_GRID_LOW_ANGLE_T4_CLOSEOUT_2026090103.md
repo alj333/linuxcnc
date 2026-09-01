@@ -117,3 +117,12 @@ Evidence SHA-256:
 2e4fbccf556050033ac4698db9a1c2d734ba6b739bb1d595e85234bd4ce5351b  twp-sphere-grid-low-angle-t4-poses.csv
 e80e29b80e85a3102677b699c5436a693eda7e4968ed80aa25696498a0688b8c  twp-sphere-grid-low-angle-t4-summary.csv
 ```
+
+## Subsequent Handoff
+
+This sphere closeout remains the physical controller evidence and was not
+changed by post development. MotionX Fusion post release candidate
+`5679acd836b6022a0884ca1f88efd282f56beb48` is now ready for the separate
+generated-output and cut-test gate documented in
+`TWP_FUSION_POST_CUT_TEST_HANDOFF_20260901.md`. No calibration value was
+changed, and no Fusion-generated material cut is yet part of this closeout.
