@@ -14,17 +14,28 @@ import linuxcnc
 
 
 ROOT = Path(__file__).resolve().parents[3]
-PROGRAM = ROOT / "nc_files/calibration/twp_sphere_full_cycle_bplus5_t4.ngc"
-PASS_CSV = (
-    ROOT
-    / "configs/5th_axis_xyzbc_ssi_tcpc_probe_basic"
-    / "twp-sphere-full-cycle-bplus5-t4-passes.csv"
-)
-RESULT_CSV = (
-    ROOT
-    / "configs/5th_axis_xyzbc_ssi_tcpc_probe_basic"
-    / "twp-sphere-full-cycle-bplus5-t4-results.csv"
-)
+PROGRAM = Path(
+    os.environ.get(
+        "TWP_SPHERE_TEST_PROGRAM",
+        ROOT / "nc_files/calibration/twp_sphere_full_cycle_bplus5_t4.ngc",
+    )
+).resolve()
+PASS_CSV = Path(
+    os.environ.get(
+        "TWP_SPHERE_TEST_PASSES",
+        ROOT
+        / "configs/5th_axis_xyzbc_ssi_tcpc_probe_basic"
+        / "twp-sphere-full-cycle-bplus5-t4-passes.csv",
+    )
+).resolve()
+RESULT_CSV = Path(
+    os.environ.get(
+        "TWP_SPHERE_TEST_RESULTS",
+        ROOT
+        / "configs/5th_axis_xyzbc_ssi_tcpc_probe_basic"
+        / "twp-sphere-full-cycle-bplus5-t4-results.csv",
+    )
+).resolve()
 
 TIMEOUT = 360.0
 MODEL_ID = 2026082601
@@ -49,8 +60,9 @@ def env_vector(name, default):
 
 START_B = 0.0
 START_C = 0.0
-TARGET_B = 5.0
-TARGET_C = 0.0
+TARGET_B = env_float("TWP_SPHERE_TEST_TARGET_B", 5.0)
+TARGET_C = env_float("TWP_SPHERE_TEST_TARGET_C", 0.0)
+CAMPAIGN_ID = env_float("TWP_SPHERE_TEST_CAMPAIGN", 2026090101.0)
 G54_OFFSET = env_vector("TWP_SPHERE_TEST_G54", (17.125, -31.500, 8.750))
 START_WORK = env_vector("TWP_SPHERE_TEST_START_WORK", (40.0, -25.0, 15.0))
 SPHERE_RADIUS = 15.0
@@ -347,7 +359,7 @@ def validate_logs(pass_baseline, result_baseline, sphere_center):
     for index, row in enumerate(pass_rows):
         values = parse_numeric_row("pass row %d" % (index + 1), row, 13)
         assert_scalar("pass schema", values[0], 1.0, 0.01)
-        assert_scalar("pass campaign", values[1], 2026090101.0, 0.1)
+        assert_scalar("pass campaign", values[1], CAMPAIGN_ID, 0.1)
         assert_scalar("pass phase", values[2], expected_phase[index], 0.01)
         assert_scalar("pass ID", values[3], expected_pass[index], 0.01)
         assert_scalar("pass TWP mode", values[4], expected_mode[index], 0.01)
@@ -361,7 +373,7 @@ def validate_logs(pass_baseline, result_baseline, sphere_center):
 
     values = parse_numeric_row("accepted result row", result_rows[0], 29)
     assert_scalar("result schema", values[0], 1.0, 0.01)
-    assert_scalar("result campaign", values[1], 2026090101.0, 0.1)
+    assert_scalar("result campaign", values[1], CAMPAIGN_ID, 0.1)
     assert_scalar("result reached B", values[2], TARGET_B, ROTARY_TOL)
     assert_scalar("result reached C", values[3], TARGET_C, ROTARY_TOL)
     assert_scalar("result return B", values[4], START_B, ROTARY_TOL)
@@ -413,9 +425,10 @@ def run_actual_program(sphere_center, start_tcp, tool_w, pass_baseline, result_b
     fault_seen = False
     minimum_b = START_B
     maximum_b = START_B
-    max_c_error = 0.0
-    target_b_seen = False
-    return_b_seen = False
+    minimum_c = START_C
+    maximum_c = START_C
+    target_pose_seen = False
+    return_pose_seen = False
     rotary_motion_seen = False
     minimum_transition_distance = math.inf
     twp_entry_count = 0
@@ -440,8 +453,8 @@ def run_actual_program(sphere_center, start_tcp, tool_w, pass_baseline, result_b
             tcp = physical_tcp()
             minimum_b = min(minimum_b, joints[3])
             maximum_b = max(maximum_b, joints[3])
-            c_error = abs(((joints[4] - TARGET_C + 540.0) % 360.0) - 180.0)
-            max_c_error = max(max_c_error, c_error)
+            minimum_c = min(minimum_c, joints[4])
+            maximum_c = max(maximum_c, joints[4])
             abnormal_seen = abnormal_seen or bool(hal.get_value("tcpc-probe-abnormal-level"))
             fault_seen = fault_seen or bool(hal.get_value("tcpc_probe_fault_pause.out"))
 
@@ -473,10 +486,15 @@ def run_actual_program(sphere_center, start_tcp, tool_w, pass_baseline, result_b
             b_step = abs(joints[3] - prior_joints[3])
             c_step = abs(((joints[4] - prior_joints[4] + 540.0) % 360.0) - 180.0)
             rotary_step = b_step > 1e-7 or c_step > 1e-7
-            in_rotary_transit = (
-                abs(joints[3] - START_B) > ROTARY_TOL
-                and abs(joints[3] - TARGET_B) > ROTARY_TOL
+            at_start_rotary = (
+                abs(joints[3] - START_B) <= ROTARY_TOL
+                and abs(joints[4] - START_C) <= ROTARY_TOL
             )
+            at_target_rotary = (
+                abs(joints[3] - TARGET_B) <= ROTARY_TOL
+                and abs(joints[4] - TARGET_C) <= ROTARY_TOL
+            )
+            in_rotary_transit = not at_start_rotary and not at_target_rotary
             distance = vector_norm(vector_sub(tcp, sphere_center))
             if rotary_step or in_rotary_transit:
                 rotary_motion_seen = True
@@ -491,16 +509,22 @@ def run_actual_program(sphere_center, start_tcp, tool_w, pass_baseline, result_b
                 assert_scalar("active TWP B", joints[3], TARGET_B, ROTARY_TOL)
                 assert_scalar("active TWP C", joints[4], TARGET_C, ROTARY_TOL)
 
-            if abs(joints[3] - TARGET_B) <= ROTARY_TOL:
-                target_b_seen = True
+            if at_target_rotary:
+                target_pose_seen = True
             if (
-                target_b_seen
+                target_pose_seen
                 and contact_count >= 16
-                and abs(joints[3] - START_B) <= ROTARY_TOL
+                and at_start_rotary
             ):
-                return_b_seen = True
-            if joints[3] < START_B - ROTARY_TOL or joints[3] > TARGET_B + ROTARY_TOL:
-                fail("B left the commanded B0-to-B+5 range: %.9f" % joints[3])
+                return_pose_seen = True
+            b_low = min(START_B, TARGET_B) - ROTARY_TOL
+            b_high = max(START_B, TARGET_B) + ROTARY_TOL
+            c_low = min(START_C, TARGET_C) - ROTARY_TOL
+            c_high = max(START_C, TARGET_C) + ROTARY_TOL
+            if joints[3] < b_low or joints[3] > b_high:
+                fail("B left the commanded endpoint range: %.9f" % joints[3])
+            if joints[4] < c_low or joints[4] > c_high:
+                fail("C left the commanded endpoint range: %.9f" % joints[4])
 
             if twp_active and contact_count == 8 and twp_entry_tcp is not None and not probing:
                 displacement = vector_sub(tcp, twp_entry_tcp)
@@ -561,16 +585,15 @@ def run_actual_program(sphere_center, start_tcp, tool_w, pass_baseline, result_b
         fail("simulator generated %d contacts, expected 24" % contact_count)
     if abnormal_seen or fault_seen:
         fail("valid simulated contacts entered the abnormal/fault path")
-    if not rotary_motion_seen or not target_b_seen or not return_b_seen:
+    if not rotary_motion_seen or not target_pose_seen or not return_pose_seen:
         fail(
             "full rotary lifecycle was incomplete: motion=%s target=%s return=%s"
-            % (rotary_motion_seen, target_b_seen, return_b_seen)
+            % (rotary_motion_seen, target_pose_seen, return_pose_seen)
         )
-    assert_scalar("maximum reached B", maximum_b, TARGET_B, ROTARY_TOL)
-    if minimum_b < START_B - ROTARY_TOL:
-        fail("B moved below B0 during the full cycle: %.9f" % minimum_b)
-    if max_c_error > ROTARY_TOL:
-        fail("C changed during the full cycle: max error %.9g" % max_c_error)
+    assert_scalar("minimum reached B", minimum_b, min(START_B, TARGET_B), ROTARY_TOL)
+    assert_scalar("maximum reached B", maximum_b, max(START_B, TARGET_B), ROTARY_TOL)
+    assert_scalar("minimum reached C", minimum_c, min(START_C, TARGET_C), ROTARY_TOL)
+    assert_scalar("maximum reached C", maximum_c, max(START_C, TARGET_C), ROTARY_TOL)
     if twp_entry_count != 1 or twp_exit_count != 1:
         fail(
             "expected one TWP entry and exit, observed %d/%d"
@@ -642,9 +665,9 @@ def run_actual_program(sphere_center, start_tcp, tool_w, pass_baseline, result_b
         fail("final physical TCP is not clear of the sphere")
 
     log(
-        "actual TWP full-cycle sphere program passed: B0/B+5/B0, 24 contacts, "
+        "actual TWP full-cycle sphere program passed: B0 C0/B%.3f C%.3f/B0 C0, 24 contacts, "
         "world closure %.6f mm, TWP error %.6f mm"
-        % (result_values[17], result_values[18])
+        % (TARGET_B, TARGET_C, result_values[17], result_values[18])
     )
     log(
         "transition clearance %.6f mm, preflight projection %.6f mm, "

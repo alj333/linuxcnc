@@ -2,8 +2,8 @@
 
 set -u
 
-PASS_CSV=/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/twp-sphere-full-cycle-bplus5-t4-passes.csv
-RESULT_CSV=/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/twp-sphere-full-cycle-bplus5-t4-results.csv
+PASS_CSV=${TWP_SPHERE_TEST_PASSES:-/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/twp-sphere-full-cycle-bplus5-t4-passes.csv}
+RESULT_CSV=${TWP_SPHERE_TEST_RESULTS:-/home/cnc5/linuxcnc-dev/configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/twp-sphere-full-cycle-bplus5-t4-results.csv}
 BACKUP_DIR=
 
 process_is_live() {

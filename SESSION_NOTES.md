@@ -5278,3 +5278,35 @@ Future work split:
 - No calibration coefficient, B/C zero, WCS, tool-table value, probe offset,
   or length-model ID changed. Full closeout:
   `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_FULL_CYCLE_BPLUS5_T4_CLOSEOUT_2026090101.md`.
+
+## Update (2026-09-01, accepted physical B0/B-5/B0 TWP cycle)
+
+- The signed B-5 counterpart completed the full T4/H4 CAM lifecycle using
+  `G68.2 X0 Y0 Z0 I-90 J5 K90` / `G53.1`, local TWP probing, `G69`, and the
+  program-controlled return to B0/C0.
+- Accepted metrics:
+  - 24/24 gated contacts and six complete pass rows
+  - WORLD opening-to-closing closure `0.008735 mm`
+  - transformed B-5 TWP center error `0.187620 mm`
+  - WORLD open / TWP / WORLD close pair deltas
+    `0.001675 / 0.004967 / 0.008813 mm`
+  - V diameters `30.174667 / 30.154666 / 30.171333 mm`
+  - maximum radial residuals `0.088991 / 0.079189 / 0.087335 mm`
+- The transformed error components are X `+0.187194`, Y `-0.012535`, and Z
+  `-0.001567 mm`. The independent T4 TCPC B-5/C0 comparison is
+  `(+0.180134, +0.000898, -0.006274) mm`, norm `0.180245 mm`. Their close
+  magnitude and common +X dominance identify shared rotary-model or machine
+  geometry behavior rather than a `G68.2` / `G53.1` transition error.
+- The first start was externally aborted around `13:12:18 +07` after four
+  opening WORLD contacts, before TWP entry and before any row was logged. A
+  subsequent idle raw/mux pulse storm did not advance the gated counter. The
+  operator restored the standard start and an eight-second quiet check passed.
+- The accepted restart was uninterrupted and its raw/mux/gated counter delta
+  was exactly `24/24/24`, with no extra probe pulses in the accepted evidence.
+- Final state was idle/in-position at commanded B0/C0, world type 0, all TWP
+  and public TCPC state clear, all probe levels clear, SSI and model state
+  valid, T4/H4 retained, spindle off, and the 25 mm safe lift complete.
+- No calibration coefficient, B/C zero, WCS, tool-table value, probe offset,
+  or length-model ID changed. Full closeout:
+  `configs/5th_axis_xyzbc_ssi_tcpc_probe_basic/TWP_SPHERE_FULL_CYCLE_BMINUS5_T4_CLOSEOUT_2026090102.md`.
+- The next staged TWP lifecycle evidence is the signed B+5/B-5 pair at C90.

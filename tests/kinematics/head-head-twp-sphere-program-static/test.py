@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[3]
 CONFIG = ROOT / "configs/5th_axis_xyzbc_ssi_tcpc_probe_basic"
 PROGRAM = ROOT / "nc_files/calibration/twp_sphere_probe_stage1_t4.ngc"
 FULL_CYCLE_PROGRAM = ROOT / "nc_files/calibration/twp_sphere_full_cycle_bplus5_t4.ngc"
+FULL_CYCLE_BMINUS5_PROGRAM = ROOT / "nc_files/calibration/twp_sphere_full_cycle_bminus5_t4.ngc"
 MACHINE_HAL = CONFIG / "5th_axis_xyzbc_ssi_tcpc_probe_basic.hal"
 REMAP = CONFIG / "python/remap.py"
 INI = CONFIG / "5th_axis_xyzbc_ssi_tcpc_probe_basic_twp_probe_validation_2026083101.ini"
@@ -19,6 +20,8 @@ PASSES = CONFIG / "twp-sphere-stage1-t4-passes.csv"
 RESULTS = CONFIG / "twp-sphere-stage1-t4-results.csv"
 FULL_CYCLE_PASSES = CONFIG / "twp-sphere-full-cycle-bplus5-t4-passes.csv"
 FULL_CYCLE_RESULTS = CONFIG / "twp-sphere-full-cycle-bplus5-t4-results.csv"
+FULL_CYCLE_BMINUS5_PASSES = CONFIG / "twp-sphere-full-cycle-bminus5-t4-passes.csv"
+FULL_CYCLE_BMINUS5_RESULTS = CONFIG / "twp-sphere-full-cycle-bminus5-t4-results.csv"
 
 TOOL_LENGTH = 229.407
 TOOL_OFFSET = (-36.280125, -26.685194, -677.346675)
@@ -70,6 +73,14 @@ def rotate_y(angle_deg, vector):
     return (cosine * x + sine * z, y, -sine * x + cosine * z)
 
 
+def rotate_x(angle_deg, vector):
+    angle = math.radians(angle_deg)
+    cosine = math.cos(angle)
+    sine = math.sin(angle)
+    x, y, z = vector
+    return (x, cosine * y - sine * z, sine * y + cosine * z)
+
+
 def rotate_z(angle_deg, vector):
     angle = math.radians(angle_deg)
     cosine = math.cos(angle)
@@ -85,6 +96,38 @@ def plane_axes(b_deg, c_deg):
         rotate_z(c_effective, rotate_y(b_deg, basis))
         for basis in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
     )
+
+
+def fusion_zxz_axes(i_deg, j_deg, k_deg):
+    return tuple(
+        rotate_z(i_deg, rotate_x(j_deg, rotate_z(k_deg, basis)))
+        for basis in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+    )
+
+
+def normalize_angle(angle_deg):
+    normalized = (angle_deg + 180.0) % 360.0 - 180.0
+    return 180.0 if abs(normalized + 180.0) <= VECTOR_TOL else normalized
+
+
+def validate_fusion_zxz_pose_grid():
+    for b_deg in (5.0, -5.0):
+        for c_deg in (0.0, 45.0, 90.0, 180.0, 225.0, 270.0):
+            if b_deg > 0.0:
+                euler = (normalize_angle(c_deg + 90.0), b_deg, -90.0)
+            else:
+                euler = (normalize_angle(c_deg - 90.0), abs(b_deg), 90.0)
+            actual = fusion_zxz_axes(*euler)
+            expected = tuple(
+                rotate_z(c_deg, rotate_y(b_deg, basis))
+                for basis in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+            )
+            for axis, actual_axis, expected_axis in zip("XYZ", actual, expected):
+                assert_vector(
+                    "B%g C%g Fusion ZXZ %s" % (b_deg, c_deg, axis),
+                    actual_axis,
+                    expected_axis,
+                )
 
 
 def sphere_contacts(center, w_axis, u_axis, v_axis, u_sign):
@@ -318,6 +361,47 @@ def validate_full_cycle_program_static():
     validate_control_pairs(lines)
 
 
+def validate_bminus5_full_cycle_program_static():
+    positive = FULL_CYCLE_PROGRAM.read_text(encoding="ascii")
+    negative = FULL_CYCLE_BMINUS5_PROGRAM.read_text(encoding="ascii")
+    lines = executable_lines(negative)
+    code = "\n".join(lines)
+
+    require("#<_twp_fcm5_target_b> = -5.0" in negative, "B-5 target is not pinned")
+    require("#<_twp_fcm5_target_c> = 0.0" in negative, "B-5 C target is not pinned")
+    require(
+        "G68.2 X0 Y0 Z0 I-90 J5 K90" in code,
+        "B-5 path does not use Fusion's alternate rotating-ZXZ branch",
+    )
+    require("G68.2 R0" not in code, "B-5 path uses the commissioning-only R0 form")
+    require(not re.search(r"\bG43\.4\b", code), "B-5 TWP path enables separate TCPC mode")
+    require("length-model.id]> - 2026082601" in negative, "B-5 path changed model identity")
+    require("#3032 = #<_twp_fcm5_probe_offset>" in negative, "B-5 path changed probe compensation")
+    require(str(FULL_CYCLE_BMINUS5_PASSES) in negative, "B-5 pass evidence path is not separate")
+    require(str(FULL_CYCLE_BMINUS5_RESULTS) in negative, "B-5 result evidence path is not separate")
+
+    normalized = negative
+    for old, new in (
+        ("twp_fcm5", "twp_fc5"),
+        ("BMINUS5", "BPLUS5"),
+        ("bminus5", "bplus5"),
+        ("2026090102", "2026090101"),
+        ("#<_twp_fc5_target_b> = -5.0", "#<_twp_fc5_target_b> = 5.0"),
+        ("B-5", "B+5"),
+        ("G68.2 X0 Y0 Z0 I-90 J5 K90", "G68.2 X0 Y0 Z0 I90 J5 K-90"),
+    ):
+        normalized = normalized.replace(old, new)
+    require(
+        normalized == positive,
+        "B-5 program differs from the accepted B+5 cycle outside its reviewed pose identity",
+    )
+
+    raw_lines = negative.splitlines()
+    long_lines = [(index, len(line)) for index, line in enumerate(raw_lines, 1) if len(line) > 240]
+    require(not long_lines, "B-5 program lines exceed 240 characters: %r" % (long_lines,))
+    validate_control_pairs(lines)
+
+
 def validate_csv_headers():
     expected_passes = (
         "schema_version,campaign_id,phase_id,pass_id,twp_mode,b_deg,c_deg,"
@@ -370,6 +454,20 @@ def validate_csv_headers():
     require(all(len(row) == 13 for row in full_pass_rows[1:]), "a full-cycle pass row does not contain 13 columns")
     require(all(len(row) == 29 for row in full_result_rows[1:]), "a full-cycle result row does not contain 29 columns")
 
+    expected_bminus5_results = expected_full_cycle_results.replace("bplus5", "bminus5")
+    bminus5_pass_rows = list(csv.reader(FULL_CYCLE_BMINUS5_PASSES.read_text(encoding="ascii").splitlines()))
+    bminus5_result_rows = list(csv.reader(FULL_CYCLE_BMINUS5_RESULTS.read_text(encoding="ascii").splitlines()))
+    require(
+        bminus5_pass_rows and ",".join(bminus5_pass_rows[0]) == expected_passes,
+        "B-5 pass CSV schema changed",
+    )
+    require(
+        bminus5_result_rows and ",".join(bminus5_result_rows[0]) == expected_bminus5_results,
+        "B-5 result CSV schema changed",
+    )
+    require(all(len(row) == 13 for row in bminus5_pass_rows), "B-5 pass CSV column count is not 13")
+    require(all(len(row) == 29 for row in bminus5_result_rows), "B-5 result CSV column count is not 29")
+
 
 def validate_launch_boundary():
     ini = INI.read_text(encoding="ascii")
@@ -404,7 +502,9 @@ def validate_machine_coordinate_sources():
 def main():
     validate_program_static()
     validate_full_cycle_program_static()
+    validate_bminus5_full_cycle_program_static()
     validate_coordinate_math()
+    validate_fusion_zxz_pose_grid()
     validate_csv_headers()
     validate_launch_boundary()
     validate_machine_coordinate_sources()

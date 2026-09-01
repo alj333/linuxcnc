@@ -252,6 +252,46 @@ The full disposition is in
 `TWP_SPHERE_FULL_CYCLE_BPLUS5_T4_CLOSEOUT_2026090101.md`. This accepted B+5
 result changes no shared calibration value.
 
+### Accepted B0/B-5/B0 Physical TWP Cycle - 2026-09-01 +07
+
+The signed counterpart also completed the full program-controlled lifecycle.
+Starting from the same B0/C0 sphere-top point, it indexed in world mode to
+B-5/C0, used the exact Fusion/Fanuc alternate rotating-ZXZ branch
+`G68.2 X0 Y0 Z0 I-90 J5 K90` / `G53.1`, probed locally, cancelled with
+`G69`, and returned to B0/C0.
+
+Accepted metrics were:
+
+- 24/24 gated contacts and six complete pass rows
+- WORLD return closure `0.008735 mm`
+- transformed B-5 TWP center error `0.187620 mm`
+- opening WORLD / TWP / closing WORLD pair deltas
+  `0.001675 / 0.004967 / 0.008813 mm`
+- V diameters `30.174667 / 30.154666 / 30.171333 mm`
+- maximum radial residuals `0.088991 / 0.079189 / 0.087335 mm`
+
+The accepted restart was clean: raw/mux/gated counter deltas were exactly
+`24/24/24`. An earlier start was externally aborted after four opening WORLD
+contacts, before TWP entry and before any row was logged; a later idle receiver
+pulse storm remained outside the motion gate. The operator restored the
+standard start and an eight-second quiet qualification passed before the clean
+restart.
+
+The B-5 TWP center delta is dominated by X:
+`(+0.187194, -0.012535, -0.001567) mm`. The independent commissioned TCPC data
+at B-5/C0 gives `(+0.180134, +0.000898, -0.006274) mm`, norm `0.180245 mm`.
+The matching magnitude and +X direction show that this asymmetry is shared
+rotary-model or machine-geometry behavior, not a TWP transition-specific
+error. It passes the `0.250 mm` commissioning gate but exceeds the secondary
+`0.100 mm` accuracy target.
+
+Final state was idle at commanded B0/C0 in world type 0, all TWP/TCPC state and
+probe levels clear, SSI and model state valid, T4/H4 retained, spindle off,
+and the 25 mm safe lift complete. Full disposition is in
+`TWP_SPHERE_FULL_CYCLE_BMINUS5_T4_CLOSEOUT_2026090102.md`. No shared
+calibration value changed. The next staged lifecycle evidence is the signed
+B+5/B-5 pair at C90.
+
 ## Length-Aware Runtime Boundary - 2026-08-26
 
 The kinematics now has an opt-in, synchronous length-aware correction path.
