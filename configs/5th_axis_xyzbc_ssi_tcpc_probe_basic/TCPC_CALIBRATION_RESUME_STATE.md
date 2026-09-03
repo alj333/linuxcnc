@@ -1,5 +1,37 @@
 # TCPC Calibration Resume Checkpoint
 
+## Current Handoff - Provisional X/Y Backlash Cut Test, 2026-09-03
+
+- The owner authorized X/joint 0 `BACKLASH = 0.035500 mm` and Y/joint 1
+  `BACKLASH = 0.029000 mm` for controlled cut testing. Z, B, and C remain
+  `0.0`.
+- The four live INIs are updated: normal Probe Basic base, TCPC base, default
+  length-model cut test, and supervised TWP cut test. Historical task-capture
+  and calibration-evidence INIs remain unchanged at zero.
+- This is a provisional linear-axis candidate from the 2026-04-28 indicator
+  reversal pass. It is not a TCPC/TWP coefficient change, and model ID
+  `2026082601` remains frozen.
+- LinuxCNC was fully closed before the edit; HAL/RTAPI and the lock file were
+  absent. A clean start is required. Before motion, verify live
+  `joint.0.backlash-corr = 0.035500` and
+  `joint.1.backlash-corr = 0.029000`.
+- Probe Basic startup synchronization for the active TWP validation machine is
+  published in `alj333/probe_basic` commit
+  `7105faf8acf765f0964c123ff00beeeff382dddc`. The next clean launch will load
+  this change; it restores the saved probing parameters but does not bypass the
+  HAL motion-type probe gate.
+- The current base tool-table checkpoint records T3 `Z+128.606700`, T11
+  `Z+190.750000`, and T97 `Z+169.766000`. Confirm the intended tool physically
+  matches its selected T/H entry before any cut test.
+- First motion must remain supervised and should include an air path followed
+  by a measurable noncritical cut. Multi-location reversal and commanded-
+  distance checks remain pending, so this is not a production release.
+- The operator reports that the MotionX Fusion post generates errors in the
+  actual Fusion environment. Exact diagnostics are still pending, so no posted
+  program is cleared for LinuxCNC load or motion. The CAM-PC LLM handoff is
+  `Fusion Post/CAM_PC_LLM_HANDOFF.md`; it preserves the controller contract and
+  defines the required reproduction evidence and test matrix.
+
 ## Current Handoff - TWP Fusion Post Ready For Cut-Test Gate, 2026-09-01
 
 - Shared calibration revision `2026082601` remains frozen. No TCPC or TWP

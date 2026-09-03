@@ -1,5 +1,14 @@
 # MotionX Fusion Post
 
+## CAM-PC Debug Handoff - 2026-09-03
+
+The operator reports that the release-candidate post generates errors in
+Fusion. The exact Fusion message, line number, build, setup, and post properties
+have not yet been captured on this Linux host, so the post remains unaccepted.
+Use `CAM_PC_LLM_HANDOFF.md` on the Fusion-equipped PC for the diagnostic record,
+non-negotiable controller contract, minimum test matrix, and return evidence.
+Do not weaken TCPC/TWP sequencing in response to an unclassified error.
+
 ## Release State
 
 The current release candidate is commit

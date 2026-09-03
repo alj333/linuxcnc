@@ -1,10 +1,10 @@
 ;Tool  Pocket Z Offset     Diameter     Remark
 T1     P1     Z+200.415000 D+6.000000   ; Probe 150
 T2     P1     Z+202.073000 D+2.000000   ; Probe 150 #2
-T3     P1     Z+128.606729 D+6.000000   ; Wireless PROBE
+T3     P1     Z+128.606700 D+6.000000   ; Wireless PROBE
 T4     P0     Z+229.407000 D+6.000000   ; Wireless PROBE_150
 T10    P0     Z+126.344000 D+0.000000   ; Drill-6.8mm
-T11    P0     Z+187.995361 D+0.000000   ; Fusion 50mm Face - Flat Insert
+T11    P0     Z+190.750000 D+0.000000   ; Fusion 50mm Face - Flat Insert
 T12    P0     Z+220.788000 D+0.000000   ; 50mm Face 4 row insert
 T14    P0     Z+381.294000 D+0.000000   ; 25mm x 260mm BT30-ER40-100
 T15    P0     Z+291.648000 D+0.000000   ; Fusion 50mm Face - Extra Long
@@ -49,7 +49,7 @@ T93    P0     Z+124.289000 D+0.000000   ; Cut_up3-1F-DC06-90
 T94    P0     Z+196.025000 D+0.000000   ; ucut_6_2f-dc06-150
 T95    P0     Z+130.867000 D+0.000000   ; Cutter_D3-2F
 T96    P0     Z+192.634000 D+0.000000   ; cutter
-T97    P0     Z+166.906000 D+0.000000   ; a5 up4
+T97    P0     Z+169.766000 D+0.000000   ; a5 up4
 T99    P0     Z+235.435000 D+0.000000   ; EM-4-4-DC06-150
 T111   P0     Z+116.294000 D+0.000000   ; Fusion 50mm Face - Flat Insert
 T112   P0     Z+181.527000 D+0.000000   ; EM20_L120

@@ -1,5 +1,21 @@
 # 5th Axis XYZBC SSI TCPC Probe Basic Config
 
+## Provisional X/Y Backlash Cut-Test State - 2026-09-03 +07
+
+The owner authorized provisional linear-axis backlash compensation for the
+next controlled cut tests: X/joint 0 is `0.035500 mm` and Y/joint 1 is
+`0.029000 mm`; Z, B, and C remain `0.0`. The values come from the six-reading
+indicator reversal pass documented in
+`../5th_axis_xyzbc_ssi_probe_basic/XY_BACKLASH_DISTANCE_NEXT_SCOPE.md`.
+
+The normal Probe Basic base, TCPC base, default length-model cut-test, and
+supervised TWP cut-test INIs carry the candidate. Historical task-capture and
+calibration-evidence INIs remain unchanged at zero. This does not revise the
+frozen TCPC/TWP coefficient bank or model ID `2026082601`, but it does change
+physical reversal behavior. A clean controller start, live backlash-pin check,
+and supervised air/cut test are required before acceptance. Multi-location X/Y
+confirmation and commanded-distance calibration remain future work.
+
 Current calibration stage: length-aware model revision `2026082601` has passed
 both available physical probe endpoints at the reference sphere location. T4
 Attempt 2 is the formal uninterrupted `q=0` common-bank result. T3 is a

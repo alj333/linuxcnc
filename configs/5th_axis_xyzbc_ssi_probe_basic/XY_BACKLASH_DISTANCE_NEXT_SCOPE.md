@@ -1,8 +1,9 @@
 # X/Y Backlash And Distance Verification Next Scope
 
-Status: first X/Y reversal backlash pass completed on 2026-04-28. Commanded
-distance verification is deferred until suitable tooling is available or a
-distance/scale problem is suspected.
+Status: first X/Y reversal backlash pass completed on 2026-04-28. Provisional
+X/Y compensation was authorized for controlled cut testing on 2026-09-03.
+Commanded-distance verification and multi-location backlash confirmation remain
+pending.
 
 Purpose:
 
@@ -128,6 +129,28 @@ Interpretation:
   compensation is considered later, repeat at several machine positions first.
 - Because distance verification was skipped, do not change axis scale or
   encoder scale from this data.
+
+## Provisional Cut-Test Candidate - 2026-09-03
+
+The owner authorized the measured means as provisional LinuxCNC backlash
+values for the next load and controlled cut tests:
+
+- X / joint 0: `0.035500 mm`
+- Y / joint 1: `0.029000 mm`
+- Z, B, and C remain `0.0`
+
+The values are present in the normal Probe Basic base INI, the TCPC base INI,
+the default length-model cut-test INI, and the supervised TWP cut-test INI.
+Historical task-capture and calibration-evidence INIs remain at zero. This does
+not alter TCPC/TWP coefficients or model ID `2026082601`; it changes physical
+reversal behavior and therefore requires a clean LinuxCNC start and a new
+cut-test disposition. Verify live `joint.0.backlash-corr` and
+`joint.1.backlash-corr` before the first supervised motion.
+
+These are candidate values, not completed multi-location calibration. Retain
+the zero-compensation TCPC sphere campaigns as historical baselines, and use a
+new paired reversal run or indicator check to decide whether the candidates
+remain valid across the working envelope.
 
 ## Acceptance And Next Decision
 

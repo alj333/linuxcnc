@@ -2,6 +2,20 @@
 
 Status: `CALIBRATION FROZEN - DEFAULT FOR CONTROLLED CUT TESTS`
 
+## 2026-09-03 Provisional Linear-Backlash Addendum
+
+The owner authorized provisional X/joint 0 `BACKLASH = 0.035500 mm` and
+Y/joint 1 `BACKLASH = 0.029000 mm` for the next controlled load and cut tests.
+Z, B, and C remain at zero. This is a separate linear-axis motion candidate;
+it does not change the frozen TCPC/TWP coefficients or model ID `2026082601`.
+
+The values are installed only in the four live base/cut-test INIs. Historical
+task-capture and calibration-evidence INIs remain at zero, matching the state
+under which the sphere data was acquired. A clean start and live backlash-pin
+verification are mandatory, followed by supervised air motion and a measurable
+noncritical cut. The candidate is not a multi-location backlash calibration or
+production release.
+
 ## 2026-09-01 TWP/Post Addendum
 
 The calibration state in this handoff remains unchanged. Subsequent physical
